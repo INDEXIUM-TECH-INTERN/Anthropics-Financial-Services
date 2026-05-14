@@ -154,13 +154,24 @@ func main() {
 		for _, part := range aiMessage.Parts {
 			if part.FunctionCall != nil {
 				hasToolCall = true
-				fmt.Printf("🤖 [AI] Yêu cầu gọi công cụ: %s với args: %v\n", part.FunctionCall.Name, part.FunctionCall.Args)
+				fmt.Printf("\n🎯 [Hành động] AI quyết định sử dụng: %s\n", part.FunctionCall.Name)
+				fmt.Printf("📝 [Tham số] %v\n", part.FunctionCall.Args)
+				
 				var result string
 				if part.FunctionCall.Name == "google_search" {
+					fmt.Printf("🌐 [MCP] Đang kích hoạt Google Search...\n")
 					result = tools.SearchGoogle(part.FunctionCall.Args["query"].(string))
 				} else if part.FunctionCall.Name == "load_financial_context" {
-					result = tools.LoadDocument(part.FunctionCall.Args["type"].(string), part.FunctionCall.Args["name"].(string))
+					docType := part.FunctionCall.Args["type"].(string)
+					docName := part.FunctionCall.Args["name"].(string)
+					if docType == "agent" {
+						fmt.Printf("🤖 [Agent] Đang triệu hồi chuyên gia: %s...\n", docName)
+					} else {
+						fmt.Printf("🛠️ [Skill] Đang kích hoạt kỹ năng: %s...\n", docName)
+					}
+					result = tools.LoadDocument(docType, docName)
 				} else if part.FunctionCall.Name == "get_current_time" {
+					fmt.Printf("🕒 [MCP] Đang lấy thời gian thực từ hệ thống...\n")
 					result = tools.GetCurrentTime()
 				}
 
