@@ -48,18 +48,28 @@ func translateWeekday(wd time.Weekday) string {
 }
 
 func LoadDocument(docType, name string) string {
-	repoRoot := `C:\Users\Rabuno\Documents\Repository\financial-services`
-	// Import "path/filepath" if needed, but let's use strings for now or add it back
-	path := repoRoot + "\\"
+	repoRawRoot := "https://raw.githubusercontent.com/anthropics/financial-services/main"
+	var url string
 	if docType == "agent" {
-		path += "agents\\" + name + ".md"
+		url = fmt.Sprintf("%s/agents/%s.md", repoRawRoot, name)
 	} else {
-		path += "skills\\" + name + "\\SKILL.md"
+		url = fmt.Sprintf("%s/skills/%s/SKILL.md", repoRawRoot, name)
 	}
-	fmt.Printf("📚 [Tool] Đang nạp %s: %s...\n", docType, name)
-	content, err := ioutil.ReadFile(path)
+
+	fmt.Printf("📚 [Tool] Đang nạp %s từ GitHub: %s...\n", docType, name)
+	resp, err := http.Get(url)
 	if err != nil {
-		return fmt.Sprintf("Lỗi: Không tìm thấy tài liệu %s mang tên %s.", docType, name)
+		return fmt.Sprintf("Lỗi kết nối khi nạp tài liệu: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Sprintf("Lỗi: Không tìm thấy tài liệu %s mang tên %s trên GitHub (Status: %d).", docType, name, resp.StatusCode)
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Sprintf("Lỗi khi đọc nội dung tài liệu: %v", err)
 	}
 	return string(content)
 }
