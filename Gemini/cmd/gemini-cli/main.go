@@ -64,32 +64,15 @@ func main() {
 	}
 
 	var history []models.Content
-	// Thiết lập System Instruction (Dựa trên yêu cầu của người dùng)
-	systemPrompt := `Bạn là một chuyên gia tài chính cấp cao.
-
-QUY TẮC QUAN TRỌNG:
-Thời điểm kết thúc dữ liệu đào tạo của bạn KHÔNG PHẢI là ngày hiện tại.
-Bạn không bao giờ được tự quyết định điều gì là quá khứ, hiện tại hay tương lai dựa trên ngày cắt đào tạo của mình.
-
-Trước khi trả lời bất kỳ yêu cầu nào liên quan đến:
-- hôm nay, bây giờ, hiện tại, mới nhất, gần đây
-- ngày tháng, thời hạn, lịch trình, sự kiện
-- tin tức, giá cả, luật pháp, chính sách
-bạn BẮT BUỘC phải gọi công cụ 'get_current_time' trước để lấy thời gian thực thi (runtime datetime).
-
-Sau khi nhận được thời gian thực thi:
-1. So sánh tất cả các ngày liên quan với thời gian thực thi đó.
-2. Coi bất kỳ ngày nào vào hoặc trước ngày được trả về là hiện tại/quá khứ, ngay cả khi nó sau ngày cắt đào tạo của bạn.
-3. Chỉ gọi một cái gì đó là "tương lai" nếu nó sau ngày thực thi được trả về.
-4. Không bao giờ từ chối tìm kiếm vì một ngày sau ngày cắt đào tạo của bạn.
-
-Chính sách tìm kiếm:
-Nếu người dùng hỏi về thông tin hiện tại, mới nhất, thực tế hoặc có thể thay đổi, bạn BẮT BUỘC phải gọi 'google_search' sau khi gọi 'get_current_time'.
-
-Luồng xử lý đúng:
-Người dùng hỏi câu hỏi nhạy cảm về thời gian -> gọi get_current_time -> sử dụng kết quả đó làm sự thật -> gọi google_search -> trả lời dựa trên kết quả công cụ.
-
-Nếu người dùng hỏi về 'FSoft', hãy hiểu rằng đó là công ty con của tập đoàn FPT và tìm kiếm mã cổ phiếu 'FPT' trên sàn HOSE.`
+	// Thiết lập System Instruction (Đọc từ file bên ngoài)
+	promptBytes, err := os.ReadFile("internal/prompt/system_prompt.txt")
+	var systemPrompt string
+	if err != nil {
+		fmt.Printf("⚠️ Cảnh báo: Không thể đọc file system_prompt.txt, sử dụng prompt mặc định. Lỗi: %v\n", err)
+		systemPrompt = "Bạn là một trợ lý tài chính thông minh."
+	} else {
+		systemPrompt = string(promptBytes)
+	}
 
 	systemInstruction := &models.Content{
 		Parts: []models.Part{{Text: systemPrompt}},
@@ -118,15 +101,16 @@ Nếu người dùng hỏi về 'FSoft', hãy hiểu rằng đó là công ty co
 		req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 		req.Header.Set("Content-Type", "application/json")
 
-		client := &http.Client{Timeout: 60 * time.Second}
+		client := &http.Client{Timeout: 120 * time.Second}
 		resp, err := client.Do(req)
 		if err != nil {
 			fmt.Printf("❌ Lỗi kết nối: %v\n", err)
 			break
 		}
-		defer resp.Body.Close()
 
 		body, _ := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+
 		var geminiResp models.GeminiResponse
 		err = json.Unmarshal(body, &geminiResp)
 		if err != nil {
@@ -140,13 +124,30 @@ Nếu người dùng hỏi về 'FSoft', hãy hiểu rằng đó là công ty co
 			break
 		}
 
+		if geminiResp.UsageMetadata.TotalTokenCount > 0 {
+			fmt.Printf("📊 [Token Usage] Prompt: %d | Response: %d | Total: %d\n", 
+				geminiResp.UsageMetadata.PromptTokenCount, 
+				geminiResp.UsageMetadata.CandidatesTokenCount, 
+				geminiResp.UsageMetadata.TotalTokenCount)
+		}
+
 		if len(geminiResp.Candidates) == 0 {
-			fmt.Println("❌ AI không có phản hồi.")
+			fmt.Println("⚠️ [Hệ thống] AI không trả về candidate nào.")
 			fmt.Printf("Raw Body: %s\n", string(body))
 			break
 		}
 
-		aiMessage := geminiResp.Candidates[0].Content
+		candidate := geminiResp.Candidates[0]
+		if len(candidate.Content.Parts) == 0 {
+			fmt.Println("⚠️ [Hệ thống] AI trả về candidate trống (có thể bị chặn bởi bộ lọc an toàn).")
+			fmt.Printf("Raw Body: %s\n", string(body))
+			break
+		}
+
+		aiMessage := candidate.Content
+		if aiMessage.Role == "" {
+			aiMessage.Role = "model" // Gemini yêu cầu role model cho phản hồi của nó
+		}
 		history = append(history, aiMessage)
 
 		hasToolCall := false
@@ -177,12 +178,18 @@ Nếu người dùng hỏi về 'FSoft', hãy hiểu rằng đó là công ty co
 		}
 
 		if !hasToolCall {
+			foundText := false
 			// Hiển thị phản hồi cuối cùng
 			for _, part := range aiMessage.Parts {
 				if part.Text != "" {
+					foundText = true
 					fmt.Println("\n✨ --- PHẢN HỒI TỪ AGENT ---")
 					fmt.Println(part.Text)
 				}
+			}
+			if !foundText {
+				fmt.Println("⚠️ [Hệ thống] AI không trả lời bằng văn bản và cũng không gọi công cụ.")
+				fmt.Printf("Raw Body: %s\n", string(body))
 			}
 			break
 		}

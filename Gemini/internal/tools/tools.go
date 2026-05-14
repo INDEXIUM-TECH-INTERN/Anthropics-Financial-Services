@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -24,7 +25,35 @@ func SearchGoogle(query string) string {
 	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
-	return string(body)
+
+	// Giải mã JSON để lọc thông tin quan trọng
+	var data map[string]interface{}
+	if err := json.Unmarshal(body, &data); err != nil {
+		return "Lỗi giải mã kết quả tìm kiếm."
+	}
+
+	// Lấy Answer Box (Nếu có - thường chứa giá cổ phiếu trực tiếp)
+	summary := ""
+	if ab, ok := data["answer_box"].(map[string]interface{}); ok {
+		summary += fmt.Sprintf("Answer Box: %v\n", ab)
+	}
+
+	// Lấy các kết quả hữu cơ đầu tiên
+	if results, ok := data["organic_results"].([]interface{}); ok {
+		for i, res := range results {
+			if i >= 3 { // Chỉ lấy 3 kết quả đầu
+				break
+			}
+			r := res.(map[string]interface{})
+			summary += fmt.Sprintf("- %s: %s\n", r["title"], r["snippet"])
+		}
+	}
+
+	if summary == "" {
+		return "Không tìm thấy thông tin hữu ích."
+	}
+
+	return summary
 }
 
 func GetCurrentTime() string {

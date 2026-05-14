@@ -4,11 +4,11 @@ package models
 type GeminiRequest struct {
 	Contents          []Content `json:"contents"`
 	Tools             []Tool    `json:"tools,omitempty"`
-	SystemInstruction *Content  `json:"system_instruction,omitempty"`
+	SystemInstruction *Content  `json:"systemInstruction,omitempty"`
 }
 
 type Tool struct {
-	FunctionDeclarations []FunctionDeclaration `json:"function_declarations"`
+	FunctionDeclarations []FunctionDeclaration `json:"functionDeclarations"`
 }
 
 type FunctionDeclaration struct {
@@ -35,8 +35,9 @@ type Content struct {
 
 type Part struct {
 	Text             string            `json:"text,omitempty"`
-	FunctionCall     *FunctionCall     `json:"function_call,omitempty"`
-	FunctionResponse *FunctionResponse `json:"function_response,omitempty"`
+	FunctionCall     *FunctionCall     `json:"functionCall,omitempty"`
+	FunctionResponse *FunctionResponse `json:"functionResponse,omitempty"`
+	ThoughtSignature string            `json:"thoughtSignature,omitempty"`
 }
 
 type FunctionCall struct {
@@ -53,7 +54,14 @@ type GeminiResponse struct {
 	Candidates []struct {
 		Content Content `json:"content"`
 	} `json:"candidates"`
-	Error struct {
+	UsageMetadata UsageMetadata `json:"usageMetadata"`
+	Error         struct {
 		Message string `json:"message"`
 	} `json:"error"`
+}
+
+type UsageMetadata struct {
+	PromptTokenCount     int `json:"promptTokenCount"`
+	CandidatesTokenCount int `json:"candidatesTokenCount"`
+	TotalTokenCount      int `json:"totalTokenCount"`
 }
