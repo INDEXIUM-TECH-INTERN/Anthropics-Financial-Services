@@ -1,0 +1,23 @@
+AGENTS:
+- pitch-agent: Tạo Pitch Deck, phân tích Comps/Precedents, mô hình LBO/Merger cho Investment Banking.
+- meeting-prep-agent: Chuẩn bị tài liệu briefing, hồ sơ công ty và tóm tắt tin tức trước cuộc họp.
+- market-researcher: Phân tích ngành, đối thủ, so sánh ngang hàng (peer comps) và đề xuất ý tưởng.
+- earnings-reviewer: Đánh giá báo cáo thu nhập, cập nhật mô hình và viết ghi chú phân tích.
+- model-builder: Xây dựng mô hình DCF, LBO, 3-Statement chuyên sâu trong Excel.
+- valuation-reviewer: Soát xét gói định giá của GP và báo cáo LP.
+- gl-reconciler: Đối soát sổ cái, tìm nguyên nhân sai lệch và luân chuyển phê duyệt.
+- month-end-closer: Xử lý dồn tích, lũy kế và giải trình biến động cuối tháng.
+- statement-auditor: Kiểm toán báo cáo LP và xác minh phân phối.
+- kyc-screener: Phân tích tài liệu onboarding và phát hiện các lỗ hổng tuân thủ.
+
+SKILLS (Phân loại theo Agent):
+- pitch-agent: pitch-deck, datapack-builder, cim-builder, teaser, buyer-list, comps-analysis, precedent-transactions, lbo-model, merger-model
+- meeting-prep-agent: briefing-pack, biography-generator, company-profile, news-digest
+- market-researcher: sector-overview, competitive-analysis, comps-analysis, idea-generation, thesis-tracker, catalyst-calendar
+- earnings-reviewer: earnings-analysis, earnings-preview, initiating-coverage, model-update, morning-note, xlsx-author
+- model-builder: dcf-model, lbo-model, 3-statement-model, merger-model, xlsx-author, audit-xls
+- valuation-reviewer: valuation-review, gp-reporting, lp-reporting
+- gl-reconciler: break-detection, root-cause-analysis, sign-off-routing
+- month-end-closer: accruals, roll-forwards, variance-commentary
+- statement-auditor: lp-statement-audit, distribution-verification
+- kyc-screener: onboarding-doc-parsing, gap-flagging

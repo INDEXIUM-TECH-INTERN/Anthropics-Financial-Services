@@ -1,0 +1,23 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Specific Binaries (relative to root)
+/gemini-cli
+/Gemini/cmd/gemini-cli/test_router
+/Gemini/cmd/gemini-cli/test_router.exe
+
+# IDEs
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.*
+
+# Logs & Temp
+*.log
+Gemini/internal/evaluator/test_results.json

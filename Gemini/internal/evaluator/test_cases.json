@@ -1,0 +1,43 @@
+[
+  {
+    "id": 1,
+    "user_query": "Giá cổ phiếu FPT hôm nay thế nào?",
+    "expected": {
+      "agent": "market-researcher",
+      "temporal": {
+        "intent": "realtime",
+        "resolved_date": "2026-05-21"
+      }
+    }
+  },
+  {
+    "id": 2,
+    "user_query": "Cho tôi xem báo cáo thu nhập của VNM hôm qua.",
+    "expected": {
+      "agent": "earnings-reviewer",
+      "temporal": {
+        "intent": "latest",
+        "resolved_date": "2026-05-20"
+      }
+    }
+  },
+  {
+    "id": 3,
+    "user_query": "Dự báo giá vàng ngày mai.",
+    "expected": {
+      "temporal": {
+        "is_future": true
+      }
+    }
+  },
+  {
+    "id": 4,
+    "user_query": "Phân tích kỹ thuật mã HPG thứ Hai vừa rồi.",
+    "expected": {
+      "temporal": {
+        "intent": "historical",
+        "resolved_date": "2026-05-18"
+      }
+    }
+  }
+]

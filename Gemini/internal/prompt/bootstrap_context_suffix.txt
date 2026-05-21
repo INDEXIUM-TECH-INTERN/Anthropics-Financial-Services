@@ -1,0 +1,1 @@
+Hãy tuân thủ agent và skill đã nạp ở trên trước khi trả lời yêu cầu người dùng.
