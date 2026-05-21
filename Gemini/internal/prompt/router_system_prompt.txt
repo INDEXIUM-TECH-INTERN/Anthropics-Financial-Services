@@ -17,7 +17,8 @@ Nhiệm vụ: Chuyển đổi User Request thành Route Plan JSON với độ ch
 
 ### QUY TẮC CHỌN AGENT & SKILLS:
 - Chỉ dùng Agent và Skill có trong CATALOG.
-- Nếu không có skill khớp 100%, chọn skill gần nhất (ví dụ: Phân tích mã cổ phiếu -> `sector-overview` hoặc `competitive-analysis` của `market-researcher`).
+- CHỈ CHỌN TỐI ĐA 2 SKILLS quan trọng nhất để tối ưu hóa hiệu suất.
+- Nếu không có skill khớp 100%, chọn skill gần nhất.
 
 ### ĐỊNH DẠNG JSON (CHỈ TRẢ VỀ JSON):
 ```json

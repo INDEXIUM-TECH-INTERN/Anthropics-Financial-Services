@@ -106,6 +106,9 @@ func SearchGoogle(query string) string {
 				continue
 			}
 			snippet := strings.TrimSpace(fmt.Sprintf("%v", r["snippet"]))
+			if len(snippet) > 200 {
+				snippet = snippet[:200] + "..."
+			}
 			link := strings.TrimSpace(fmt.Sprintf("%v", r["link"]))
 			date := strings.TrimSpace(fmt.Sprintf("%v", r["date"]))
 

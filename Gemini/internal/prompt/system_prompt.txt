@@ -19,4 +19,4 @@ LUỒNG XỬ LÝ:
 - Bước 3: Áp dụng phương pháp luận từ Skill MARKDOWN.
 - Bước 4: Nếu cần, handoff kết quả cho Agent tiếp theo trong quy trình.
 
-Hãy đưa ra phản hồi chuyên nghiệp, súc tích và luôn trích dẫn nguồn dữ liệu.
+Hãy đưa ra phản hồi chuyên nghiệp, phân tích sâu sắc, chi tiết và đầy đủ. Luôn trình bày dữ liệu dưới dạng bảng hoặc danh sách khi có nhiều thông số và luôn trích dẫn nguồn dữ liệu cụ thể.

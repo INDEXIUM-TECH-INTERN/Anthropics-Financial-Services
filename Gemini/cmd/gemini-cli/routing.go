@@ -137,18 +137,21 @@ func (a *Agent) routeWithProviderFallback(systemPrompt, userPrompt string) (stri
 	if err == nil {
 		return raw, nil
 	}
+	fmt.Printf("⚠️ [Router Fallback] Gemini lỗi: %v\n", err)
 
 	// Lượt 2: SambaNova
 	raw, err = a.sambanovaProvider.GenerateText(systemPrompt, userPrompt)
 	if err == nil {
 		return raw, nil
 	}
+	fmt.Printf("⚠️ [Router Fallback] SambaNova lỗi: %v\n", err)
 
 	// Lượt 3: Groq
 	raw, err = a.groqProvider.GenerateText(systemPrompt, userPrompt)
 	if err == nil {
 		return raw, nil
 	}
+	fmt.Printf("⚠️ [Router Fallback] Groq lỗi: %v\n", err)
 
 	// Lượt 4: OpenRouter
 	return a.openrouterProvider.GenerateText(systemPrompt, userPrompt)
@@ -191,15 +194,27 @@ func filterValidSkills(agentName string, skills []string) []string {
 }
 
 func parseRoutePlan(raw string) (RoutePlan, error) {
-	// Tìm JSON trong chuỗi văn bản (đề phòng AI trả về text thừa)
+	// Tìm JSON trong chuỗi văn bản
 	start := strings.Index(raw, "{")
 	end := strings.LastIndex(raw, "}")
 	if start == -1 || end == -1 || end < start {
 		return RoutePlan{}, fmt.Errorf("no JSON found")
 	}
 
+	jsonStr := raw[start : end+1]
+
+	// Loại bỏ các comment dòng (// ...) thường thấy trong output AI
+	var cleanLines []string
+	for _, line := range strings.Split(jsonStr, "\n") {
+		if idx := strings.Index(line, "//"); idx != -1 {
+			line = line[:idx]
+		}
+		cleanLines = append(cleanLines, line)
+	}
+	jsonStr = strings.Join(cleanLines, "\n")
+
 	var route RoutePlan
-	if err := json.Unmarshal([]byte(raw[start:end+1]), &route); err != nil {
+	if err := json.Unmarshal([]byte(jsonStr), &route); err != nil {
 		return RoutePlan{}, err
 	}
 	return route, nil

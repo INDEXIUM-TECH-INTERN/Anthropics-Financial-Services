@@ -296,10 +296,21 @@ func (a *Agent) buildBootstrapContextInternal(route RoutePlan) []string {
 		fmt.Sprintf("SYSTEM PROMPT (from agents/%s.md)\n%s", route.Agent, agentDoc.Content),
 	}
 
-	for _, skill := range route.Skills {
+	// Chỉ nạp tối đa 1 skill đầu tiên để tiết kiệm token và tránh lỗi Request too large
+	maxSkills := 1
+	for i, skill := range route.Skills {
+		if i >= maxSkills {
+			fmt.Printf("⚠️ [Context] Bỏ qua skill %s để tối ưu hóa token.\n", skill)
+			break
+		}
 		skillDoc := tools.LoadDocumentWithMetadata("skill", route.Agent+"/"+skill)
 		a.logLoadedDocument(skillDoc)
-		contextParts = append(contextParts, fmt.Sprintf("SKILL MARKDOWN (%s)\n%s", skill, skillDoc.Content))
+		
+		content := skillDoc.Content
+		if len(content) > 4000 {
+			content = content[:4000] + "\n... [Nội dung bị cắt bớt để tối ưu hóa context]"
+		}
+		contextParts = append(contextParts, fmt.Sprintf("SKILL MARKDOWN (%s)\n%s", skill, content))
 	}
 
 	if tools.NeedsRealtimeData(a.userInput) {
@@ -318,29 +329,31 @@ func (a *Agent) askProvidersInternal() (models.GeminiContent, error) {
 	if err == nil {
 		return aiMessage, nil
 	}
-	fmt.Printf("⚠️ [Fallback] Gemini lỗi, chuyển sang SambaNova...\n")
+	fmt.Printf("⚠️ [Fallback] Gemini lỗi: %v\n", err)
 
 	// 2. SambaNova (Backup 1 - High Rate Limit Free)
 	aiMessage, err = a.sambanovaProvider.Call(a.systemPrompt, a.history, a.tools...)
 	if err == nil {
 		return aiMessage, nil
 	}
-	fmt.Printf("⚠️ [Fallback] SambaNova lỗi, chuyển sang Groq...\n")
+	fmt.Printf("⚠️ [Fallback] SambaNova lỗi: %v\n", err)
 
 	// 3. Groq (Backup 2)
 	aiMessage, err = a.groqProvider.Call(a.systemPrompt, a.history, a.tools...)
+	if err != nil {
+		if strings.Contains(err.Error(), "Rate limit reached") {
+			fmt.Println("⏳ [Hệ thống] Chạm giới hạn Groq TPM. Đang chờ 15s để thử lại...")
+			time.Sleep(15 * time.Second)
+			aiMessage, err = a.groqProvider.Call(a.systemPrompt, a.history, a.tools...)
+		}
+	}
 	if err == nil {
 		return aiMessage, nil
 	}
-	fmt.Printf("⚠️ [Fallback] Groq lỗi, chuyển sang OpenRouter...\n")
+	fmt.Printf("⚠️ [Fallback] Groq lỗi: %v\n", err)
 
 	// 4. OpenRouter (Backup 3)
-	aiMessage, err = a.openrouterProvider.Call(a.systemPrompt, a.history, a.tools...)
-	if err == nil {
-		return aiMessage, nil
-	}
-
-	return models.GeminiContent{}, fmt.Errorf("tất cả các provider đều thất bại")
+	return a.openrouterProvider.Call(a.systemPrompt, a.history, a.tools...)
 }
 
 func (a *Agent) GetHistory() []models.GeminiContent {
@@ -353,12 +366,10 @@ func (a *Agent) GetHistory() []models.GeminiContent {
 
 func normalizeGeminiModel(model string) string {
 	normalized := strings.TrimSpace(model)
-	switch normalized {
-	case "", "gemini-1.5-flash-latest", "gemini-1.5-flash":
-		return "gemini-2.5-flash"
-	default:
-		return normalized
+	if normalized == "" {
+		return "gemini-1.5-flash"
 	}
+	return normalized
 }
 
 func (a *Agent) logLoadedDocument(doc tools.LoadedDocument) {

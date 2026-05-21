@@ -20,9 +20,13 @@ type GeminiProvider struct {
 func (p *GeminiProvider) GenerateText(systemPrompt, userPrompt string) (string, error) {
 	model := strings.TrimSpace(p.Model)
 	if model == "" {
-		model = "gemini-2.5-flash"
+		model = "gemini-1.5-flash"
 	}
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent", model)
+	modelPath := model
+	if !strings.HasPrefix(modelPath, "models/") {
+		modelPath = "models/" + modelPath
+	}
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/%s:generateContent", modelPath)
 
 	reqBody := models.GeminiRequest{
 		Contents: []models.GeminiContent{
@@ -77,9 +81,13 @@ func (p *GeminiProvider) GenerateText(systemPrompt, userPrompt string) (string, 
 func (p *GeminiProvider) Call(systemPrompt string, history []models.GeminiContent, tools ...models.Parameters) (models.GeminiContent, error) {
 	model := strings.TrimSpace(p.Model)
 	if model == "" {
-		model = "gemini-2.5-flash"
+		model = "gemini-1.5-flash"
 	}
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent", model)
+	modelPath := model
+	if !strings.HasPrefix(modelPath, "models/") {
+		modelPath = "models/" + modelPath
+	}
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/%s:generateContent", modelPath)
 
 	var functionDeclarations []models.GeminiFunctionDeclaration
 	for _, t := range tools {
