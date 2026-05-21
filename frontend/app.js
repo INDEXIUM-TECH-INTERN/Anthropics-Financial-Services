@@ -24,6 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
         logDiv.textContent = `[${timeString}] ${message}`;
         consoleLogs.appendChild(logDiv);
         consoleLogs.scrollTop = consoleLogs.scrollHeight;
+        
+        return logDiv; // Trả về phần tử để có thể update text
     }
 
     function extractSources(markdownText) {
@@ -100,41 +102,41 @@ document.addEventListener('DOMContentLoaded', () => {
         sendBtn.disabled = true;
 
         logToConsole(`> User input received: "${text.substring(0, 30)}..."`, 'info');
-        logToConsole(`> Routing request to optimal financial agent...`, 'process');
-
+        
+        // Tạo dòng log riêng cho Timer
+        const timerLog = logToConsole(`> Waiting for agent response... [00:00]`, 'process');
+        
         const loadingMsg = addMessage('', 'bot', true);
 
-        // Giả lập tiến trình console
-        let simulationInterval = null;
-        let step = 0;
-        const simulationSteps = [
-            "> Fetching agent configurations from GitHub repository...",
-            "> Bootstrapping specialized financial skills context...",
-            "> Orchestrator initiating analysis (this may take up to 20s)...",
-            "> Querying MCP tools (financial_research / market_data)...",
-            "> Validating and parsing real-time tool outputs..."
-        ];
-        
-        simulationInterval = setInterval(() => {
-            if (step < simulationSteps.length) {
-                logToConsole(simulationSteps[step], 'process');
-                step++;
-            } else {
-                clearInterval(simulationInterval);
-            }
-        }, 3000);
+        // Khởi tạo Live Timer
+        const startTime = Date.now();
+        const timerInterval = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const minutes = String(Math.floor(elapsed / 60)).padStart(2, '0');
+            const seconds = String(elapsed % 60).padStart(2, '0');
+            
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', { hour12: false });
+            timerLog.textContent = `[${timeString}] > Waiting for agent response... [${minutes}:${seconds}]`;
+        }, 1000);
+
+        // Khởi tạo AbortController cho Timeout (90 giây)
+        const TIMEOUT_MS = 90000;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
         try {
-            const startTime = Date.now();
             const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: text })
+                body: JSON.stringify({ message: text }),
+                signal: controller.signal
             });
             const data = await response.json();
             const duration = Date.now() - startTime;
 
-            clearInterval(simulationInterval);
+            clearTimeout(timeoutId);
+            clearInterval(timerInterval);
             loadingMsg.remove();
             
             if (data.error) {
@@ -151,10 +153,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         } catch (error) {
-            clearInterval(simulationInterval);
+            clearTimeout(timeoutId);
+            clearInterval(timerInterval);
             loadingMsg.remove();
-            logToConsole(`> Network error: Could not reach the Go Backend.`, 'error');
-            addMessage(`❌ Không thể kết nối tới server. Vui lòng đảm bảo Backend đang chạy.`, 'bot');
+            
+            if (error.name === 'AbortError') {
+                logToConsole(`> Timeout Error: Request exceeded ${TIMEOUT_MS / 1000}s limit.`, 'error');
+                addMessage(`❌ Request Timeout: Agent mất quá nhiều thời gian để phản hồi.`, 'bot');
+            } else {
+                logToConsole(`> Network error: Could not reach the Go Backend.`, 'error');
+                addMessage(`❌ Không thể kết nối tới server. Vui lòng đảm bảo Backend đang chạy.`, 'bot');
+            }
         } finally {
             sendBtn.disabled = false;
             chatInput.focus();
