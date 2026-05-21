@@ -112,15 +112,9 @@ func SearchGoogle(query string) string {
 			link := strings.TrimSpace(fmt.Sprintf("%v", r["link"]))
 			date := strings.TrimSpace(fmt.Sprintf("%v", r["date"]))
 
-			line := fmt.Sprintf("- %s", title)
-			if date != "" && date != "<nil>" {
-				line += fmt.Sprintf(" [%s]", date)
-			}
+			line := fmt.Sprintf("- %s [URL: %s] [DATE: %s]", title, link, date)
 			if snippet != "" && snippet != "<nil>" {
 				line += fmt.Sprintf(": %s", snippet)
-			}
-			if link != "" && link != "<nil>" {
-				line += fmt.Sprintf(" (%s)", link)
 			}
 			lines = append(lines, line)
 		}
