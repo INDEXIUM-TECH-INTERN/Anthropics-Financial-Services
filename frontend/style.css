@@ -27,6 +27,12 @@ body { background-color: var(--bg-main); color: var(--text-primary); height: 100
 .source-card a { color: #2563eb; text-decoration: none; word-break: break-all; font-weight: 500;}
 .source-card a:hover { text-decoration: underline; }
 
+/* --- Automation Panel --- */
+.automation-panel { padding: 12px 24px; border-bottom: 1px solid var(--border-color); background-color: #fff;}
+.test-btn { width: 100%; padding: 8px; background-color: #2563eb; color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;}
+.test-btn:hover { background-color: #1d4ed8; }
+.test-btn:disabled { background-color: #9ca3af; cursor: not-allowed; }
+
 /* --- Console Panel --- */
 .console-panel {
     height: 280px;
