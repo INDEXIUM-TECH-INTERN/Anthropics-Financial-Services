@@ -15,28 +15,26 @@ import (
 )
 
 type Agent struct {
-	mu                 sync.Mutex
-	geminiProvider     *providers.GeminiProvider
-	groqProvider       *providers.GroqProvider
-	openrouterProvider *providers.OpenRouterProvider
-	sambanovaProvider  *providers.SambaNovaProvider
-	history            []models.GeminiContent
-	systemPrompt       string
-	tools          []models.Parameters
-	userInput      string
-	handoffPlan    *RoutePlan
+	mu                sync.Mutex
+	geminiProvider    *providers.GeminiProvider
+	groqProvider      *providers.GroqProvider
+	sambanovaProvider *providers.SambaNovaProvider
+	history           []models.GeminiContent
+	systemPrompt      string
+	tools             []models.Parameters
+	userInput         string
+	handoffPlan       *RoutePlan
 }
 
 func NewAgent() *Agent {
 	utils.LoadEnv()
 
 	return &Agent{
-		geminiProvider:     newGeminiProvider(),
-		groqProvider:       newGroqProvider(),
-		openrouterProvider: newOpenrouterProvider(),
-		sambanovaProvider:  newSambanovaProvider(),
-		history:            []models.GeminiContent{},
-		systemPrompt:       buildGroundedSystemPrompt(time.Now()),
+		geminiProvider:    newGeminiProvider(),
+		groqProvider:      newGroqProvider(),
+		sambanovaProvider: newSambanovaProvider(),
+		history:           []models.GeminiContent{},
+		systemPrompt:      buildGroundedSystemPrompt(time.Now()),
 		tools: []models.Parameters{
 			newFinancialResearchTool(),
 			newFinancialScrapeTool(),
@@ -58,13 +56,6 @@ func newGroqProvider() *providers.GroqProvider {
 	return &providers.GroqProvider{
 		APIKey: os.Getenv("GROQ_API_KEY"),
 		Model:  os.Getenv("GROQ_MODEL"),
-	}
-}
-
-func newOpenrouterProvider() *providers.OpenRouterProvider {
-	return &providers.OpenRouterProvider{
-		APIKey: os.Getenv("OPENROUTER_API_KEY"),
-		Model:  os.Getenv("OPENROUTER_MODEL"),
 	}
 }
 
@@ -307,7 +298,7 @@ func (a *Agent) buildBootstrapContextInternal(route RoutePlan) []string {
 		BroadcastLog(fmt.Sprintf("Đang nạp skill chuyên biệt: %s", skill), "process")
 		skillDoc := tools.LoadDocumentWithMetadata("skill", route.Agent+"/"+skill)
 		a.logLoadedDocument(skillDoc)
-		
+
 		content := skillDoc.Content
 		if len(content) > 4000 {
 			content = content[:4000] + "\n... [Nội dung bị cắt bớt để tối ưu hóa context]"
@@ -355,8 +346,7 @@ func (a *Agent) askProvidersInternal() (models.GeminiContent, error) {
 	}
 	fmt.Printf("⚠️ [Fallback] Groq lỗi: %v\n", err)
 
-	// 4. OpenRouter (Backup 3)
-	return a.openrouterProvider.Call(a.systemPrompt, a.history, a.tools...)
+	return models.GeminiContent{}, fmt.Errorf("tất cả các provider đều thất bại")
 }
 
 func (a *Agent) GetHistory() []models.GeminiContent {

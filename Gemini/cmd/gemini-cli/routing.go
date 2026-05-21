@@ -156,8 +156,7 @@ func (a *Agent) routeWithProviderFallback(systemPrompt, userPrompt string) (stri
 	}
 	fmt.Printf("⚠️ [Router Fallback] Groq lỗi: %v\n", err)
 
-	// Lượt 4: OpenRouter
-	return a.openrouterProvider.GenerateText(systemPrompt, userPrompt)
+	return "", fmt.Errorf("tất cả các provider của router đều thất bại")
 }
 
 
