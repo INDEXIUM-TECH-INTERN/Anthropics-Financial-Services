@@ -4,11 +4,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatHistory = document.getElementById('chat-history');
     const sourcesList = document.getElementById('sources-list');
     
-    const metricLatency = document.getElementById('metric-latency');
-    const metricRam = document.getElementById('metric-ram');
-    const metricCpu = document.getElementById('metric-cpu');
-    const metricTokens = document.getElementById('metric-tokens');
-
     const API_URL = 'http://localhost:8080/api/chat';
 
     // Auto-resize textarea
@@ -28,7 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (uniqueUrls.length > 0) {
             sourcesList.innerHTML = ''; // Xóa chữ 'Chưa có nguồn'
             uniqueUrls.forEach((url, index) => {
-                // Rút gọn domain để hiển thị đẹp
                 let domain = url;
                 try { domain = new URL(url).hostname; } catch(e) {}
                 
@@ -54,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
             contentDiv.innerHTML = '<div class="loading-indicator"></div><div class="loading-indicator" style="width: 70%; margin-top: 8px;"></div>';
         } else if (sender === 'bot') {
             contentDiv.innerHTML = marked.parse(text);
-            extractSources(text); // Bóc tách nguồn cập nhật Sidebar
+            extractSources(text);
         } else {
             contentDiv.textContent = text;
         }
@@ -65,12 +59,22 @@ document.addEventListener('DOMContentLoaded', () => {
         return msgDiv;
     }
 
-    function updateMetrics(metrics) {
+    function appendMetricsToMessage(msgDiv, metrics) {
         if (!metrics) return;
-        metricLatency.textContent = `${metrics.latency_ms} ms`;
-        metricRam.textContent = metrics.ram_mb;
-        metricCpu.textContent = metrics.cpu_load.replace(' Goroutines (Active)', '');
-        metricTokens.textContent = `${metrics.token_in} / ${metrics.token_out}`;
+        
+        const metricsDiv = document.createElement('div');
+        metricsDiv.className = 'msg-metrics';
+        
+        // Icon đơn giản bằng emoji
+        metricsDiv.innerHTML = `
+            <span>⏱ ${metrics.latency_ms}ms</span>
+            <span>🧠 ${metrics.ram_mb}</span>
+            <span>⚡ ${metrics.cpu_load.replace(' Goroutines (Active)', '')} Threads</span>
+            <span>🪙 ${metrics.token_in}/${metrics.token_out} Tokens</span>
+        `;
+        
+        msgDiv.appendChild(metricsDiv);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
     }
 
     async function sendMessage() {
@@ -97,8 +101,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.error) {
                 addMessage(`❌ Lỗi: ${data.error}`, 'bot');
             } else {
-                addMessage(data.reply, 'bot');
-                updateMetrics(data.metrics);
+                const finalMsgDiv = addMessage(data.reply, 'bot');
+                appendMetricsToMessage(finalMsgDiv, data.metrics);
             }
         } catch (error) {
             loadingMsg.remove();
