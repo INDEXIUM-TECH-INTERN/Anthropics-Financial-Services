@@ -21,3 +21,6 @@
 # Logs & Temp
 *.log
 Gemini/internal/evaluator/test_results.json
+
+# Documentation (Local Only)
+docs/
