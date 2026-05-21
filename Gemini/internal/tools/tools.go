@@ -394,7 +394,7 @@ func LoadDocumentWithMetadata(docType, name string) LoadedDocument {
 	}
 }
 
-func LoadRoutingGuide() string {
+func GetRoutingGuide() string {
 	const readmeURL = "https://raw.githubusercontent.com/anthropics/financial-services/main/README.md"
 
 	client := &http.Client{Timeout: 30 * time.Second}
