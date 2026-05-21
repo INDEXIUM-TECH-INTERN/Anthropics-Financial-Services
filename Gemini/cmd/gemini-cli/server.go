@@ -46,8 +46,9 @@ func StartServer(agent *Agent) {
 	// API routes
 	mux.HandleFunc("/api/events", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Cache-Control", "no-cache, no-transform")
 		w.Header().Set("Connection", "keep-alive")
+		w.Header().Set("X-Accel-Buffering", "no")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
 		ch := globalHub.Register()
@@ -63,11 +64,19 @@ func StartServer(agent *Agent) {
 		fmt.Fprintf(w, "data: {\"type\":\"system\",\"payload\":\"SSE Connected\"}\n\n")
 		flusher.Flush()
 
+		// Heartbeat (Ping) mỗi 15s để giữ kết nối
+		ticker := time.NewTicker(15 * time.Second)
+		defer ticker.Stop()
+
 		for {
 			select {
 			case event := <-ch:
 				data, _ := json.Marshal(event)
 				fmt.Fprintf(w, "data: %s\n\n", data)
+				flusher.Flush()
+			case <-ticker.C:
+				// Gửi ping comment
+				fmt.Fprintf(w, ": ping\n\n")
 				flusher.Flush()
 			case <-r.Context().Done():
 				return
@@ -142,8 +151,8 @@ func StartServer(agent *Agent) {
 		Addr:         ":8080",
 		Handler:      mux,
 		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  120 * time.Second,
+		// Gỡ bỏ WriteTimeout vì nó làm ngắt kết nối SSE dài hạn
 	}
 
 	fmt.Println("🚀 [Server] Backend Go is running on http://localhost:8080")
