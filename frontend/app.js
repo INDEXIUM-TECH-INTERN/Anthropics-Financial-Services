@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sendBtn = document.getElementById('send-btn');
     const chatHistory = document.getElementById('chat-history');
     const sourcesList = document.getElementById('sources-list');
+    const consoleLogs = document.getElementById('console-logs');
     
     const API_URL = 'http://localhost:8080/api/chat';
 
@@ -11,6 +12,19 @@ document.addEventListener('DOMContentLoaded', () => {
         this.style.height = '24px';
         this.style.height = (this.scrollHeight) + 'px';
     });
+
+    function logToConsole(message, type = 'info') {
+        const logDiv = document.createElement('div');
+        logDiv.className = `log-entry ${type}`;
+        
+        // Lấy thời gian hiện tại HH:MM:SS
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('en-US', { hour12: false });
+        
+        logDiv.textContent = `[${timeString}] ${message}`;
+        consoleLogs.appendChild(logDiv);
+        consoleLogs.scrollTop = consoleLogs.scrollHeight;
+    }
 
     function extractSources(markdownText) {
         // Tìm các mẫu dạng [1] Tên - URL hoặc [URL: https://...]
@@ -63,9 +77,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!metrics) return;
         
         const metricsDiv = document.createElement('div');
-        metricsDiv.className = 'msg-metrics';
+        metricsDiv.className = `msg-metrics`;
         
-        // Icon đơn giản bằng emoji
         metricsDiv.innerHTML = `
             <span>⏱ ${metrics.latency_ms}ms</span>
             <span>🧠 ${metrics.ram_mb}</span>
@@ -86,27 +99,62 @@ document.addEventListener('DOMContentLoaded', () => {
         chatInput.style.height = '24px';
         sendBtn.disabled = true;
 
+        logToConsole(`> User input received: "${text.substring(0, 30)}..."`, 'info');
+        logToConsole(`> Routing request to optimal financial agent...`, 'process');
+
         const loadingMsg = addMessage('', 'bot', true);
 
+        // Giả lập tiến trình console
+        let simulationInterval = null;
+        let step = 0;
+        const simulationSteps = [
+            "> Fetching agent configurations from GitHub repository...",
+            "> Bootstrapping specialized financial skills context...",
+            "> Orchestrator initiating analysis (this may take up to 20s)...",
+            "> Querying MCP tools (financial_research / market_data)...",
+            "> Validating and parsing real-time tool outputs..."
+        ];
+        
+        simulationInterval = setInterval(() => {
+            if (step < simulationSteps.length) {
+                logToConsole(simulationSteps[step], 'process');
+                step++;
+            } else {
+                clearInterval(simulationInterval);
+            }
+        }, 3000);
+
         try {
+            const startTime = Date.now();
             const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: text })
             });
             const data = await response.json();
+            const duration = Date.now() - startTime;
 
+            clearInterval(simulationInterval);
             loadingMsg.remove();
             
             if (data.error) {
+                logToConsole(`> Backend execution error: ${data.error}`, 'error');
                 addMessage(`❌ Lỗi: ${data.error}`, 'bot');
             } else {
+                logToConsole(`> Response generation complete in ${duration}ms.`, 'success');
                 const finalMsgDiv = addMessage(data.reply, 'bot');
                 appendMetricsToMessage(finalMsgDiv, data.metrics);
+                
+                const sourcesCount = sourcesList.querySelectorAll('.source-card').length;
+                if (sourcesCount > 0) {
+                    logToConsole(`> Extracted and validated ${sourcesCount} dynamic sources.`, 'success');
+                }
             }
         } catch (error) {
+            clearInterval(simulationInterval);
             loadingMsg.remove();
-            addMessage(`❌ Không thể kết nối tới server.`, 'bot');
+            logToConsole(`> Network error: Could not reach the Go Backend.`, 'error');
+            addMessage(`❌ Không thể kết nối tới server. Vui lòng đảm bảo Backend đang chạy.`, 'bot');
         } finally {
             sendBtn.disabled = false;
             chatInput.focus();

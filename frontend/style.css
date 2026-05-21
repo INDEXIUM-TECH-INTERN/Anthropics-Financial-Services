@@ -18,7 +18,7 @@ body { background-color: var(--bg-main); color: var(--text-primary); height: 100
 .sidebar-header { padding: 20px 24px; border-bottom: 1px solid var(--border-color); }
 .sidebar-header h1 { font-size: 16px; font-weight: 600; color: var(--text-primary); }
 
-.sources-panel { flex: 1; padding: 24px; overflow-y: auto; }
+.sources-panel { flex: 1; padding: 24px; overflow-y: auto; border-bottom: none; }
 .sources-panel h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 16px; font-weight: 600; }
 .empty-sources { font-size: 13px; color: var(--text-secondary); font-style: italic; }
 
@@ -26,6 +26,47 @@ body { background-color: var(--bg-main); color: var(--text-primary); height: 100
 .source-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
 .source-card a { color: #2563eb; text-decoration: none; word-break: break-all; font-weight: 500;}
 .source-card a:hover { text-decoration: underline; }
+
+/* --- Console Panel --- */
+.console-panel {
+    height: 250px;
+    background-color: #1e1e1e; /* Màu nền tối */
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+}
+.console-header {
+    padding: 8px 12px;
+    background-color: #2d2d2d;
+    color: #a3a3a3;
+    font-size: 11px;
+    font-family: monospace;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid #404040;
+}
+.blinking-cursor {
+    animation: blink 1s step-end infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+.console-logs {
+    flex: 1;
+    padding: 12px;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #d4d4d4;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.log-entry { word-break: break-all; }
+.log-entry.info { color: #d4d4d4; }
+.log-entry.process { color: #60a5fa; } /* Xanh dương cho tiến trình */
+.log-entry.success { color: #4ade80; } /* Xanh lá cho thành công */
+.log-entry.error { color: #f87171; }   /* Đỏ cho lỗi */
 
 /* --- Main Chat --- */
 .chat-container { flex: 1; display: flex; flex-direction: column; position: relative; }
