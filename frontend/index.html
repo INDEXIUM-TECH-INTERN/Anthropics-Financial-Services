@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anthropic Financial Agent</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Dùng thư viện marked.js từ CDN để render Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Main Chat Area -->
+        <main class="chat-section">
+            <header>
+                <h1>Financial Agent Workspace</h1>
+            </header>
+            <div class="chat-history" id="chat-history">
+                <!-- Tin nhắn sẽ được append vào đây -->
+            </div>
+            <div class="chat-input-area">
+                <textarea id="chat-input" placeholder="Nhập câu hỏi tài chính (VD: So sánh HDB và ACB)..."></textarea>
+                <button id="send-btn">Gửi</button>
+            </div>
+        </main>
+
+        <!-- System Monitor Area -->
+        <aside class="metrics-section">
+            <h2>System Monitor</h2>
+            <div class="metric-card">
+                <span>Latency</span>
+                <strong id="metric-latency">0 ms</strong>
+            </div>
+            <div class="metric-card">
+                <span>RAM (Go Process)</span>
+                <strong id="metric-ram">0 MB</strong>
+            </div>
+            <div class="metric-card">
+                <span>CPU / Threads</span>
+                <strong id="metric-cpu">0 Active</strong>
+            </div>
+            <div class="metric-card">
+                <span>Est. Tokens (In/Out)</span>
+                <strong id="metric-tokens">0 / 0</strong>
+            </div>
+        </aside>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

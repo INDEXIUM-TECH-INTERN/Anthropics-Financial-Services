@@ -1,0 +1,31 @@
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+body { background-color: #f4f7f6; color: #333; display: flex; justify-content: center; padding: 20px; height: 100vh; }
+.container { display: flex; width: 100%; max-width: 1400px; gap: 20px; height: 100%; }
+
+/* Chat Section */
+.chat-section { flex: 3; background: #fff; border-radius: 12px; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden; }
+header { padding: 20px; background: #2c3e50; color: white; text-align: center; }
+.chat-history { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+.message { padding: 12px 18px; border-radius: 8px; max-width: 85%; line-height: 1.5; }
+.message.user { background: #e3f2fd; align-self: flex-end; }
+.message.bot { background: #f8f9fa; align-self: flex-start; border: 1px solid #e9ecef; }
+.message.loading { background: #fff3cd; align-self: flex-start; font-style: italic; color: #856404; }
+
+/* Input Area */
+.chat-input-area { display: flex; padding: 20px; border-top: 1px solid #eee; background: #fafafa; }
+#chat-input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 8px; resize: none; height: 50px; font-size: 15px; }
+#send-btn { padding: 0 25px; margin-left: 10px; background: #2980b9; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+#send-btn:hover { background: #2c3e50; }
+
+/* Metrics Section */
+.metrics-section { flex: 1; background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+.metrics-section h2 { margin-bottom: 20px; font-size: 18px; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+.metric-card { background: #f8f9fa; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid #3498db; }
+.metric-card span { display: block; font-size: 12px; color: #7f8c8d; margin-bottom: 5px; text-transform: uppercase; }
+.metric-card strong { font-size: 18px; color: #2c3e50; }
+
+/* Markdown Table Styles */
+table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 10px; font-size: 14px; }
+th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+th { background-color: #f1f1f1; font-weight: bold; color: #333; }
+tr:nth-child(even) { background-color: #f9f9f9; }

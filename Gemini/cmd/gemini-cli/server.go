@@ -4,23 +4,40 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"runtime"
 	"time"
 
 	"gemini-cli/internal/models"
 )
 
-// Giao diện đã được nhúng vào Go binary (nếu thư mục dist tồn tại)
-// Để đơn giản khi phát triển, tôi sẽ tắt phần embed nếu bạn đã xóa thư mục frontend.
-// Nếu muốn bật lại, hãy chạy 'npm run build' trong thư mục frontend và phục hồi cấu trúc dist.
-
 type ChatRequest struct {
 	Message string `json:"message"`
+}
+
+type Metrics struct {
+	LatencyMs int64  `json:"latency_ms"`
+	TokenIn   int    `json:"token_in"`
+	TokenOut  int    `json:"token_out"`
+	RamMB     string `json:"ram_mb"`
+	CpuLoad   string `json:"cpu_load"`
 }
 
 type ChatResponse struct {
 	Reply   string                 `json:"reply"`
 	History []models.GeminiContent `json:"history"`
+	Metrics Metrics                `json:"metrics"`
 	Error   string                 `json:"error,omitempty"`
+}
+
+func getSystemMetrics() (string, string) {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	ram := fmt.Sprintf("%.2f MB", float64(m.Alloc)/1024/1024)
+
+	// Ước lượng độ tải thông qua số Goroutine đang chạy
+	cpu := fmt.Sprintf("%d Goroutines (Active)", runtime.NumGoroutine())
+	return ram, cpu
 }
 
 func StartServer(agent *Agent) {
@@ -53,25 +70,42 @@ func StartServer(agent *Agent) {
 			return
 		}
 		fmt.Printf("📩 [Server] Received message: %s\n", req.Message)
+
+		startTime := time.Now()
 		reply, err := agent.ProcessMessage(req.Message)
+		latency := time.Since(startTime).Milliseconds()
+
+		ram, cpu := getSystemMetrics()
+
 		if err != nil {
 			resp := ChatResponse{Error: err.Error()}
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(resp)
 			return
 		}
+
 		resp := ChatResponse{
 			Reply:   reply,
 			History: agent.GetHistory(),
+			Metrics: Metrics{
+				LatencyMs: latency,
+				TokenIn:   len(req.Message) / 4, // Ước tính tạm
+				TokenOut:  len(reply) / 4,       // Ước tính tạm
+				RamMB:     ram,
+				CpuLoad:   cpu,
+			},
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
 	})
 
-	// Static files (tạm thời tắt embed để tránh lỗi build khi không có thư mục dist)
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Anthropic Financial Agent Backend is running. API is at /api/chat")
-	})
+	// Static files
+	// Kiểm tra xem thư mục nào tồn tại
+	if _, err := os.Stat("frontend"); err == nil {
+		mux.Handle("/", http.FileServer(http.Dir("frontend")))
+	} else {
+		mux.Handle("/", http.FileServer(http.Dir("../frontend")))
+	}
 
 	server := &http.Server{
 		Addr:         ":8080",
