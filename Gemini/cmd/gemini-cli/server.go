@@ -44,6 +44,37 @@ func StartServer(agent *Agent) {
 	mux := http.NewServeMux()
 
 	// API routes
+	mux.HandleFunc("/api/events", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
+		ch := globalHub.Register()
+		defer globalHub.Unregister(ch)
+
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+			return
+		}
+
+		// Gửi sự kiện chào mừng
+		fmt.Fprintf(w, "data: {\"type\":\"system\",\"payload\":\"SSE Connected\"}\n\n")
+		flusher.Flush()
+
+		for {
+			select {
+			case event := <-ch:
+				data, _ := json.Marshal(event)
+				fmt.Fprintf(w, "data: %s\n\n", data)
+				flusher.Flush()
+			case <-r.Context().Done():
+				return
+			}
+		}
+	})
+
 	mux.HandleFunc("/api/reset", func(w http.ResponseWriter, r *http.Request) {
 		enableCORS(w)
 		if r.Method == "OPTIONS" {

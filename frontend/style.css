@@ -18,7 +18,7 @@ body { background-color: var(--bg-main); color: var(--text-primary); height: 100
 .sidebar-header { padding: 20px 24px; border-bottom: 1px solid var(--border-color); }
 .sidebar-header h1 { font-size: 16px; font-weight: 600; color: var(--text-primary); }
 
-.sources-panel { flex: 1; padding: 24px; overflow-y: auto; border-bottom: none; }
+.sources-panel { flex: 1; padding: 24px; overflow-y: auto; }
 .sources-panel h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 16px; font-weight: 600; }
 .empty-sources { font-size: 13px; color: var(--text-secondary); font-style: italic; }
 
@@ -29,8 +29,8 @@ body { background-color: var(--bg-main); color: var(--text-primary); height: 100
 
 /* --- Console Panel --- */
 .console-panel {
-    height: 250px;
-    background-color: #1e1e1e; /* Màu nền tối */
+    height: 280px;
+    background-color: #1e1e1e;
     border-top: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
@@ -39,15 +39,14 @@ body { background-color: var(--bg-main); color: var(--text-primary); height: 100
     padding: 8px 12px;
     background-color: #2d2d2d;
     color: #a3a3a3;
-    font-size: 11px;
+    font-size: 10px;
     font-family: monospace;
     display: flex;
     justify-content: space-between;
     border-bottom: 1px solid #404040;
+    text-transform: uppercase;
 }
-.blinking-cursor {
-    animation: blink 1s step-end infinite;
-}
+.blinking-cursor { animation: blink 1s step-end infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 
 .console-logs {
@@ -56,17 +55,15 @@ body { background-color: var(--bg-main); color: var(--text-primary); height: 100
     overflow-y: auto;
     font-family: 'Consolas', 'Courier New', monospace;
     font-size: 11px;
-    line-height: 1.5;
+    line-height: 1.6;
     color: #d4d4d4;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
 }
-.log-entry { word-break: break-all; }
-.log-entry.info { color: #d4d4d4; }
-.log-entry.process { color: #60a5fa; } /* Xanh dương cho tiến trình */
-.log-entry.success { color: #4ade80; } /* Xanh lá cho thành công */
-.log-entry.error { color: #f87171; }   /* Đỏ cho lỗi */
+.log-entry { margin-bottom: 4px; border-left: 2px solid transparent; padding-left: 8px; }
+.log-entry.routing { border-left-color: #a855f7; color: #e9d5ff; }
+.log-entry.process { border-left-color: #3b82f6; color: #dbeafe; }
+.log-entry.tool { border-left-color: #eab308; color: #fef9c3; }
+.log-entry.success { border-left-color: #22c55e; color: #dcfce7; }
+.log-entry.error { border-left-color: #ef4444; color: #fee2e2; }
 
 /* --- Main Chat --- */
 .chat-container { flex: 1; display: flex; flex-direction: column; position: relative; }
@@ -75,26 +72,11 @@ body { background-color: var(--bg-main); color: var(--text-primary); height: 100
 .message { display: flex; flex-direction: column; gap: 8px; }
 .message.user { align-items: flex-end; }
 .message.user .msg-content { background-color: #f3f4f6; padding: 12px 16px; border-radius: 12px; max-width: 80%; font-size: 15px; }
-.message.bot .msg-content { font-size: 15px; line-height: 1.6; color: var(--text-primary); padding: 10px 0; border-bottom: 1px solid var(--border-color); width: 100%;}
-.message:last-child .msg-content { border-bottom: none; }
+.message.bot .msg-content { font-size: 15px; line-height: 1.6; color: var(--text-primary); }
 
-/* Inline Metrics */
-.msg-metrics {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-top: 4px;
-    font-size: 11px;
-    color: var(--text-secondary);
-    padding-top: 8px;
-    border-top: 1px dashed var(--border-color);
-    opacity: 0.8;
-}
-.msg-metrics span {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
+.msg-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 8px; border-top: 1px dashed var(--border-color); padding-top: 8px; opacity: 0.8; }
+.timer { font-size: 11px; color: var(--text-secondary); font-weight: 600; display: flex; align-items: center; gap: 4px; }
+.metrics-inline { display: flex; gap: 12px; font-size: 11px; color: var(--text-secondary); }
 
 /* Skeleton Loading */
 .loading-indicator { display: inline-block; width: 100%; height: 20px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: skeleton 1.5s infinite; border-radius: 4px; }
@@ -109,9 +91,8 @@ body { background-color: var(--bg-main); color: var(--text-primary); height: 100
 #send-btn:hover { background: var(--accent-hover); }
 #send-btn:disabled { background: #d1d5db; cursor: not-allowed; }
 
-/* Tables & Markdown (Financial Style) */
+/* Tables & Markdown */
 table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; }
 th, td { border-bottom: 1px solid var(--border-color); padding: 12px 8px; text-align: right; }
 th:first-child, td:first-child { text-align: left; }
 th { background-color: transparent; color: var(--text-secondary); font-weight: 500; font-size: 12px; text-transform: uppercase; }
-tr:last-child td { border-bottom: none; }

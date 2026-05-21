@@ -102,11 +102,13 @@ var allowedSkillsByAgent = map[string]map[string]bool{
 }
 
 func (a *Agent) selectRoutePlan() RoutePlan {
+	BroadcastLog("Đang phân tích yêu cầu để chọn Agent tối ưu...", "process")
 	routerSystemPrompt := utils.LoadPrompt("router_system_prompt.txt")
-	routerUserPrompt := buildRouterUserPrompt(a.userInput, tools.LoadRoutingGuide(), time.Now())
+	routerUserPrompt := buildRouterUserPrompt(a.userInput, tools.GetRoutingGuide(), time.Now())
 
 	raw, err := a.routeWithProviderFallback(routerSystemPrompt, routerUserPrompt)
 	if err != nil {
+		BroadcastLog("Lỗi Router, đang sử dụng fallback mặc định.", "error")
 		return fallbackRoutePlan(a.userInput)
 	}
 
@@ -114,10 +116,11 @@ func (a *Agent) selectRoutePlan() RoutePlan {
 	route, err := parseRoutePlan(raw)
 	if err != nil {
 		fmt.Printf("⚠️ [Router] Parse error: %v. Using fallback.\n", err)
+		BroadcastLog("Phản hồi Router không hợp lệ, đang dùng fallback.", "error")
 		return fallbackRoutePlan(a.userInput)
 	}
 
-	fmt.Printf("\n🤖 [Router Response]\nAgent: %s\nSkills: %v\nTemporal: %+v\nReason: %s\n\n", route.Agent, route.Skills, route.Temporal, route.Reason)
+	BroadcastLog(fmt.Sprintf("Đã chọn Agent: %s (Lý do: %s)", route.Agent, route.Reason), "success")
 	return sanitizeRoutePlan(route, a.userInput)
 }
 

@@ -6,6 +6,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const consoleLogs = document.getElementById('console-logs');
     
     const API_URL = 'http://localhost:8080/api/chat';
+    const EVENTS_URL = 'http://localhost:8080/api/events';
+
+    // --- Real-time SSE Logic ---
+    const eventSource = new EventSource(EVENTS_URL);
+    eventSource.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            logToConsole(data.payload, data.type);
+        } catch (e) {}
+    };
+    eventSource.onerror = () => {
+        logToConsole("SSE Connection lost. Reconnecting...", "error");
+    };
 
     // Auto-resize textarea
     chatInput.addEventListener('input', function() {
@@ -16,32 +29,23 @@ document.addEventListener('DOMContentLoaded', () => {
     function logToConsole(message, type = 'info') {
         const logDiv = document.createElement('div');
         logDiv.className = `log-entry ${type}`;
-        
-        // Lấy thời gian hiện tại HH:MM:SS
         const now = new Date();
         const timeString = now.toLocaleTimeString('en-US', { hour12: false });
-        
         logDiv.textContent = `[${timeString}] ${message}`;
         consoleLogs.appendChild(logDiv);
         consoleLogs.scrollTop = consoleLogs.scrollHeight;
-        
-        return logDiv; // Trả về phần tử để có thể update text
     }
 
     function extractSources(markdownText) {
-        // Tìm các mẫu dạng [1] Tên - URL hoặc [URL: https://...]
         const urlRegex = /(https?:\/\/[^\s\)]+)/g;
         const urls = markdownText.match(urlRegex) || [];
-        
-        // Loại bỏ trùng lặp
         const uniqueUrls = [...new Set(urls)];
         
         if (uniqueUrls.length > 0) {
-            sourcesList.innerHTML = ''; // Xóa chữ 'Chưa có nguồn'
+            sourcesList.innerHTML = '';
             uniqueUrls.forEach((url, index) => {
                 let domain = url;
                 try { domain = new URL(url).hostname; } catch(e) {}
-                
                 const card = document.createElement('div');
                 card.className = 'source-card';
                 card.innerHTML = `
@@ -70,26 +74,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         msgDiv.appendChild(contentDiv);
+
+        if (sender === 'bot') {
+            const footer = document.createElement('div');
+            footer.className = 'msg-footer';
+            msgDiv.appendChild(footer);
+        }
+
         chatHistory.appendChild(msgDiv);
         chatHistory.scrollTop = chatHistory.scrollHeight;
         return msgDiv;
-    }
-
-    function appendMetricsToMessage(msgDiv, metrics) {
-        if (!metrics) return;
-        
-        const metricsDiv = document.createElement('div');
-        metricsDiv.className = `msg-metrics`;
-        
-        metricsDiv.innerHTML = `
-            <span>⏱ ${metrics.latency_ms}ms</span>
-            <span>🧠 ${metrics.ram_mb}</span>
-            <span>⚡ ${metrics.cpu_load.replace(' Goroutines (Active)', '')} Threads</span>
-            <span>🪙 ${metrics.token_in}/${metrics.token_out} Tokens</span>
-        `;
-        
-        msgDiv.appendChild(metricsDiv);
-        chatHistory.scrollTop = chatHistory.scrollHeight;
     }
 
     async function sendMessage() {
@@ -101,27 +95,19 @@ document.addEventListener('DOMContentLoaded', () => {
         chatInput.style.height = '24px';
         sendBtn.disabled = true;
 
-        logToConsole(`> User input received: "${text.substring(0, 30)}..."`, 'info');
-        
-        // Tạo dòng log riêng cho Timer
-        const timerLog = logToConsole(`> Waiting for agent response... [00:00]`, 'process');
-        
-        const loadingMsg = addMessage('', 'bot', true);
+        logToConsole(`New Request: "${text.substring(0, 30)}..."`, 'info');
 
-        // Khởi tạo Live Timer
+        const botMsgDiv = addMessage('', 'bot', true);
+        const footer = botMsgDiv.querySelector('.msg-footer');
+        
+        // Start Live Timer
         const startTime = Date.now();
         const timerInterval = setInterval(() => {
-            const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            const minutes = String(Math.floor(elapsed / 60)).padStart(2, '0');
-            const seconds = String(elapsed % 60).padStart(2, '0');
-            
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('en-US', { hour12: false });
-            timerLog.textContent = `[${timeString}] > Waiting for agent response... [${minutes}:${seconds}]`;
-        }, 1000);
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            footer.innerHTML = `<span class="timer">⏱ Processing... ${elapsed}s</span>`;
+        }, 100);
 
-        // Khởi tạo AbortController cho Timeout (90 giây)
-        const TIMEOUT_MS = 90000;
+        const TIMEOUT_MS = 120000; // Tăng lên 120s cho SSE ổn định
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -133,40 +119,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 signal: controller.signal
             });
             const data = await response.json();
-            const duration = Date.now() - startTime;
+            const finalDuration = ((Date.now() - startTime) / 1000).toFixed(1);
 
-            clearTimeout(timeoutId);
             clearInterval(timerInterval);
-            loadingMsg.remove();
+            clearTimeout(timeoutId);
             
+            const contentDiv = botMsgDiv.querySelector('.msg-content');
+            botMsgDiv.classList.remove('loading');
+
             if (data.error) {
-                logToConsole(`> Backend execution error: ${data.error}`, 'error');
-                addMessage(`❌ Lỗi: ${data.error}`, 'bot');
+                contentDiv.textContent = `❌ Lỗi: ${data.error}`;
+                footer.innerHTML = `<span class="timer" style="color:#ef4444">Failed after ${finalDuration}s</span>`;
             } else {
-                logToConsole(`> Response generation complete in ${duration}ms.`, 'success');
-                const finalMsgDiv = addMessage(data.reply, 'bot');
-                appendMetricsToMessage(finalMsgDiv, data.metrics);
+                contentDiv.innerHTML = marked.parse(data.reply);
+                extractSources(data.reply);
                 
-                const sourcesCount = sourcesList.querySelectorAll('.source-card').length;
-                if (sourcesCount > 0) {
-                    logToConsole(`> Extracted and validated ${sourcesCount} dynamic sources.`, 'success');
-                }
+                footer.innerHTML = `
+                    <span class="timer">✅ ${finalDuration}s</span>
+                    <div class="metrics-inline">
+                        <span>🧠 ${data.metrics.ram_mb}</span>
+                        <span>⚡ ${data.metrics.cpu_load.split(' ')[0]} Threads</span>
+                        <span>🪙 ${data.metrics.token_in}/${data.metrics.token_out}</span>
+                    </div>
+                `;
             }
         } catch (error) {
-            clearTimeout(timeoutId);
             clearInterval(timerInterval);
-            loadingMsg.remove();
-            
-            if (error.name === 'AbortError') {
-                logToConsole(`> Timeout Error: Request exceeded ${TIMEOUT_MS / 1000}s limit.`, 'error');
-                addMessage(`❌ Request Timeout: Agent mất quá nhiều thời gian để phản hồi.`, 'bot');
-            } else {
-                logToConsole(`> Network error: Could not reach the Go Backend.`, 'error');
-                addMessage(`❌ Không thể kết nối tới server. Vui lòng đảm bảo Backend đang chạy.`, 'bot');
-            }
+            clearTimeout(timeoutId);
+            botMsgDiv.querySelector('.msg-content').textContent = error.name === 'AbortError' ? "❌ Lỗi: Request Timeout (120s)" : "❌ Lỗi: Không thể kết nối server.";
+            footer.innerHTML = `<span class="timer" style="color:#ef4444">Error</span>`;
         } finally {
             sendBtn.disabled = false;
             chatInput.focus();
+            chatHistory.scrollTop = chatHistory.scrollHeight;
         }
     }
 

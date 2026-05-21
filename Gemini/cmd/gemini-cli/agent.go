@@ -222,6 +222,7 @@ func (a *Agent) handleSlashCommandInternal(input string) bool {
 }
 
 func (a *Agent) executeBootstrapWithRouteInternal(route RoutePlan) {
+	BroadcastLog(fmt.Sprintf("Nạp cấu hình cho %s...", route.Agent), "process")
 	fmt.Printf("🧭 [Context] Orchestrator: Loading %s configuration...\n", route.Agent)
 	contextParts := a.buildBootstrapContextInternal(route)
 	bootstrapPayload := strings.Join(contextParts, "\n\n")
@@ -301,8 +302,9 @@ func (a *Agent) buildBootstrapContextInternal(route RoutePlan) []string {
 	for i, skill := range route.Skills {
 		if i >= maxSkills {
 			fmt.Printf("⚠️ [Context] Bỏ qua skill %s để tối ưu hóa token.\n", skill)
-			break
+			continue
 		}
+		BroadcastLog(fmt.Sprintf("Đang nạp skill chuyên biệt: %s", skill), "process")
 		skillDoc := tools.LoadDocumentWithMetadata("skill", route.Agent+"/"+skill)
 		a.logLoadedDocument(skillDoc)
 		
@@ -314,6 +316,7 @@ func (a *Agent) buildBootstrapContextInternal(route RoutePlan) []string {
 	}
 
 	if tools.NeedsRealtimeData(a.userInput) {
+		BroadcastLog("Phát hiện nhu cầu dữ liệu Real-time. Đang tìm kiếm...", "process")
 		queryPlan := tools.BuildMarketQueryPlan(a.userInput)
 		realtimeResult := tools.SearchGoogle(queryPlan.SearchQuery)
 		contextParts = append(contextParts, fmt.Sprintf("REAL-TIME MARKET DATA\n%s", realtimeResult))

@@ -17,6 +17,7 @@ func (a *Agent) handleToolCalls(aiMessage models.GeminiContent) bool {
 
 		hasToolCall = true
 		fmt.Printf("\n🎯 [Action] AI invokes MCP tool: %s\n", part.FunctionCall.Name)
+		BroadcastLog(fmt.Sprintf("Thực thi Tool: %s...", part.FunctionCall.Name), "tool")
 
 		result := a.resolveToolCallResult(part.FunctionCall)
 		a.appendFunctionResponse(part.FunctionCall, result)
@@ -106,4 +107,3 @@ func (a *Agent) appendFunctionResponse(functionCall *models.GeminiFunctionCall, 
 		}},
 	})
 }
-
