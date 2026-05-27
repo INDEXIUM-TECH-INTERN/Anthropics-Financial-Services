@@ -15,15 +15,15 @@ import (
 )
 
 type Agent struct {
-	mu                sync.Mutex
-	geminiProvider    *providers.GeminiProvider
-	groqProvider      *providers.GroqProvider
-	sambanovaProvider *providers.SambaNovaProvider
-	history           []models.GeminiContent
-	systemPrompt      string
-	tools             []models.Parameters
-	userInput         string
-	handoffPlan       *RoutePlan
+	mu                 sync.Mutex
+	geminiProvider     *providers.GeminiProvider
+	groqProvider       *providers.GroqProvider
+	sambanovaProvider  *providers.SambaNovaProvider
+	history            []models.GeminiContent
+	systemPrompt       string
+	tools              []models.Parameters
+	userInput          string
+	handoffPlan        *RoutePlan
 }
 
 func NewAgent() *Agent {

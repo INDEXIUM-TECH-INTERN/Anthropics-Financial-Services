@@ -109,7 +109,7 @@ func (a *Agent) selectRoutePlan() RoutePlan {
 	raw, err := a.routeWithProviderFallback(routerSystemPrompt, routerUserPrompt)
 	if err != nil {
 		BroadcastLog("Lỗi Router, đang sử dụng fallback mặc định.", "error")
-		return fallbackRoutePlan(a.userInput)
+		return fallbackRoutePlan()
 	}
 
 	fmt.Printf("\n[DEBUG] Raw AI Response: %s\n", raw)
@@ -117,7 +117,7 @@ func (a *Agent) selectRoutePlan() RoutePlan {
 	if err != nil {
 		fmt.Printf("⚠️ [Router] Parse error: %v. Using fallback.\n", err)
 		BroadcastLog("Phản hồi Router không hợp lệ, đang dùng fallback.", "error")
-		return fallbackRoutePlan(a.userInput)
+		return fallbackRoutePlan()
 	}
 
 	BroadcastLog(fmt.Sprintf("Đã chọn Agent: %s (Lý do: %s)", route.Agent, route.Reason), "success")
@@ -160,7 +160,7 @@ func (a *Agent) routeWithProviderFallback(systemPrompt, userPrompt string) (stri
 }
 
 
-func fallbackRoutePlan(userInput string) RoutePlan {
+func fallbackRoutePlan() RoutePlan {
 	return RoutePlan{
 		Agent:  "market-researcher",
 		Skills: []string{"sector-overview"},
@@ -170,7 +170,7 @@ func fallbackRoutePlan(userInput string) RoutePlan {
 
 func sanitizeRoutePlan(route RoutePlan, userInput string) RoutePlan {
 	if !allowedAgents[route.Agent] {
-		return fallbackRoutePlan(userInput)
+		return fallbackRoutePlan()
 	}
 
 	validSkills := filterValidSkills(route.Agent, route.Skills)
