@@ -142,19 +142,29 @@ func (a *Agent) routeWithProviderFallback(systemPrompt, userPrompt string) (stri
 	}
 	fmt.Printf("⚠️ [Router Fallback] Gemini lỗi: %v\n", err)
 
-	// Lượt 2: SambaNova
-	raw, err = a.sambanovaProvider.GenerateText(systemPrompt, userPrompt)
-	if err == nil {
-		return raw, nil
-	}
-	fmt.Printf("⚠️ [Router Fallback] SambaNova lỗi: %v\n", err)
+	// Lượt 2: OpenRouter (Thử tất cả các key khả dụng)
+	numKeys := len(a.openrouterProviders)
+	if numKeys > 0 {
+		var lastErr error
+		for i := 0; i < numKeys; i++ {
+			a.mu.Lock()
+			activeIdx := a.currentORIdx
+			a.mu.Unlock()
 
-	// Lượt 3: Groq
-	raw, err = a.groqProvider.GenerateText(systemPrompt, userPrompt)
-	if err == nil {
-		return raw, nil
+			nextOR := a.getNextOpenRouter()
+			if nextOR != nil {
+				BroadcastLog(fmt.Sprintf("Gemini lỗi. Đang thử dự phòng sang OpenRouter Key #%d...", activeIdx+1), "routing")
+				fmt.Printf("🔄 [Router Fallback] Đang thử OpenRouter Key #%d...\n", activeIdx+1)
+				raw, lastErr = nextOR.GenerateText(systemPrompt, userPrompt)
+				if lastErr == nil {
+					return raw, nil
+				}
+				BroadcastLog(fmt.Sprintf("OpenRouter Key #%d thất bại: %v", activeIdx+1, lastErr), "error")
+				fmt.Printf("⚠️ [Router Fallback] OpenRouter Key #%d lỗi: %v\n", activeIdx+1, lastErr)
+			}
+		}
+		return "", fmt.Errorf("tất cả %d OpenRouter keys của router đều thất bại: %v", numKeys, lastErr)
 	}
-	fmt.Printf("⚠️ [Router Fallback] Groq lỗi: %v\n", err)
 
 	return "", fmt.Errorf("tất cả các provider của router đều thất bại")
 }

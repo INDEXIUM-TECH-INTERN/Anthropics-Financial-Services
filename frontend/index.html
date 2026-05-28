@@ -1,69 +1,145 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Financial Agent - Notebook Workspace</title>
-    <!-- Import font Inter từ Google Fonts -->
+    <title>Indexium - Financial AI Agent Workspace</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body>
-    <div class="workspace">
-        <!-- Sidebar (Left) -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h1>Financial Agent</h1>
-            </div>
-            
-            <div class="sources-panel">
-                <h3>Sources</h3>
-                <div id="sources-list" class="sources-list">
-                    <!-- Các nguồn trích dẫn sẽ hiển thị ở đây dưới dạng thẻ -->
-                    <div class="empty-sources">Chưa có nguồn tham khảo nào.</div>
+<body class="indexium-app">
+    <div class="workspace-layout">
+        <!-- Navigation Rail (Left) -->
+        <nav class="app-rail">
+            <div class="rail-top">
+                <div class="logo-box" title="Indexium FinIntelligence">
+                    <i data-lucide="sparkles" class="logo-icon"></i>
+                </div>
+                <div class="rail-action active" title="Không gian Trò chuyện">
+                    <i data-lucide="message-square"></i>
+                </div>
+                <div class="rail-action" title="Báo cáo & Tài liệu">
+                    <i data-lucide="folder-kanban"></i>
                 </div>
             </div>
+            <div class="rail-bottom">
+                <div class="rail-action" title="Cài đặt hệ thống">
+                    <i data-lucide="sliders-horizontal"></i>
+                </div>
+            </div>
+        </nav>
 
-            <div class="automation-panel">
-                <button id="run-test-btn" class="test-btn">▶ Run HDB Test Suite</button>
-            </div>
-
-            <div class="console-panel">
-                <div class="console-header">
-                    <span>Console</span>
-                    <span class="blinking-cursor">_</span>
+        <!-- Main Workspace (Center) -->
+        <main class="app-main">
+            <header class="app-header">
+                <div class="header-left">
+                    <span class="breadcrumb"><i data-lucide="folder" class="bread-icon"></i> Không gian làm việc / <span class="active">Nghiên cứu Tài chính</span></span>
                 </div>
-                <div id="console-logs" class="console-logs">
-                    <div class="log-entry info">> Agent initialized and ready.</div>
-                </div>
-            </div>
-        </aside>
-
-        <!-- Main Chat Area (Right) -->
-        <main class="chat-container">
-            <div class="chat-history" id="chat-history">
-                <!-- Welcome message -->
-                <div class="message bot">
-                    <div class="msg-content">Xin chào. Tôi là Financial Agent. Tôi có thể giúp bạn phân tích số liệu tài chính hoặc tìm kiếm thông tin thị trường.</div>
-                </div>
-            </div>
-            
-            <div class="chat-input-wrapper">
-                <div class="input-box">
-                    <textarea id="chat-input" placeholder="Hỏi về báo cáo tài chính, so sánh cổ phiếu..."></textarea>
-                    <button id="send-btn" aria-label="Send">
-                        <!-- Icon mũi tên lên SVG -->
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 4L12 20M12 4L6 10M12 4L18 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
+                <div class="header-right">
+                    <button id="theme-toggle" class="icon-btn theme-toggle-btn" title="Chuyển chế độ Sáng/Tối">
+                        <i data-lucide="sun" class="sun-icon"></i>
+                        <i data-lucide="moon" class="moon-icon"></i>
                     </button>
+                    <div class="status-badge">
+                        <span class="status-dot"></span>
+                        <span class="status-text">AI Agent Sẵn sàng</span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="chat-viewport" id="chat-history">
+                <!-- Welcome Card -->
+                <div class="welcome-section">
+                    <div class="discovery-header">
+                        <h1>Tôi có thể giúp gì cho bạn hôm nay?</h1>
+                        <p>Phân tích kết quả kinh doanh, so sánh chỉ số tài chính của ngân hàng, hoặc trích xuất số liệu từ các báo cáo.</p>
+                    </div>
+                    <div class="discovery-chips">
+                        <button class="chip" onclick="quickAsk('So sánh tổng tài sản HDB và ACB trong 3 năm gần đây')">
+                            <i data-lucide="git-compare"></i> So sánh tổng tài sản
+                        </button>
+                        <button class="chip" onclick="quickAsk('Chi phí dự phòng rủi ro tín dụng của HDB năm 2024')">
+                            <i data-lucide="shield-alert"></i> Chi phí dự phòng HDB
+                        </button>
+                        <button class="chip" onclick="quickAsk('Tổng quát ngành ngân hàng năm 2025')">
+                            <i data-lucide="trending-up"></i> Triển vọng ngành 2025
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <div class="input-container">
+                    <textarea id="chat-input" rows="1" placeholder="Nhập câu hỏi nghiên cứu của bạn ở đây..."></textarea>
+                    <div class="input-actions">
+                        <button class="action-btn" title="Đính kèm tệp"><i data-lucide="paperclip"></i></button>
+                        <button id="send-btn" class="send-btn">
+                            <i data-lucide="arrow-up-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="input-footer">
+                    Tích hợp dữ liệu báo cáo tài chính nội bộ và dữ liệu thị trường theo thời gian thực.
                 </div>
             </div>
         </main>
+
+        <!-- Intelligence Panel (Right Sidebar) -->
+        <aside class="app-sidebar">
+            <div class="sidebar-section execution-section">
+                <div class="section-header">
+                    <span><i data-lucide="activity" class="status-icon"></i> Kế hoạch thực thi LIVE</span>
+                </div>
+                <div class="live-status-board" id="live-status-board">
+                    <div class="status-card active-agent-card">
+                        <div class="status-card-label">AGENT ĐANG CHẠY</div>
+                        <div class="status-card-value" id="current-agent">Chưa xác định</div>
+                    </div>
+                    <div class="status-card active-skill-card">
+                        <div class="status-card-label">SKILL CHUYÊN BIỆT</div>
+                        <div class="status-card-value" id="current-skill">Chưa nạp</div>
+                    </div>
+                    <div class="status-card active-tool-card">
+                        <div class="status-card-label">CÔNG CỤ HOẠT ĐỘNG</div>
+                        <div class="status-card-value" id="current-tool">Đang chờ câu hỏi...</div>
+                    </div>
+                    <div class="status-card reason-card">
+                        <div class="status-card-label">LÝ DO LỰA CHỌN</div>
+                        <div class="status-card-value" id="current-reason">Chưa có dữ liệu phân tích</div>
+                    </div>
+                </div>
+                <div class="todo-list" id="console-logs">
+                    <!-- Logs will be transformed into progress cards -->
+                </div>
+            </div>
+
+            <div class="sidebar-section sources-section">
+                <div class="section-header">
+                    <span><i data-lucide="database" class="status-icon"></i> Tài liệu đã trích xuất</span>
+                </div>
+                <div class="sources-list" id="sources-list">
+                    <div class="empty-state">Chưa có tài liệu nào trong ngữ cảnh hiện tại.</div>
+                </div>
+            </div>
+
+            <div class="sidebar-action-container">
+                <button id="run-test-btn" class="btn btn-primary btn-full">
+                    <i data-lucide="play-circle"></i> CHẠY BỘ KIỂM THỬ TỰ ĐỘNG
+                </button>
+            </div>
+        </aside>
     </div>
     <script src="app.js"></script>
+    <script>
+        function quickAsk(text) {
+            document.getElementById('chat-input').value = text;
+            document.getElementById('send-btn').click();
+        }
+        lucide.createIcons();
+    </script>
 </body>
 </html>

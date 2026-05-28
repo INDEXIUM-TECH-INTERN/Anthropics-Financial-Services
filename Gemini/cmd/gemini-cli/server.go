@@ -139,13 +139,40 @@ func StartServer(agent *Agent) {
 		json.NewEncoder(w).Encode(resp)
 	})
 
-	// Static files
-	// Kiểm tra xem thư mục nào tồn tại
+	// Static files - Try finding the frontend dir from multiple possible locations
+	var frontendDir string
 	if _, err := os.Stat("frontend"); err == nil {
-		mux.Handle("/", http.FileServer(http.Dir("frontend")))
+		frontendDir = "frontend"
+	} else if _, err := os.Stat("../../frontend"); err == nil {
+		frontendDir = "../../frontend"
+	} else if _, err := os.Stat("../frontend"); err == nil {
+		frontendDir = "../frontend"
 	} else {
-		mux.Handle("/", http.FileServer(http.Dir("../frontend")))
+		// Fallback to absolute path search if possible, or current dir
+		frontendDir = "frontend"
 	}
+	fmt.Printf("📂 [Server] Serving static files from: %s\n", frontendDir)
+	mux.Handle("/", http.FileServer(http.Dir(frontendDir)))
+
+	mux.HandleFunc("/api/config/keys", func(w http.ResponseWriter, r *http.Request) {
+		enableCORS(w)
+		if r.Method == "OPTIONS" { return }
+		if r.Method != "POST" {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var payload struct {
+			Keys []string `json:"keys"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			return
+		}
+		agent.SetOpenRouterKeys(payload.Keys)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "success", "message": "OpenRouter keys updated"})
+	})
+
 
 	server := &http.Server{
 		Addr:         ":8080",

@@ -15,34 +15,19 @@ import (
 )
 
 type Agent struct {
-	mu                 sync.Mutex
-	geminiProvider     *providers.GeminiProvider
-	groqProvider       *providers.GroqProvider
-	sambanovaProvider  *providers.SambaNovaProvider
-	history            []models.GeminiContent
-	systemPrompt       string
-	tools              []models.Parameters
-	userInput          string
-	handoffPlan        *RoutePlan
-}
+	mu                  sync.Mutex
+	geminiProvider      *providers.GeminiProvider
+	openrouterProviders []*providers.OpenRouterProvider // Changed to slice
+	currentORIdx        int                             // Current index for rotation
+	history             []models.GeminiContent
+	systemPrompt        string
+	tools               []models.Parameters
+	userInput           string
+	handoffPlan         *RoutePlan
 
-func NewAgent() *Agent {
-	utils.LoadEnv()
-
-	return &Agent{
-		geminiProvider:    newGeminiProvider(),
-		groqProvider:      newGroqProvider(),
-		sambanovaProvider: newSambanovaProvider(),
-		history:           []models.GeminiContent{},
-		systemPrompt:      buildGroundedSystemPrompt(time.Now()),
-		tools: []models.Parameters{
-			newFinancialResearchTool(),
-			newFinancialScrapeTool(),
-			newFinancialCalculateTool(),
-			newHandoffRequestTool(),
-			newLoadContextTool(),
-		},
-	}
+	// Quota tracking for Gemini
+	geminiStrikes       int
+	geminiCooldownUntil time.Time
 }
 
 func newGeminiProvider() *providers.GeminiProvider {
@@ -52,18 +37,82 @@ func newGeminiProvider() *providers.GeminiProvider {
 	}
 }
 
-func newGroqProvider() *providers.GroqProvider {
-	return &providers.GroqProvider{
-		APIKey: os.Getenv("GROQ_API_KEY"),
-		Model:  os.Getenv("GROQ_MODEL"),
+func normalizeGeminiModel(model string) string {
+	normalized := strings.TrimSpace(model)
+	if normalized == "" {
+		return "gemini-flash-latest"
 	}
+	if !strings.HasPrefix(normalized, "models/") {
+		return "models/" + normalized
+	}
+	return normalized
 }
 
-func newSambanovaProvider() *providers.SambaNovaProvider {
-	return &providers.SambaNovaProvider{
-		APIKey: os.Getenv("SAMBANOVA_API_KEY"),
-		Model:  os.Getenv("SAMBANOVA_MODEL"),
+func NewAgent() *Agent {
+	utils.LoadEnv()
+
+	a := &Agent{
+		geminiProvider: newGeminiProvider(),
+		history:        []models.GeminiContent{},
+		systemPrompt:   buildGroundedSystemPrompt(time.Now()),
+		tools: []models.Parameters{
+			newFinancialResearchTool(),
+			newFinancialScrapeTool(),
+			newFinancialCalculateTool(),
+			newHandoffRequestTool(),
+			newLoadContextTool(),
+		},
 	}
+	
+	// Initialize with all environment keys (OPENROUTER_API_KEY, OPENROUTER_API_KEY_2, etc.)
+	model := os.Getenv("OPENROUTER_MODEL")
+	if model == "" { model = "openrouter/free" }
+
+	keyNames := []string{"OPENROUTER_API_KEY", "OPENROUTER_API_KEY_2", "OPENROUTER_API_KEY_3"}
+	for _, kn := range keyNames {
+		val := os.Getenv(kn)
+		if val != "" {
+			a.openrouterProviders = append(a.openrouterProviders, &providers.OpenRouterProvider{
+				APIKey: val,
+				Model:  model,
+			})
+			fmt.Printf("🔑 [Config] Loaded OpenRouter Key from %s\n", kn)
+		}
+	}
+	
+	return a
+}
+
+func (a *Agent) SetOpenRouterKeys(keys []string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	
+	a.openrouterProviders = nil
+	model := os.Getenv("OPENROUTER_MODEL")
+	if model == "" { model = "openrouter/free" }
+	
+	for _, key := range keys {
+		if strings.TrimSpace(key) == "" { continue }
+		a.openrouterProviders = append(a.openrouterProviders, &providers.OpenRouterProvider{
+			APIKey: key,
+			Model:  model,
+		})
+	}
+	a.currentORIdx = 0
+	fmt.Printf("🔑 [Config] Updated OpenRouter keys. Count: %d\n", len(a.openrouterProviders))
+}
+
+func (a *Agent) getNextOpenRouter() *providers.OpenRouterProvider {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	
+	if len(a.openrouterProviders) == 0 {
+		return nil
+	}
+	
+	p := a.openrouterProviders[a.currentORIdx]
+	a.currentORIdx = (a.currentORIdx + 1) % len(a.openrouterProviders)
+	return p
 }
 
 // --- MCP Styled Tools ---
@@ -165,12 +214,12 @@ func (a *Agent) Start() {
 
 func (a *Agent) ProcessMessage(userInput string) (string, error) {
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	a.userInput = userInput
 
 	isNewConversation := len(a.history) == 0
 
 	if isNewConversation {
+		BroadcastLog("Khởi tạo cuộc hội thoại mới...", "process")
 		if strings.HasPrefix(userInput, "/") {
 			if a.handleSlashCommandInternal(userInput) {
 				// handled
@@ -182,6 +231,7 @@ func (a *Agent) ProcessMessage(userInput string) (string, error) {
 	} else {
 		a.appendUserTextInternal(userInput)
 	}
+	a.mu.Unlock()
 
 	return a.runConversationLoopInternal()
 }
@@ -194,8 +244,10 @@ func (a *Agent) handleSlashCommandInternal(input string) bool {
 	var route RoutePlan
 	switch cmd {
 	case "/earnings":
+		BroadcastLog("Kích hoạt lệnh /earnings...", "routing")
 		route = RoutePlan{Agent: "earnings-reviewer", Skills: []string{"earnings-analysis"}, Reason: "Slash command /earnings"}
 	case "/market":
+		BroadcastLog("Kích hoạt lệnh /market...", "routing")
 		route = RoutePlan{Agent: "market-researcher", Skills: []string{"sector-overview"}, Reason: "Slash command /market"}
 	case "/help":
 		fmt.Println("\n-- ANTHROPIC CLI SIMULATOR COMMANDS --")
@@ -213,7 +265,7 @@ func (a *Agent) handleSlashCommandInternal(input string) bool {
 }
 
 func (a *Agent) executeBootstrapWithRouteInternal(route RoutePlan) {
-	BroadcastLog(fmt.Sprintf("Nạp cấu hình cho %s...", route.Agent), "process")
+	BroadcastLog(fmt.Sprintf("Nạp cấu hình cho Agent: %s...", route.Agent), "routing")
 	fmt.Printf("🧭 [Context] Orchestrator: Loading %s configuration...\n", route.Agent)
 	contextParts := a.buildBootstrapContextInternal(route)
 	bootstrapPayload := strings.Join(contextParts, "\n\n")
@@ -246,11 +298,71 @@ func (a *Agent) AddUserText(text string) {
 
 func (a *Agent) runConversationLoopInternal() (string, error) {
 	for {
-		aiMessage, err := a.askProvidersInternal()
-		if err != nil {
-			return "", err
+		a.mu.Lock()
+		systemPrompt := a.systemPrompt
+		history := make([]models.GeminiContent, len(a.history))
+		copy(history, a.history)
+		tools := a.tools
+		a.mu.Unlock()
+
+		var aiMessage models.GeminiContent
+		var err error
+		useGemini := true
+
+		if useGemini {
+			BroadcastLog("Đang gọi mô hình chính (Gemini)...", "process")
+			aiMessage, err = a.geminiProvider.Call(systemPrompt, history, tools...)
+			if err == nil {
+				a.mu.Lock()
+				a.geminiStrikes = 0
+				a.mu.Unlock()
+			} else {
+				BroadcastLog(fmt.Sprintf("Gemini lỗi: %v", err), "error")
+				fmt.Printf("⚠️ [Fallback] Gemini lỗi: %v\n", err)
+				// Proceed to fallback without cooldown or blacklist
+				goto fallback
+			}
+		} else {
+			BroadcastLog("Gemini đang tạm nghỉ. Chuyển hướng sang OpenRouter.", "routing")
+			fmt.Printf("⏸️ [Status] Gemini đang trong thời gian chờ (Cooldown/Suspended). Thử OpenRouter...\n")
+			goto fallback
 		}
 
+		goto process_response
+
+	fallback:
+		{
+			numKeys := len(a.openrouterProviders)
+			if numKeys == 0 {
+				return "", fmt.Errorf("gemini lỗi và không có OpenRouter keys nào được cấu hình để fallback")
+			}
+			
+			var lastErr error
+			for i := 0; i < numKeys; i++ {
+				a.mu.Lock()
+				activeIdx := a.currentORIdx
+				a.mu.Unlock()
+				
+				nextOR := a.getNextOpenRouter()
+				if nextOR != nil {
+					BroadcastLog(fmt.Sprintf("Đang sử dụng mô hình dự phòng (OpenRouter - Key #%d)...", activeIdx+1), "process")
+					fmt.Printf("🔄 [Fallback] Đang thử OpenRouter Key #%d...\n", activeIdx+1)
+					
+					aiMessage, lastErr = nextOR.Call(systemPrompt, history, tools...)
+					if lastErr == nil {
+						err = nil
+						goto process_response
+					}
+					
+					BroadcastLog(fmt.Sprintf("OpenRouter Key #%d lỗi: %v", activeIdx+1, lastErr), "error")
+					fmt.Printf("⚠️ [Fallback] OpenRouter Key #%d lỗi: %v\n", activeIdx+1, lastErr)
+				}
+			}
+			return "", fmt.Errorf("tất cả %d OpenRouter keys cấu hình đều thất bại: %v", numKeys, lastErr)
+		}
+
+	process_response:
+		a.mu.Lock()
 		a.history = append(a.history, aiMessage)
 		hasToolCall := a.handleToolCalls(aiMessage)
 
@@ -259,8 +371,10 @@ func (a *Agent) runConversationLoopInternal() (string, error) {
 			a.handoffPlan = nil
 			fmt.Printf("\n🔀 [Orchestrator] Executing handoff to: %s\n", plan.Agent)
 			a.executeBootstrapWithRouteInternal(plan)
+			a.mu.Unlock()
 			continue
 		}
+		a.mu.Unlock()
 
 		if !hasToolCall {
 			for i := len(aiMessage.Parts) - 1; i >= 0; i-- {
@@ -317,52 +431,12 @@ func (a *Agent) buildBootstrapContextInternal(route RoutePlan) []string {
 	return contextParts
 }
 
-func (a *Agent) askProvidersInternal() (models.GeminiContent, error) {
-	// 1. Gemini (Primary)
-	aiMessage, err := a.geminiProvider.Call(a.systemPrompt, a.history, a.tools...)
-	if err == nil {
-		return aiMessage, nil
-	}
-	fmt.Printf("⚠️ [Fallback] Gemini lỗi: %v\n", err)
-
-	// 2. SambaNova (Backup 1 - High Rate Limit Free)
-	aiMessage, err = a.sambanovaProvider.Call(a.systemPrompt, a.history, a.tools...)
-	if err == nil {
-		return aiMessage, nil
-	}
-	fmt.Printf("⚠️ [Fallback] SambaNova lỗi: %v\n", err)
-
-	// 3. Groq (Backup 2)
-	aiMessage, err = a.groqProvider.Call(a.systemPrompt, a.history, a.tools...)
-	if err != nil {
-		if strings.Contains(err.Error(), "Rate limit reached") {
-			fmt.Println("⏳ [Hệ thống] Chạm giới hạn Groq TPM. Đang chờ 15s để thử lại...")
-			time.Sleep(15 * time.Second)
-			aiMessage, err = a.groqProvider.Call(a.systemPrompt, a.history, a.tools...)
-		}
-	}
-	if err == nil {
-		return aiMessage, nil
-	}
-	fmt.Printf("⚠️ [Fallback] Groq lỗi: %v\n", err)
-
-	return models.GeminiContent{}, fmt.Errorf("tất cả các provider đều thất bại")
-}
-
 func (a *Agent) GetHistory() []models.GeminiContent {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	cp := make([]models.GeminiContent, len(a.history))
 	copy(cp, a.history)
 	return cp
-}
-
-func normalizeGeminiModel(model string) string {
-	normalized := strings.TrimSpace(model)
-	if normalized == "" {
-		return "gemini-1.5-flash"
-	}
-	return normalized
 }
 
 func (a *Agent) logLoadedDocument(doc tools.LoadedDocument) {

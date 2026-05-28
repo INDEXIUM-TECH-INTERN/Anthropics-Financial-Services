@@ -58,12 +58,12 @@ func (p *GeminiProvider) GenerateText(systemPrompt, userPrompt string) (string, 
 
 	if resp.StatusCode >= http.StatusBadRequest {
 		if gResp.Error.Message != "" {
-			return "", fmt.Errorf(gResp.Error.Message)
+			return "", fmt.Errorf("%s", gResp.Error.Message)
 		}
 		return "", fmt.Errorf("gemini API error (%d): %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 	if gResp.Error.Message != "" {
-		return "", fmt.Errorf(gResp.Error.Message)
+		return "", fmt.Errorf("%s", gResp.Error.Message)
 	}
 	if len(gResp.Candidates) == 0 {
 		return "", fmt.Errorf("no candidates returned")
@@ -138,12 +138,12 @@ func (p *GeminiProvider) Call(systemPrompt string, history []models.GeminiConten
 
 	if resp.StatusCode >= http.StatusBadRequest {
 		if gResp.Error.Message != "" {
-			return models.GeminiContent{}, fmt.Errorf(gResp.Error.Message)
+			return models.GeminiContent{}, fmt.Errorf("%s", gResp.Error.Message)
 		}
 		return models.GeminiContent{}, fmt.Errorf("gemini API error (%d): %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 	if gResp.Error.Message != "" {
-		return models.GeminiContent{}, fmt.Errorf(gResp.Error.Message)
+		return models.GeminiContent{}, fmt.Errorf("%s", gResp.Error.Message)
 	}
 	if len(gResp.Candidates) == 0 {
 		return models.GeminiContent{}, fmt.Errorf("no candidates returned")

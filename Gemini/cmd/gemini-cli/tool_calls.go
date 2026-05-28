@@ -37,18 +37,25 @@ func (a *Agent) renderPartText(part models.GeminiPart) {
 func (a *Agent) resolveToolCallResult(functionCall *models.GeminiFunctionCall) string {
 	switch functionCall.Name {
 	case "financial_research":
+		query, _ := functionCall.Args["query"].(string)
+		BroadcastLog(fmt.Sprintf("Tra cứu dữ liệu: %s", query), "tool")
 		return a.handleFinancialResearchTool(functionCall.Args)
 	case "financial_scrape":
 		url, _ := functionCall.Args["url"].(string)
+		BroadcastLog(fmt.Sprintf("Đang đọc nội dung từ: %s", url), "tool")
 		return tools.ScrapeWeb(url)
 	case "financial_calculate":
 		expr, _ := functionCall.Args["expression"].(string)
+		BroadcastLog(fmt.Sprintf("Thực hiện tính toán: %s", expr), "tool")
 		return tools.Calculate(expr)
 	case "handoff_request":
+		target, _ := functionCall.Args["target_agent"].(string)
+		BroadcastLog(fmt.Sprintf("Yêu cầu chuyển giao sang: %s", target), "routing")
 		return a.handleHandoffTool(functionCall.Args)
 	case "load_financial_context":
 		docType, _ := functionCall.Args["type"].(string)
 		docName, _ := functionCall.Args["name"].(string)
+		BroadcastLog(fmt.Sprintf("Nạp tài liệu: %s/%s", docType, docName), "process")
 		return tools.LoadDocument(docType, docName)
 	default:
 		return fmt.Sprintf("Error: Unknown tool %s", functionCall.Name)

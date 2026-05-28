@@ -25,9 +25,9 @@ func (p *OpenRouterProvider) GenerateText(systemPrompt, userPrompt string) (stri
 		model = "google/gemini-2.0-flash-001"
 	}
 
-	reqBody := models.GroqRequest{
+	reqBody := models.OpenRouterRequest{
 		Model: model,
-		Messages: []models.GroqMessage{
+		Messages: []models.OpenRouterMessage{
 			{Role: "system", Content: systemPrompt},
 			{Role: "user", Content: userPrompt},
 		},
@@ -48,32 +48,32 @@ func (p *OpenRouterProvider) GenerateText(systemPrompt, userPrompt string) (stri
 	defer resp.Body.Close()
 
 	body, _ := ioutil.ReadAll(resp.Body)
-	var qResp models.GroqResponse
-	json.Unmarshal(body, &qResp)
+	var orResp models.OpenRouterResponse
+	json.Unmarshal(body, &orResp)
 
-	if qResp.Error.Message != "" {
-		return "", fmt.Errorf(qResp.Error.Message)
+	if orResp.Error.Message != "" {
+		return "", fmt.Errorf("%s", orResp.Error.Message)
 	}
-	if len(qResp.Choices) == 0 {
+	if len(orResp.Choices) == 0 {
 		return "", fmt.Errorf("no choices returned")
 	}
 
-	return strings.TrimSpace(qResp.Choices[0].Message.Content), nil
+	return strings.TrimSpace(orResp.Choices[0].Message.Content), nil
 }
 
 func (p *OpenRouterProvider) Call(systemPrompt string, history []models.GeminiContent, tools ...models.Parameters) (models.GeminiContent, error) {
 	url := "https://openrouter.ai/api/v1/chat/completions"
 
-	var groqTools []models.GroqTool
+	var orTools []models.OpenRouterTool
 	for _, t := range tools {
 		cleanParams := models.Parameters{
 			Type:       t.Type,
 			Properties: t.Properties,
 			Required:   t.Required,
 		}
-		groqTools = append(groqTools, models.GroqTool{
+		orTools = append(orTools, models.OpenRouterTool{
 			Type: "function",
-			Function: models.GroqFunctionDeclaration{
+			Function: models.OpenRouterFunctionDeclare{
 				Name:        t.Name,
 				Description: t.Description,
 				Parameters:  cleanParams,
@@ -81,11 +81,11 @@ func (p *OpenRouterProvider) Call(systemPrompt string, history []models.GeminiCo
 		})
 	}
 
-	var messages []models.GroqMessage
-	messages = append(messages, models.GroqMessage{Role: "system", Content: systemPrompt})
+	var messages []models.OpenRouterMessage
+	messages = append(messages, models.OpenRouterMessage{Role: "system", Content: systemPrompt})
 
 	for _, h := range history {
-		msg := models.GroqMessage{Role: h.Role}
+		msg := models.OpenRouterMessage{Role: h.Role}
 		if h.Role == "model" {
 			msg.Role = "assistant"
 		} else if h.Role == "function" {
@@ -100,10 +100,10 @@ func (p *OpenRouterProvider) Call(systemPrompt string, history []models.GeminiCo
 			}
 			if p.FunctionCall != nil {
 				argsJSON, _ := json.Marshal(p.FunctionCall.Args)
-				msg.ToolCalls = append(msg.ToolCalls, models.GroqToolCall{
+				msg.ToolCalls = append(msg.ToolCalls, models.OpenRouterToolCall{
 					ID:   p.FunctionCall.ID,
 					Type: "function",
-					Function: models.GroqFunction{
+					Function: models.OpenRouterFunction{
 						Name:      p.FunctionCall.Name,
 						Arguments: string(argsJSON),
 					},
@@ -113,10 +113,12 @@ func (p *OpenRouterProvider) Call(systemPrompt string, history []models.GeminiCo
 		messages = append(messages, msg)
 	}
 
-	reqBody := models.GroqRequest{
-		Model:    p.Model,
-		Messages: messages,
-		Tools:    groqTools,
+	reqBody := models.OpenRouterRequest{
+		Model:       p.Model,
+		Messages:    messages,
+		Tools:       orTools,
+		MaxTokens:   4000,
+		Temperature: 0.7,
 	}
 
 	jsonData, _ := json.Marshal(reqBody)
@@ -134,22 +136,22 @@ func (p *OpenRouterProvider) Call(systemPrompt string, history []models.GeminiCo
 	defer resp.Body.Close()
 
 	body, _ := ioutil.ReadAll(resp.Body)
-	var qResp models.GroqResponse
-	json.Unmarshal(body, &qResp)
+	var orResp models.OpenRouterResponse
+	json.Unmarshal(body, &orResp)
 
-	if qResp.Error.Message != "" {
-		return models.GeminiContent{}, fmt.Errorf(qResp.Error.Message)
+	if orResp.Error.Message != "" {
+		return models.GeminiContent{}, fmt.Errorf("%s", orResp.Error.Message)
 	}
-	if len(qResp.Choices) == 0 {
-		return models.GeminiContent{}, fmt.Errorf("no choices returned")
+	if len(orResp.Choices) == 0 {
+		return models.GeminiContent{}, fmt.Errorf("no choices returned from OpenRouter")
 	}
 
-	qMsg := qResp.Choices[0].Message
+	orMsg := orResp.Choices[0].Message
 	res := models.GeminiContent{Role: "model"}
-	if qMsg.Content != "" {
-		res.Parts = append(res.Parts, models.GeminiPart{Text: qMsg.Content})
+	if orMsg.Content != "" {
+		res.Parts = append(res.Parts, models.GeminiPart{Text: orMsg.Content})
 	}
-	for _, tc := range qMsg.ToolCalls {
+	for _, tc := range orMsg.ToolCalls {
 		var args map[string]interface{}
 		json.Unmarshal([]byte(tc.Function.Arguments), &args)
 		res.Parts = append(res.Parts, models.GeminiPart{

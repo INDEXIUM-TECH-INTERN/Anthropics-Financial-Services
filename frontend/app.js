@@ -5,6 +5,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const sourcesList = document.getElementById('sources-list');
     const consoleLogs = document.getElementById('console-logs');
     const runTestBtn = document.getElementById('run-test-btn');
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    
+    // --- Theme Switcher Logic ---
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        });
+    }
     
     const API_URL = 'http://localhost:8080/api/chat';
     const EVENTS_URL = 'http://localhost:8080/api/events';
@@ -42,31 +56,151 @@ document.addEventListener('DOMContentLoaded', () => {
     function logToConsole(message, type = 'info') {
         const logDiv = document.createElement('div');
         logDiv.className = `log-entry ${type}`;
+        
+        // Define prefix based on type
+        let prefix = '> ';
+        if (type === 'routing') prefix = '🧭 [ROUTING] ';
+        if (type === 'process') prefix = '⚙️ [PROCESS] ';
+        if (type === 'tool') prefix = '🛠️ [TOOL] ';
+        if (type === 'success') prefix = '✅ [SUCCESS] ';
+        if (type === 'error') prefix = '❌ [ERROR] ';
+
         const now = new Date();
-        const timeString = now.toLocaleTimeString('en-US', { hour12: false });
-        logDiv.textContent = `[${timeString}] ${message}`;
+        const timeString = now.toLocaleTimeString('en-US', { hour12: false, minute: '2-digit', second: '2-digit' });
+        
+        logDiv.innerHTML = `<span style="opacity: 0.5; margin-right: 8px;">${timeString}</span> <span class="log-payload">${prefix}${message}</span>`;
+        
         consoleLogs.appendChild(logDiv);
+        
+        // Auto-scroll to bottom
         consoleLogs.scrollTop = consoleLogs.scrollHeight;
+
+        // Parse log message to update Structured Live Status Board
+        updateLiveStatusBoard(message, type);
     }
 
-    function extractSources(markdownText) {
+    function updateLiveStatusBoard(message, type) {
+        const currentAgentEl = document.getElementById('current-agent');
+        const currentSkillEl = document.getElementById('current-skill');
+        const currentToolEl = document.getElementById('current-tool');
+        const currentReasonEl = document.getElementById('current-reason');
+
+        if (!currentAgentEl || !currentSkillEl || !currentToolEl || !currentReasonEl) return;
+
+        // 1. Reset Board when a new analysis starts
+        if (message.includes("Đang phân tích yêu cầu để chọn Agent tối ưu...")) {
+            currentAgentEl.textContent = "Đang phân tích...";
+            currentSkillEl.textContent = "Đang phân tích...";
+            currentToolEl.textContent = "Đang kết nối LLM...";
+            currentReasonEl.textContent = "Đang phân tích bối cảnh câu hỏi...";
+            return;
+        }
+
+        // 2. Agent Selection and Reason
+        const agentMatch = message.match(/Đã chọn Agent:\s*([a-zA-Z0-9\-_]+)(?:\s*\((?:Lý do|Reason):\s*(.+)\))?/i);
+        if (agentMatch) {
+            currentAgentEl.textContent = agentMatch[1];
+            if (agentMatch[2]) {
+                currentReasonEl.textContent = agentMatch[2];
+            }
+            return;
+        }
+
+        // 3. Skill Loading
+        const skillMatch = message.match(/Đang nạp skill chuyên biệt:\s*(.+)/i);
+        if (skillMatch) {
+            currentSkillEl.textContent = skillMatch[1];
+            return;
+        }
+
+        // 4. Tool/Scraping/Calculating
+        if (type === 'tool') {
+            if (message.includes("Thực thi Tool:")) {
+                const toolName = message.replace("Thực thi Tool:", "").replace("...", "").trim();
+                currentToolEl.textContent = `Chạy Tool: ${toolName}`;
+            } else if (message.includes("Tra cứu dữ liệu:")) {
+                const query = message.replace("Tra cứu dữ liệu:", "").trim();
+                currentToolEl.textContent = `Tìm kiếm: "${query}"`;
+            } else if (message.includes("Đang đọc nội dung từ:")) {
+                const url = message.replace("Đang đọc nội dung từ:", "").trim();
+                try {
+                    const domain = new URL(url).hostname;
+                    currentToolEl.textContent = `Scraping: ${domain}`;
+                } catch(e) {
+                    currentToolEl.textContent = `Scraping tài liệu`;
+                }
+            } else if (message.includes("Thực hiện tính toán:")) {
+                const expr = message.replace("Thực hiện tính toán:", "").trim();
+                currentToolEl.textContent = `Tính toán: ${expr}`;
+            } else {
+                currentToolEl.textContent = message;
+            }
+            return;
+        }
+
+        // 5. Transfer / Handoff
+        const handoffMatch = message.match(/Yêu cầu chuyển giao sang:\s*(.+)/i);
+        if (handoffMatch) {
+            currentAgentEl.textContent = `${handoffMatch[1]} (Đang chuyển giao)`;
+            currentToolEl.textContent = `Chuyển giao Agent...`;
+            return;
+        }
+
+        // 6. Nạp tài liệu
+        const docMatch = message.match(/Nạp tài liệu:\s*(.+)/i);
+        if (docMatch) {
+            currentToolEl.textContent = `Đọc cấu hình: ${docMatch[1]}`;
+            return;
+        }
+    }
+
+    function renderSources(markdownText, targetElement) {
         const urlRegex = /(https?:\/\/[^\s\)]+)/g;
         const urls = markdownText.match(urlRegex) || [];
         const uniqueUrls = [...new Set(urls)];
         
         if (uniqueUrls.length > 0) {
+            // 1. Update Global Sidebar
             sourcesList.innerHTML = '';
             uniqueUrls.forEach((url, index) => {
                 let domain = url;
                 try { domain = new URL(url).hostname; } catch(e) {}
                 const card = document.createElement('div');
-                card.className = 'source-card';
+                card.className = 'source-card'; // Using existing sidebar style
                 card.innerHTML = `
-                    <span style="color: #6b7280; font-size: 11px;">Source [${index+1}]</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="file-text" style="width: 12px; height: 12px; color: #60a5fa;"></i>
+                        <span style="color: #94a3b8; font-size: 11px; font-weight: 700;">SOURCE [${index+1}]</span>
+                    </div>
                     <a href="${url}" target="_blank">${domain}</a>
                 `;
                 sourcesList.appendChild(card);
             });
+
+            // 2. Add Inline Sources at the END of message
+            const sourcesContainer = document.createElement('div');
+            sourcesContainer.className = 'message-sources';
+            sourcesContainer.innerHTML = '<div class="sources-label">Sources</div>';
+            
+            const grid = document.createElement('div');
+            grid.className = 'sources-grid';
+            
+            uniqueUrls.forEach((url, index) => {
+                let domain = url;
+                try { domain = new URL(url).hostname.replace('www.', ''); } catch(e) {}
+                const card = document.createElement('div');
+                card.className = 'inline-source-card';
+                card.innerHTML = `
+                    <div class="source-index">${index+1}</div>
+                    <a href="${url}" target="_blank" class="source-link">${domain}</a>
+                `;
+                grid.appendChild(card);
+            });
+            
+            sourcesContainer.appendChild(grid);
+            targetElement.appendChild(sourcesContainer);
+            
+            if (window.lucide) lucide.createIcons();
         }
     }
 
@@ -78,10 +212,17 @@ document.addEventListener('DOMContentLoaded', () => {
         contentDiv.className = 'msg-content';
         
         if (isLoading) {
-            contentDiv.innerHTML = '<div class="loading-indicator"></div><div class="loading-indicator" style="width: 70%; margin-top: 8px;"></div>';
+            contentDiv.innerHTML = `
+                <div class="typing-dots">
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                </div>
+            `;
         } else if (sender === 'bot') {
             contentDiv.innerHTML = marked.parse(text);
-            extractSources(text);
+            // Render sources directly inside the bot message bubble or right below it
+            renderSources(text, contentDiv);
         } else {
             contentDiv.textContent = text;
         }
@@ -111,6 +252,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         logToConsole(`New Request: "${text.substring(0, 30)}..."`, 'info');
 
+        // Reset Live Status Board on new submit
+        const currentAgentEl = document.getElementById('current-agent');
+        const currentSkillEl = document.getElementById('current-skill');
+        const currentToolEl = document.getElementById('current-tool');
+        const currentReasonEl = document.getElementById('current-reason');
+        if (currentAgentEl && currentSkillEl && currentToolEl && currentReasonEl) {
+            currentAgentEl.textContent = "Đang nhận dạng...";
+            currentSkillEl.textContent = "Đang chờ...";
+            currentToolEl.textContent = "Bắt đầu tiến trình...";
+            currentReasonEl.textContent = "Đang phân tích yêu cầu...";
+        }
+
         const botMsgDiv = addMessage('', 'bot', true);
         const footer = botMsgDiv.querySelector('.msg-footer');
         
@@ -121,7 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
             footer.innerHTML = `<span class="timer">⏱ Processing... ${elapsed}s</span>`;
         }, 100);
 
-        const TIMEOUT_MS = 120000;
+        const TIMEOUT_MS = 300000;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -147,7 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return false;
             } else {
                 contentDiv.innerHTML = marked.parse(data.reply);
-                extractSources(data.reply);
+                renderSources(data.reply, contentDiv);
                 
                 footer.innerHTML = `
                     <span class="timer">✅ ${finalDuration}s</span>
@@ -191,6 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (runTestBtn) {
         runTestBtn.addEventListener('click', runAutoTest);
     }
+
 
     sendBtn.addEventListener('click', () => sendMessage());
     chatInput.addEventListener('keypress', (e) => {
