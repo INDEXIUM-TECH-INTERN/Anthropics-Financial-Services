@@ -305,63 +305,11 @@ func (a *Agent) runConversationLoopInternal() (string, error) {
 		tools := a.tools
 		a.mu.Unlock()
 
-		var aiMessage models.GeminiContent
-		var err error
-		useGemini := true
-
-		if useGemini {
-			BroadcastLog("Đang gọi mô hình chính (Gemini)...", "process")
-			aiMessage, err = a.geminiProvider.Call(systemPrompt, history, tools...)
-			if err == nil {
-				a.mu.Lock()
-				a.geminiStrikes = 0
-				a.mu.Unlock()
-			} else {
-				BroadcastLog(fmt.Sprintf("Gemini lỗi: %v", err), "error")
-				fmt.Printf("⚠️ [Fallback] Gemini lỗi: %v\n", err)
-				// Proceed to fallback without cooldown or blacklist
-				goto fallback
-			}
-		} else {
-			BroadcastLog("Gemini đang tạm nghỉ. Chuyển hướng sang OpenRouter.", "routing")
-			fmt.Printf("⏸️ [Status] Gemini đang trong thời gian chờ (Cooldown/Suspended). Thử OpenRouter...\n")
-			goto fallback
+		aiMessage, err := a.executeModelCall(systemPrompt, history, tools)
+		if err != nil {
+			return "", err
 		}
 
-		goto process_response
-
-	fallback:
-		{
-			numKeys := len(a.openrouterProviders)
-			if numKeys == 0 {
-				return "", fmt.Errorf("gemini lỗi và không có OpenRouter keys nào được cấu hình để fallback")
-			}
-			
-			var lastErr error
-			for i := 0; i < numKeys; i++ {
-				a.mu.Lock()
-				activeIdx := a.currentORIdx
-				a.mu.Unlock()
-				
-				nextOR := a.getNextOpenRouter()
-				if nextOR != nil {
-					BroadcastLog(fmt.Sprintf("Đang sử dụng mô hình dự phòng (OpenRouter - Key #%d)...", activeIdx+1), "process")
-					fmt.Printf("🔄 [Fallback] Đang thử OpenRouter Key #%d...\n", activeIdx+1)
-					
-					aiMessage, lastErr = nextOR.Call(systemPrompt, history, tools...)
-					if lastErr == nil {
-						err = nil
-						goto process_response
-					}
-					
-					BroadcastLog(fmt.Sprintf("OpenRouter Key #%d lỗi: %v", activeIdx+1, lastErr), "error")
-					fmt.Printf("⚠️ [Fallback] OpenRouter Key #%d lỗi: %v\n", activeIdx+1, lastErr)
-				}
-			}
-			return "", fmt.Errorf("tất cả %d OpenRouter keys cấu hình đều thất bại: %v", numKeys, lastErr)
-		}
-
-	process_response:
 		a.mu.Lock()
 		a.history = append(a.history, aiMessage)
 		hasToolCall := a.handleToolCalls(aiMessage)
@@ -377,14 +325,77 @@ func (a *Agent) runConversationLoopInternal() (string, error) {
 		a.mu.Unlock()
 
 		if !hasToolCall {
-			for i := len(aiMessage.Parts) - 1; i >= 0; i-- {
-				if aiMessage.Parts[i].Text != "" {
-					return aiMessage.Parts[i].Text, nil
-				}
-			}
-			return "", nil
+			return extractResponseText(aiMessage), nil
 		}
 	}
+}
+
+func (a *Agent) executeModelCall(systemPrompt string, history []models.GeminiContent, tools []models.Parameters) (models.GeminiContent, error) {
+	// Try Gemini first
+	msg, err := a.callGeminiWithLog(systemPrompt, history, tools)
+	if err == nil {
+		return msg, nil
+	}
+
+	// Fallback to OpenRouter rotation
+	return a.callOpenRouterWithFallback(systemPrompt, history, tools)
+}
+
+func (a *Agent) callGeminiWithLog(systemPrompt string, history []models.GeminiContent, tools []models.Parameters) (models.GeminiContent, error) {
+	BroadcastLog("Đang gọi mô hình chính (Gemini)...", "process")
+	aiMessage, err := a.geminiProvider.Call(systemPrompt, history, tools...)
+	if err == nil {
+		a.mu.Lock()
+		a.geminiStrikes = 0
+		a.mu.Unlock()
+		return aiMessage, nil
+	}
+
+	BroadcastLog(fmt.Sprintf("Gemini lỗi: %v", err), "error")
+	fmt.Printf("⚠️ [Fallback] Gemini lỗi: %v\n", err)
+	return aiMessage, err
+}
+
+func (a *Agent) callOpenRouterWithFallback(systemPrompt string, history []models.GeminiContent, tools []models.Parameters) (models.GeminiContent, error) {
+	numKeys := len(a.openrouterProviders)
+	if numKeys == 0 {
+		return models.GeminiContent{}, fmt.Errorf("gemini lỗi và không có OpenRouter keys nào được cấu hình để fallback")
+	}
+
+	var lastErr error
+	for i := 0; i < numKeys; i++ {
+		a.mu.Lock()
+		activeIdx := a.currentORIdx
+		a.mu.Unlock()
+
+		nextOR := a.getNextOpenRouter()
+		if nextOR == nil {
+			continue
+		}
+
+		BroadcastLog(fmt.Sprintf("Đang sử dụng mô hình dự phòng (OpenRouter - Key #%d)...", activeIdx+1), "process")
+		fmt.Printf("🔄 [Fallback] Đang thử OpenRouter Key #%d...\n", activeIdx+1)
+
+		aiMessage, err := nextOR.Call(systemPrompt, history, tools...)
+		if err == nil {
+			return aiMessage, nil
+		}
+
+		lastErr = err
+		BroadcastLog(fmt.Sprintf("OpenRouter Key #%d lỗi: %v", activeIdx+1, err), "error")
+		fmt.Printf("⚠️ [Fallback] OpenRouter Key #%d lỗi: %v\n", activeIdx+1, err)
+	}
+
+	return models.GeminiContent{}, fmt.Errorf("tất cả %d OpenRouter keys cấu hình đều thất bại: %v", numKeys, lastErr)
+}
+
+func extractResponseText(aiMessage models.GeminiContent) string {
+	for i := len(aiMessage.Parts) - 1; i >= 0; i-- {
+		if aiMessage.Parts[i].Text != "" {
+			return aiMessage.Parts[i].Text
+		}
+	}
+	return ""
 }
 
 func (a *Agent) bootstrapContextInternal() {
