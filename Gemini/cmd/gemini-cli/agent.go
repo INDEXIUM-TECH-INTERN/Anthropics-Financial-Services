@@ -17,17 +17,37 @@ import (
 type Agent struct {
 	mu                  sync.Mutex
 	geminiProvider      *providers.GeminiProvider
-	openrouterProviders []*providers.OpenRouterProvider // Changed to slice
-	currentORIdx        int                             // Current index for rotation
+	openrouterProviders []*providers.OpenRouterProvider
+	currentORIdx        int
 	history             []models.GeminiContent
 	systemPrompt        string
 	tools               []models.Parameters
 	userInput           string
 	handoffPlan         *RoutePlan
+	conversation        *Conversation
 
 	// Quota tracking for Gemini
 	geminiStrikes       int
 	geminiCooldownUntil time.Time
+}
+
+func NewAgent() *Agent {
+	utils.LoadEnv()
+
+	return &Agent{
+		geminiProvider:    newGeminiProvider(),
+		groqProvider:      newGroqProvider(),
+		sambanovaProvider: newSambanovaProvider(),
+		systemPrompt:      buildGroundedSystemPrompt(time.Now()),
+		conversation:      NewConversation("default"),
+		tools: []models.Parameters{
+			newFinancialResearchTool(),
+			newFinancialScrapeTool(),
+			newFinancialCalculateTool(),
+			newHandoffRequestTool(),
+			newLoadContextTool(),
+		},
+	}
 }
 
 func newGeminiProvider() *providers.GeminiProvider {
@@ -191,7 +211,7 @@ func buildGroundedSystemPrompt(now time.Time) string {
 func (a *Agent) Reset() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.history = []models.GeminiContent{}
+	a.conversation.Reset()
 	a.handoffPlan = nil
 	fmt.Println("🔄 [Agent] Conversation history reset.")
 }
@@ -216,7 +236,7 @@ func (a *Agent) ProcessMessage(userInput string) (string, error) {
 	a.mu.Lock()
 	a.userInput = userInput
 
-	isNewConversation := len(a.history) == 0
+	isNewConversation := len(a.conversation.ContextWindow.History) == 0
 
 	if isNewConversation {
 		BroadcastLog("Khởi tạo cuộc hội thoại mới...", "process")
@@ -283,7 +303,7 @@ func readUserInput() (string, bool) {
 }
 
 func (a *Agent) appendUserTextInternal(text string) {
-	a.history = append(a.history, models.GeminiContent{
+	a.conversation.ContextWindow.History = append(a.conversation.ContextWindow.History, models.GeminiContent{
 		Role:  "user",
 		Parts: []models.GeminiPart{{Text: text}},
 	})
@@ -310,8 +330,12 @@ func (a *Agent) runConversationLoopInternal() (string, error) {
 			return "", err
 		}
 
+<<<<<<< HEAD
 		a.mu.Lock()
 		a.history = append(a.history, aiMessage)
+=======
+		a.conversation.ContextWindow.History = append(a.conversation.ContextWindow.History, aiMessage)
+>>>>>>> 7b74a62 (Add context window and conversation management)
 		hasToolCall := a.handleToolCalls(aiMessage)
 
 		if a.handoffPlan != nil {
@@ -442,11 +466,46 @@ func (a *Agent) buildBootstrapContextInternal(route RoutePlan) []string {
 	return contextParts
 }
 
+<<<<<<< HEAD
+=======
+func (a *Agent) askProvidersInternal() (models.GeminiContent, error) {
+	// 1. Gemini (Primary)
+	aiMessage, err := a.geminiProvider.Call(a.systemPrompt, a.conversation.ContextWindow.History, a.tools...)
+	if err == nil {
+		return aiMessage, nil
+	}
+	fmt.Printf("⚠️ [Fallback] Gemini lỗi: %v\n", err)
+
+	// 2. SambaNova (Backup 1 - High Rate Limit Free)
+	aiMessage, err = a.sambanovaProvider.Call(a.systemPrompt, a.conversation.ContextWindow.History, a.tools...)
+	if err == nil {
+		return aiMessage, nil
+	}
+	fmt.Printf("⚠️ [Fallback] SambaNova lỗi: %v\n", err)
+
+	// 3. Groq (Backup 2)
+	aiMessage, err = a.groqProvider.Call(a.systemPrompt, a.conversation.ContextWindow.History, a.tools...)
+	if err != nil {
+		if strings.Contains(err.Error(), "Rate limit reached") {
+			fmt.Println("⏳ [Hệ thống] Chạm giới hạn Groq TPM. Đang chờ 15s để thử lại...")
+			time.Sleep(15 * time.Second)
+			aiMessage, err = a.groqProvider.Call(a.systemPrompt, a.conversation.ContextWindow.History, a.tools...)
+		}
+	}
+	if err == nil {
+		return aiMessage, nil
+	}
+	fmt.Printf("⚠️ [Fallback] Groq lỗi: %v\n", err)
+
+	return models.GeminiContent{}, fmt.Errorf("tất cả các provider đều thất bại")
+}
+
+>>>>>>> 7b74a62 (Add context window and conversation management)
 func (a *Agent) GetHistory() []models.GeminiContent {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	cp := make([]models.GeminiContent, len(a.history))
-	copy(cp, a.history)
+	cp := make([]models.GeminiContent, len(a.conversation.ContextWindow.History))
+	copy(cp, a.conversation.ContextWindow.History)
 	return cp
 }
 

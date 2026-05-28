@@ -103,7 +103,7 @@ func guessInitialSkill(agent string) string {
 }
 
 func (a *Agent) appendFunctionResponse(functionCall *models.GeminiFunctionCall, result string) {
-	a.history = append(a.history, models.GeminiContent{
+	a.conversation.ContextWindow.History = append(a.conversation.ContextWindow.History, models.GeminiContent{
 		Role: "function",
 		Parts: []models.GeminiPart{{
 			FunctionResponse: &models.GeminiFunctionResponse{
