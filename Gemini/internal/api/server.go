@@ -31,10 +31,10 @@ type Metrics struct {
 }
 
 type ChatResponse struct {
-	Reply   string                 `json:"reply"`
+	Reply   string              `json:"reply"`
 	History []messaging.Message `json:"history"`
-	Metrics Metrics                `json:"metrics"`
-	Error   string                 `json:"error,omitempty"`
+	Metrics Metrics             `json:"metrics"`
+	Error   string              `json:"error,omitempty"`
 }
 
 func getSystemMetrics() (string, string) {
@@ -163,7 +163,9 @@ func StartServer(agent AgentInterface) {
 
 	mux.HandleFunc("/api/config/keys", func(w http.ResponseWriter, r *http.Request) {
 		enableCORS(w)
-		if r.Method == "OPTIONS" { return }
+		if r.Method == "OPTIONS" {
+			return
+		}
 		if r.Method != "POST" {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
@@ -180,12 +182,11 @@ func StartServer(agent AgentInterface) {
 		json.NewEncoder(w).Encode(map[string]string{"status": "success", "message": "OpenRouter keys updated"})
 	})
 
-
 	server := &http.Server{
-		Addr:         ":8080",
-		Handler:      mux,
-		ReadTimeout:  15 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		Addr:        ":8080",
+		Handler:     mux,
+		ReadTimeout: 15 * time.Second,
+		IdleTimeout: 120 * time.Second,
 		// Gỡ bỏ WriteTimeout vì nó làm ngắt kết nối SSE dài hạn
 	}
 
@@ -200,4 +201,3 @@ func enableCORS(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 }
-

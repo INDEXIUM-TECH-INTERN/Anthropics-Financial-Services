@@ -22,9 +22,9 @@ type TestCase struct {
 }
 
 type TestResult struct {
-	ID      int  `json:"id"`
-	Passed  bool `json:"passed"`
-	Actual  any  `json:"actual"`
+	ID      int    `json:"id"`
+	Passed  bool   `json:"passed"`
+	Actual  any    `json:"actual"`
 	Message string `json:"message"`
 }
 
@@ -33,7 +33,7 @@ func main() {
 
 	for iteration := 1; iteration <= 3; iteration++ {
 		fmt.Printf("\n--- Iteration %d ---\n", iteration)
-		
+
 		results, allPassed := runTests()
 		if allPassed {
 			fmt.Println("✅ Tất cả test case đã PASS! Hệ thống đã tối ưu.")
@@ -55,12 +55,12 @@ func runTests() ([]TestResult, bool) {
 
 	for _, t := range tests {
 		fmt.Printf("Testing Case #%d: %s... ", t.ID, t.UserQuery)
-		
+
 		// Chạy test_router.go
 		cmd := exec.Command("go", "run", "cmd/gemini-cli/test_router.go", "cmd/gemini-cli/agent.go", "cmd/gemini-cli/routing.go", "cmd/gemini-cli/server.go", "cmd/gemini-cli/tool_calls.go", t.UserQuery)
 		cmd.Dir = "Gemini"
 		out, err := cmd.CombinedOutput()
-		
+
 		if err != nil {
 			fmt.Println("ERROR running test")
 			continue
@@ -82,7 +82,7 @@ func runTests() ([]TestResult, bool) {
 		// So sánh (Đơn giản hóa cho bản demo)
 		passed := true
 		msg := "OK"
-		
+
 		// Kiểm tra Agent (nếu có yêu cầu trong test case)
 		if t.Expected.Agent != "" && actual["agent"] != t.Expected.Agent {
 			passed = false

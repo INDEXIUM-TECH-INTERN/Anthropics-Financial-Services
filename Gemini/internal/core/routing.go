@@ -12,7 +12,7 @@ import (
 )
 
 type RoutePlan struct {
-	Agent    string `json:"agent"`
+	Agent    string   `json:"agent"`
 	Skills   []string `json:"skills"`
 	Temporal struct {
 		Intent       string `json:"intent"`        // e.g., "historical", "latest", "realtime"
@@ -139,7 +139,6 @@ func (a *Agent) routeWithProviderFallback(systemPrompt, userPrompt string) (stri
 	return a.provider.GenerateText(systemPrompt, userPrompt)
 }
 
-
 func fallbackRoutePlan() RoutePlan {
 	return RoutePlan{
 		Agent:  "market-researcher",
@@ -149,11 +148,24 @@ func fallbackRoutePlan() RoutePlan {
 }
 
 func sanitizeRoutePlan(route RoutePlan, userInput string) RoutePlan {
-	if !allowedAgents[route.Agent] {
+	// Kiểm tra xem agent có tồn tại trong repo không bằng cách thử nạp metadata
+	agentDoc := tools.LoadDocumentWithMetadata("agent", route.Agent)
+	if strings.HasPrefix(agentDoc.Content, "Lỗi:") {
+		fmt.Printf("⚠️ [Router] Agent '%s' không tồn tại trong repo. Fallback.\n", route.Agent)
 		return fallbackRoutePlan()
 	}
 
-	validSkills := filterValidSkills(route.Agent, route.Skills)
+	// Lọc skills dựa trên thực tế có trong repo
+	var validSkills []string
+	for _, skill := range route.Skills {
+		skillDoc := tools.LoadDocumentWithMetadata("skill", route.Agent+"/"+skill)
+		if !strings.HasPrefix(skillDoc.Content, "Lỗi:") {
+			validSkills = append(validSkills, skill)
+		} else {
+			fmt.Printf("⚠️ [Router] Skill '%s' không tồn tại cho agent '%s'. Bỏ qua.\n", skill, route.Agent)
+		}
+	}
+
 	if len(validSkills) == 0 {
 		route.Skills = []string{guessInitialSkill(route.Agent)}
 	} else {
@@ -161,18 +173,6 @@ func sanitizeRoutePlan(route RoutePlan, userInput string) RoutePlan {
 	}
 
 	return route
-}
-
-func filterValidSkills(agentName string, skills []string) []string {
-	allowedSkills := allowedSkillsByAgent[agentName]
-	var validSkills []string
-
-	for _, skill := range skills {
-		if allowedSkills[skill] {
-			validSkills = append(validSkills, skill)
-		}
-	}
-	return validSkills
 }
 
 func parseRoutePlan(raw string) (RoutePlan, error) {

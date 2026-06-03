@@ -204,4 +204,3 @@ func (p *GeminiProvider) GenerateText(systemPrompt, userPrompt string) (string, 
 	}
 	return resp.Content, nil
 }
-

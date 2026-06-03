@@ -96,19 +96,22 @@ func (o *Orchestrator) buildBootstrapContextInternal(route RoutePlan) []string {
 		fmt.Sprintf("SYSTEM PROMPT (from agents/%s.md)\n%s", route.Agent, agentDoc.Content),
 	}
 
-	maxSkills := 1
-	for i, skill := range route.Skills {
-		if i >= maxSkills {
-			fmt.Printf("⚠️ [Context] Bỏ qua skill %s để tối ưu hóa token.\n", skill)
-			continue
-		}
+	// Nạp tất cả các skills hợp lệ từ route plan
+	for _, skill := range route.Skills {
 		api.BroadcastLog(fmt.Sprintf("Đang nạp skill chuyên biệt: %s", skill), "process")
 		skillDoc := tools.LoadDocumentWithMetadata("skill", route.Agent+"/"+skill)
+		
+		if strings.HasPrefix(skillDoc.Content, "Lỗi:") {
+			fmt.Printf("⚠️ [Context] Không thể nạp skill %s: %s\n", skill, skillDoc.Content)
+			continue
+		}
+		
 		o.logLoadedDocument(skillDoc)
 
 		content := skillDoc.Content
-		if len(content) > 4000 {
-			content = content[:4000] + "\n... [Nội dung bị cắt bớt để tối ưu hóa context]"
+		// Giới hạn độ dài để tránh tràn context nếu skill quá lớn, nhưng vẫn đảm bảo lấy đủ ý
+		if len(content) > 8000 {
+			content = content[:8000] + "\n... [Nội dung bị cắt bớt để tối ưu hóa context]"
 		}
 		contextParts = append(contextParts, fmt.Sprintf("SKILL MARKDOWN (%s)\n%s", skill, content))
 	}
