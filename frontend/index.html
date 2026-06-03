@@ -19,6 +19,9 @@
                 <div class="logo-box" title="Indexium FinIntelligence">
                     <i data-lucide="sparkles" class="logo-icon"></i>
                 </div>
+                <button class="rail-action" id="new-chat-btn" title="Cuộc trò chuyện mới (Reset)">
+                    <i data-lucide="plus-circle"></i>
+                </button>
                 <div class="rail-action active" title="Không gian Trò chuyện">
                     <i data-lucide="message-square"></i>
                 </div>
@@ -27,9 +30,9 @@
                 </div>
             </div>
             <div class="rail-bottom">
-                <div class="rail-action" title="Cài đặt hệ thống">
+                <button class="rail-action" id="settings-trigger" title="Cài đặt hệ thống">
                     <i data-lucide="sliders-horizontal"></i>
-                </div>
+                </button>
             </div>
         </nav>
 
@@ -37,7 +40,7 @@
         <main class="app-main">
             <header class="app-header">
                 <div class="header-left">
-                    <span class="breadcrumb"><i data-lucide="folder" class="bread-icon"></i> Không gian làm việc / <span class="active">Nghiên cứu Tài chính</span></span>
+                    <span class="breadcrumb"><i data-lucide="folder" class="bread-icon"></i> Không gian làm việc / <span class="active">Nghiên cứu Tài chính (Gemini Agent)</span></span>
                 </div>
                 <div class="header-right">
                     <div class="backend-selector">
@@ -59,10 +62,10 @@
 
             <div class="chat-viewport" id="chat-history">
                 <!-- Welcome Card -->
-                <div class="welcome-section">
+                <div class="welcome-section" id="welcome-section">
                     <div class="discovery-header">
                         <h1>Tôi có thể giúp gì cho bạn hôm nay?</h1>
-                        <p>Phân tích kết quả kinh doanh, so sánh chỉ số tài chính của ngân hàng, hoặc trích xuất số liệu từ các báo cáo.</p>
+                        <p>Hệ thống hỗ trợ phân tích kết quả kinh doanh chuyên sâu, so sánh các chỉ số tài chính ngân hàng và tự động hóa quy trình phân tích báo cáo tài chính.</p>
                     </div>
                     <div class="discovery-chips">
                         <button class="chip" onclick="quickAsk('So sánh tổng tài sản HDB và ACB trong 3 năm gần đây')">
@@ -80,7 +83,7 @@
 
             <div class="input-area">
                 <div class="input-container">
-                    <textarea id="chat-input" rows="1" placeholder="Nhập câu hỏi nghiên cứu của bạn ở đây..."></textarea>
+                    <textarea id="chat-input" rows="1" placeholder="Nhập câu hỏi nghiên cứu tài chính của bạn ở đây..."></textarea>
                     <div class="input-actions">
                         <button class="action-btn" title="Đính kèm tệp"><i data-lucide="paperclip"></i></button>
                         <button id="send-btn" class="send-btn">
@@ -89,7 +92,7 @@
                     </div>
                 </div>
                 <div class="input-footer">
-                    Tích hợp dữ liệu báo cáo tài chính nội bộ và dữ liệu thị trường theo thời gian thực.
+                    Tích hợp dữ liệu báo cáo tài chính nội bộ và dữ liệu thị trường theo thời gian thực dựa trên AI Agent.
                 </div>
             </div>
         </main>
@@ -103,7 +106,7 @@
                 <div class="live-status-board" id="live-status-board">
                     <div class="status-card active-agent-card">
                         <div class="status-card-label">AGENT ĐANG CHẠY</div>
-                        <div class="status-card-value" id="current-agent">Chưa xác định</div>
+                        <div class="status-card-value" id="current-agent">Chưa hoạt động</div>
                     </div>
                     <div class="status-card active-skill-card">
                         <div class="status-card-label">SKILL CHUYÊN BIỆT</div>
@@ -118,8 +121,12 @@
                         <div class="status-card-value" id="current-reason">Chưa có dữ liệu phân tích</div>
                     </div>
                 </div>
+                <div class="pipeline-section-title">
+                    <i data-lucide="git-branch" class="title-icon"></i> Luồng xử lý chi tiết (Pipeline)
+                </div>
                 <div class="todo-list" id="console-logs">
                     <!-- Logs will be transformed into progress cards -->
+                    <div class="pipeline-empty">Sẵn sàng phân tích yêu cầu khi có câu hỏi.</div>
                 </div>
             </div>
 
@@ -139,6 +146,31 @@
             </div>
         </aside>
     </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i data-lucide="settings" class="modal-title-icon"></i> Cài đặt Workspace</h2>
+                <button id="close-settings" class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="gemini-key-input">Gemini API Key</label>
+                    <input type="password" id="gemini-key-input" class="modal-input" placeholder="Nhập Gemini API Key (để trống nếu dùng .env)">
+                </div>
+                <div class="form-group" style="margin-top: 16px;">
+                    <label for="or-keys-input">OpenRouter API Keys (Mỗi dòng một khóa, tối đa 3)</label>
+                    <textarea id="or-keys-input" class="modal-textarea" rows="3" placeholder="sk-or-v1-xxxxxx&#10;sk-or-v1-yyyyyy"></textarea>
+                    <div class="helper-text">Các khóa sẽ được luân phiên (key rotation) tự động bởi backend khi gặp lỗi giới hạn lượt dùng.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="save-settings-btn" class="btn btn-primary">Lưu cấu hình</button>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
     <script>
         function quickAsk(text) {
