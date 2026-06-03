@@ -1,24 +1,24 @@
-package main
+package core
 
-import "gemini-cli/internal/models"
+import "gemini-cli/internal/models/messaging"
 
 type ContextWindow struct {
-	History       []models.GeminiContent
+	History       []messaging.Message
 	MemorySummary string
 }
 
 func NewContextWindow() *ContextWindow {
 	return &ContextWindow{
-		History:       []models.GeminiContent{},
+		History:       []messaging.Message{},
 		MemorySummary: "",
 	}
 }
 
-func (cw *ContextWindow) AddMessage(msg models.GeminiContent) {
+func (cw *ContextWindow) AddMessage(msg messaging.Message) {
 	cw.History = append(cw.History, msg)
 }
 
 func (cw *ContextWindow) Reset() {
-	cw.History = []models.GeminiContent{}
+	cw.History = []messaging.Message{}
 	cw.MemorySummary = ""
 }

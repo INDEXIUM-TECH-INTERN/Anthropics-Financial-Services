@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"encoding/json"
@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"gemini-cli/internal/api"
 	"gemini-cli/internal/tools"
 	"gemini-cli/internal/utils"
 )
@@ -102,13 +103,13 @@ var allowedSkillsByAgent = map[string]map[string]bool{
 }
 
 func (a *Agent) selectRoutePlan() RoutePlan {
-	BroadcastLog("Đang phân tích yêu cầu để chọn Agent tối ưu...", "process")
+	api.BroadcastLog("Đang phân tích yêu cầu để chọn Agent tối ưu...", "process")
 	routerSystemPrompt := utils.LoadPrompt("router_system_prompt.txt")
 	routerUserPrompt := buildRouterUserPrompt(a.userInput, tools.GetRoutingGuide(), time.Now())
 
 	raw, err := a.routeWithProviderFallback(routerSystemPrompt, routerUserPrompt)
 	if err != nil {
-		BroadcastLog("Lỗi Router, đang sử dụng fallback mặc định.", "error")
+		api.BroadcastLog("Lỗi Router, đang sử dụng fallback mặc định.", "error")
 		return fallbackRoutePlan()
 	}
 
@@ -116,11 +117,11 @@ func (a *Agent) selectRoutePlan() RoutePlan {
 	route, err := parseRoutePlan(raw)
 	if err != nil {
 		fmt.Printf("⚠️ [Router] Parse error: %v. Using fallback.\n", err)
-		BroadcastLog("Phản hồi Router không hợp lệ, đang dùng fallback.", "error")
+		api.BroadcastLog("Phản hồi Router không hợp lệ, đang dùng fallback.", "error")
 		return fallbackRoutePlan()
 	}
 
-	BroadcastLog(fmt.Sprintf("Đã chọn Agent: %s (Lý do: %s)", route.Agent, route.Reason), "success")
+	api.BroadcastLog(fmt.Sprintf("Đã chọn Agent: %s (Lý do: %s)", route.Agent, route.Reason), "success")
 	return sanitizeRoutePlan(route, a.userInput)
 }
 
@@ -135,38 +136,7 @@ func buildRouterUserPrompt(userInput, routingGuide string, now time.Time) string
 }
 
 func (a *Agent) routeWithProviderFallback(systemPrompt, userPrompt string) (string, error) {
-	// Lượt 1: Gemini
-	raw, err := a.geminiProvider.GenerateText(systemPrompt, userPrompt)
-	if err == nil {
-		return raw, nil
-	}
-	fmt.Printf("⚠️ [Router Fallback] Gemini lỗi: %v\n", err)
-
-	// Lượt 2: OpenRouter (Thử tất cả các key khả dụng)
-	numKeys := len(a.openrouterProviders)
-	if numKeys > 0 {
-		var lastErr error
-		for i := 0; i < numKeys; i++ {
-			a.mu.Lock()
-			activeIdx := a.currentORIdx
-			a.mu.Unlock()
-
-			nextOR := a.getNextOpenRouter()
-			if nextOR != nil {
-				BroadcastLog(fmt.Sprintf("Gemini lỗi. Đang thử dự phòng sang OpenRouter Key #%d...", activeIdx+1), "routing")
-				fmt.Printf("🔄 [Router Fallback] Đang thử OpenRouter Key #%d...\n", activeIdx+1)
-				raw, lastErr = nextOR.GenerateText(systemPrompt, userPrompt)
-				if lastErr == nil {
-					return raw, nil
-				}
-				BroadcastLog(fmt.Sprintf("OpenRouter Key #%d thất bại: %v", activeIdx+1, lastErr), "error")
-				fmt.Printf("⚠️ [Router Fallback] OpenRouter Key #%d lỗi: %v\n", activeIdx+1, lastErr)
-			}
-		}
-		return "", fmt.Errorf("tất cả %d OpenRouter keys của router đều thất bại: %v", numKeys, lastErr)
-	}
-
-	return "", fmt.Errorf("tất cả các provider của router đều thất bại")
+	return a.provider.GenerateText(systemPrompt, userPrompt)
 }
 
 

@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ type LogHub struct {
 	mu      sync.Mutex
 }
 
-var globalHub = &LogHub{
+var GlobalHub = &LogHub{
 	clients: make(map[chan Event]bool),
 }
 
@@ -49,5 +49,5 @@ func (h *LogHub) Broadcast(e Event) {
 // Hàm tiện ích để log nhanh từ bất kỳ đâu
 func BroadcastLog(payload string, eventType string) {
 	fmt.Printf("📡 [Broadcast] %s: %s\n", eventType, payload)
-	globalHub.Broadcast(Event{Type: eventType, Payload: payload})
+	GlobalHub.Broadcast(Event{Type: eventType, Payload: payload})
 }

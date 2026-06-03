@@ -29,6 +29,7 @@ func LoadEnv() {
 		if err != nil {
 			continue
 		}
+		fmt.Printf("📂 [Config] Loading environment from: %s\n", envPath)
 
 		scanner := bufio.NewScanner(file)
 		found := false

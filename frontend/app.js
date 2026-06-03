@@ -20,8 +20,49 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    const API_URL = 'http://localhost:8080/api/chat';
-    const EVENTS_URL = 'http://localhost:8080/api/events';
+    const backends = {
+        gemini: "http://localhost:8080",
+        claude: "http://localhost:8081"
+    };
+
+    let currentBackend = 'gemini';
+    let currentBaseUrl = backends[currentBackend];
+    let eventSource = null;
+
+    function setupEventSource() {
+        if (eventSource) {
+            eventSource.close();
+        }
+        
+        const eventsUrl = `${currentBaseUrl}/api/events`;
+        eventSource = new EventSource(eventsUrl);
+        
+        eventSource.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                logToConsole(data.payload, data.type);
+            } catch (e) {}
+        };
+        
+        eventSource.onerror = () => {
+            logToConsole(`SSE Connection to ${currentBackend} lost. Reconnecting...`, "error");
+        };
+        
+        logToConsole(`Connected to ${currentBackend} backend (SSE)`, "success");
+    }
+
+    const backendSelect = document.getElementById('backend-select');
+    if (backendSelect) {
+        backendSelect.addEventListener('change', (e) => {
+            currentBackend = e.target.value;
+            currentBaseUrl = backends[currentBackend];
+            logToConsole(`Switching to ${currentBackend} backend...`, "process");
+            setupEventSource();
+        });
+    }
+
+    // Initial setup
+    setupEventSource();
 
     const testQueries = [
         "Tổng tài sản của HDB trong 10 năm qua thay đổi thế nào?",
@@ -34,18 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
         "Tổng quát ngành ngân hàng năm 2025",
         "So sánh tổng tài sản HDB và ACB trong 3 năm gần đây"
     ];
-
-    // --- Real-time SSE Logic ---
-    const eventSource = new EventSource(EVENTS_URL);
-    eventSource.onmessage = (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            logToConsole(data.payload, data.type);
-        } catch (e) {}
-    };
-    eventSource.onerror = () => {
-        logToConsole("SSE Connection lost. Reconnecting...", "error");
-    };
 
     // Auto-resize textarea
     chatInput.addEventListener('input', function() {
@@ -279,7 +308,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
         try {
-            const response = await fetch(API_URL, {
+            const apiUrl = `${currentBaseUrl}/api/chat`;
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: text }),

@@ -3,16 +3,19 @@ package main
 import (
 	"flag"
 	"fmt"
+
+	"gemini-cli/internal/api"
+	"gemini-cli/internal/core"
 )
 
 func main() {
 	serverMode := flag.Bool("server", false, "Chạy Agent ở chế độ Web Server")
 	flag.Parse()
 
-	agent := NewAgent()
+	agent := core.NewAgent()
 
 	if *serverMode {
-		StartServer(agent)
+		api.StartServer(agent)
 	} else {
 		// Nếu có tham số sau các flag, chạy một lần rồi thoát
 		args := flag.Args()

@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/json"
@@ -8,8 +8,15 @@ import (
 	"runtime"
 	"time"
 
-	"gemini-cli/internal/models"
+	"gemini-cli/internal/models/messaging"
 )
+
+type AgentInterface interface {
+	Reset()
+	ProcessMessage(string) (string, error)
+	GetHistory() []messaging.Message
+	SetOpenRouterKeys([]string)
+}
 
 type ChatRequest struct {
 	Message string `json:"message"`
@@ -25,7 +32,7 @@ type Metrics struct {
 
 type ChatResponse struct {
 	Reply   string                 `json:"reply"`
-	History []models.GeminiContent `json:"history"`
+	History []messaging.Message `json:"history"`
 	Metrics Metrics                `json:"metrics"`
 	Error   string                 `json:"error,omitempty"`
 }
@@ -40,7 +47,7 @@ func getSystemMetrics() (string, string) {
 	return ram, cpu
 }
 
-func StartServer(agent *Agent) {
+func StartServer(agent AgentInterface) {
 	mux := http.NewServeMux()
 
 	// API routes
@@ -51,8 +58,8 @@ func StartServer(agent *Agent) {
 		w.Header().Set("X-Accel-Buffering", "no")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
-		ch := globalHub.Register()
-		defer globalHub.Unregister(ch)
+		ch := GlobalHub.Register()
+		defer GlobalHub.Unregister(ch)
 
 		flusher, ok := w.(http.Flusher)
 		if !ok {
@@ -193,3 +200,4 @@ func enableCORS(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 }
+

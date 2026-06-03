@@ -1,4 +1,4 @@
-package main
+package core
 
 type Conversation struct {
 	ID            string

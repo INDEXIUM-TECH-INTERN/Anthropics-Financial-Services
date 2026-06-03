@@ -231,6 +231,36 @@ body {
     gap: 20px;
 }
 
+/* --- Backend Selector --- */
+.backend-selector {
+    display: flex;
+    align-items: center;
+}
+
+.backend-select {
+    background: var(--bg-surface);
+    color: var(--on-surface);
+    border: 1px solid var(--outline);
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+.backend-select:hover {
+    border-color: var(--primary);
+    background: var(--bg-app);
+}
+
+.backend-select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
+}
+
 .status-badge {
     display: flex;
     align-items: center;
