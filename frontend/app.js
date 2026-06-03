@@ -40,9 +40,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // Tự động xác định Base URL dựa trên URL hiện tại của trình duyệt
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const currentOrigin = window.location.origin;
+
     const backends = {
-        gemini: "http://localhost:8080",
-        claude: "http://localhost:8081"
+        gemini: isLocalhost ? "http://localhost:8080" : currentOrigin,
+        claude: "http://localhost:8081" // Vẫn giữ localhost cho các port khác nếu chưa tunnel
     };
 
     let currentBackend = 'gemini';
