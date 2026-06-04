@@ -45,7 +45,14 @@ func (p *GeminiProvider) Generate(ctx context.Context, req messaging.Request) (m
 
 		parts := []models.GeminiPart{}
 		if msg.Content != "" {
-			parts = append(parts, models.GeminiPart{Text: msg.Content})
+			if msg.ThoughtSignature != "" {
+				parts = append(parts, models.GeminiPart{
+					Text:             msg.Content,
+					ThoughtSignature: msg.ThoughtSignature,
+				})
+			} else {
+				parts = append(parts, models.GeminiPart{Text: msg.Content})
+			}
 		}
 		for _, tc := range msg.ToolCalls {
 			parts = append(parts, models.GeminiPart{
@@ -53,6 +60,12 @@ func (p *GeminiProvider) Generate(ctx context.Context, req messaging.Request) (m
 					Name: tc.Name,
 					Args: tc.Args,
 				},
+				ThoughtSignature: msg.ThoughtSignature,
+			})
+		}
+		if msg.Content == "" && len(msg.ToolCalls) == 0 && msg.ThoughtSignature != "" {
+			parts = append(parts, models.GeminiPart{
+				ThoughtSignature: msg.ThoughtSignature,
 			})
 		}
 		for _, tr := range msg.ToolResponses {
@@ -175,6 +188,9 @@ func (p *GeminiProvider) Generate(ctx context.Context, req messaging.Request) (m
 	for _, part := range geminiContent.Parts {
 		if part.Text != "" {
 			textContent.WriteString(part.Text)
+		}
+		if part.ThoughtSignature != "" {
+			responseMsg.ThoughtSignature = part.ThoughtSignature
 		}
 		if part.FunctionCall != nil {
 			// Per Gemini docs, ID is not returned, so we must create it.

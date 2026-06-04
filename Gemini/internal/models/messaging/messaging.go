@@ -22,10 +22,11 @@ type ToolResponse struct {
 }
 
 type Message struct {
-	Role          Role
-	Content       string
-	ToolCalls     []ToolCall
-	ToolResponses []ToolResponse
+	Role             Role
+	Content          string
+	ToolCalls        []ToolCall
+	ToolResponses    []ToolResponse
+	ThoughtSignature string
 }
 
 type ToolSchema struct {

@@ -31,7 +31,7 @@ func NewAgent() *Agent {
 
 	model := os.Getenv("OPENROUTER_MODEL")
 	if model == "" {
-		model = "openrouter/free"
+		model = "meta-llama/llama-3.3-70b-instruct:free"
 	}
 
 	var orProviders []providers.Provider
@@ -95,7 +95,7 @@ func (a *Agent) SetOpenRouterKeys(keys []string) {
 
 	model := os.Getenv("OPENROUTER_MODEL")
 	if model == "" {
-		model = "openrouter/free"
+		model = "meta-llama/llama-3.3-70b-instruct:free"
 	}
 
 	var orProviders []providers.Provider

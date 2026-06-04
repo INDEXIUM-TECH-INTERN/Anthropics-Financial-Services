@@ -32,7 +32,12 @@ func (m *MultiProvider) GenerateText(systemPrompt, userPrompt string) (string, e
 	m.mu.Unlock()
 
 	if skipPrimary && len(m.fallbacks) > 0 {
-		return m.tryFallbacksOnlyText(systemPrompt, userPrompt)
+		raw, err := m.tryFallbacksOnlyText(systemPrompt, userPrompt)
+		if err == nil {
+			return raw, nil
+		}
+		api.BroadcastLog("Fallback failed. Trying primary anyway (GenerateText)...", "routing")
+		fmt.Println("🔄 [Fallback] Fallback failed. Trying primary anyway (GenerateText)...")
 	}
 
 	raw, err := m.primary.GenerateText(systemPrompt, userPrompt)
@@ -105,7 +110,12 @@ func (m *MultiProvider) Generate(ctx context.Context, req messaging.Request) (me
 	// Nếu đang skip primary do quota gần đây → dùng fallback ngay
 	if skipPrimary && len(m.fallbacks) > 0 {
 		api.BroadcastLog("Primary đang bị rate limit gần đây, ưu tiên fallback...", "routing")
-		return m.tryFallbacksOnly(ctx, req)
+		aiMessage, err := m.tryFallbacksOnly(ctx, req)
+		if err == nil {
+			return aiMessage, nil
+		}
+		api.BroadcastLog("Fallback failed. Trying primary anyway...", "routing")
+		fmt.Println("🔄 [Fallback] Fallback failed. Trying primary anyway...")
 	}
 
 	// Try primary first

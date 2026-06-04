@@ -2,12 +2,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Configure marked to open links in new tab
     const renderer = new marked.Renderer();
     const linkRenderer = renderer.link;
-    renderer.link = (href, title, text) => {
+    renderer.link = (arg1, title, text) => {
+        let href = '';
+        let linkText = '';
+        let linkTitle = '';
+        let isObj = typeof arg1 === 'object';
+        if (isObj) {
+            href = arg1.href || '';
+            linkText = arg1.text || '';
+            linkTitle = arg1.title || '';
+        } else {
+            href = arg1 || '';
+            linkText = text || '';
+            linkTitle = title || '';
+        }
         if (!href || typeof href !== 'string') {
-            return `<a href="#" title="${title || ''}">${text}</a>`;
+            return `<a href="#" title="${linkTitle || ''}">${linkText}</a>`;
         }
         const localLink = href.startsWith(`${window.location.protocol}//${window.location.host}`) || href.startsWith('/') || href.startsWith('#');
-        const html = linkRenderer.call(renderer, href, title, text);
+        const html = isObj ? linkRenderer.call(renderer, arg1) : linkRenderer.call(renderer, href, title, text);
         if (!localLink) {
             return html.replace(/^<a /, '<a target="_blank" rel="noopener noreferrer" ');
         }
@@ -462,6 +475,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             consoleLogs.innerHTML = '';
         }
 
+        // Handle structured event object
+        if (message && typeof message === 'object') {
+            type = message.type || type;
+            message = message.payload || '';
+        }
+
         const logDiv = document.createElement('div');
         logDiv.className = `log-entry ${type}`;
         
@@ -597,7 +616,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderSources(markdownText, targetElement) {
-        const urlRegex = /(https?:\/\/[^\s\)]+)/g;
+        const urlRegex = /(https?:\/\/[^\s\)\]]+)/g;
         const urls = markdownText.match(urlRegex) || [];
         const uniqueUrls = [...new Set(urls)];
         

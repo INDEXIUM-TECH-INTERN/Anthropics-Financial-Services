@@ -63,7 +63,7 @@ func (d *Dispatcher) resolveToolCallResult(toolCall *messaging.ToolCall) string 
 	case "financial_scrape":
 		url, _ := toolCall.Args["url"].(string)
 		api.BroadcastLog(fmt.Sprintf("Đang đọc nội dung từ: %s", url), "tool")
-		return tools.ScrapeWeb(url)
+		return d.handleFinancialScrapeTool(toolCall.Args)
 	case "financial_calculate":
 		expr, _ := toolCall.Args["expression"].(string)
 		api.BroadcastLog(fmt.Sprintf("Thực hiện tính toán: %s", expr), "tool")
@@ -256,4 +256,24 @@ func guessInitialSkill(agent string) string {
 	default:
 		return "general-analysis"
 	}
+}
+
+func (d *Dispatcher) handleFinancialScrapeTool(args map[string]interface{}) string {
+	url, ok := args["url"].(string)
+	if !ok {
+		return "Error: Missing url parameter"
+	}
+
+	key := strings.ToLower(strings.TrimSpace(url))
+	if cached, ok := d.researchCache["scrape_"+key]; ok && cached != "" {
+		fmt.Printf("💾 [Cache] Dùng kết quả scrape đã cache cho: %s\n", url)
+		api.BroadcastLog("Dùng kết quả đọc nội dung từ cache (tiết kiệm quota)", "success")
+		return cached
+	}
+
+	result := tools.ScrapeWeb(url)
+	if result != "" && !strings.HasPrefix(result, "Lỗi") && !strings.HasPrefix(result, "Error") {
+		d.researchCache["scrape_"+key] = result
+	}
+	return result
 }
