@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"gemini-cli/internal/api"
 	"gemini-cli/internal/models/messaging"
@@ -10,8 +11,9 @@ import (
 )
 
 type Dispatcher struct {
-	agent       *Agent
+	agent         *Agent
 	researchCache map[string]string // cache query -> result để giảm gọi tool lặp lại (giảm quota)
+	mu            sync.RWMutex
 }
 
 func NewDispatcher(a *Agent) *Dispatcher {
@@ -95,7 +97,10 @@ func (d *Dispatcher) handleFinancialResearchTool(args map[string]interface{}) st
 
 	// Simple cache để tránh gọi lại cùng query nhiều lần (rất hay xảy ra trong ReAct loop)
 	key := strings.ToLower(strings.TrimSpace(searchQuery))
-	if cached, ok := d.researchCache["google_"+key]; ok && cached != "" {
+	d.mu.RLock()
+	cached, ok := d.researchCache["google_"+key]
+	d.mu.RUnlock()
+	if ok && cached != "" {
 		fmt.Printf("💾 [Cache] Dùng kết quả research đã cache cho: %s\n", searchQuery)
 		api.BroadcastLog("Dùng kết quả tìm kiếm từ cache (tiết kiệm quota)", "success")
 		return cached
@@ -103,7 +108,9 @@ func (d *Dispatcher) handleFinancialResearchTool(args map[string]interface{}) st
 
 	result := tools.SearchGoogle(searchQuery)
 	if result != "" && !strings.HasPrefix(result, "Lỗi") && !strings.HasPrefix(result, "Error") {
+		d.mu.Lock()
 		d.researchCache["google_"+key] = result
+		d.mu.Unlock()
 	}
 	return result
 }
@@ -120,7 +127,10 @@ func (d *Dispatcher) handleTavilySearchTool(args map[string]interface{}) string 
 	}
 
 	key := strings.ToLower(strings.TrimSpace(searchQuery))
-	if cached, ok := d.researchCache["tavily_"+key]; ok && cached != "" {
+	d.mu.RLock()
+	cached, ok := d.researchCache["tavily_"+key]
+	d.mu.RUnlock()
+	if ok && cached != "" {
 		fmt.Printf("💾 [Cache] Dùng kết quả research đã cache (Tavily) cho: %s\n", searchQuery)
 		api.BroadcastLog("Dùng kết quả tìm kiếm Tavily từ cache (tiết kiệm quota)", "success")
 		return cached
@@ -128,7 +138,9 @@ func (d *Dispatcher) handleTavilySearchTool(args map[string]interface{}) string 
 
 	result := tools.SearchTavily(searchQuery)
 	if result != "" && !strings.HasPrefix(result, "Lỗi") && !strings.HasPrefix(result, "Error") {
+		d.mu.Lock()
 		d.researchCache["tavily_"+key] = result
+		d.mu.Unlock()
 	}
 	return result
 }
@@ -265,7 +277,10 @@ func (d *Dispatcher) handleFinancialScrapeTool(args map[string]interface{}) stri
 	}
 
 	key := strings.ToLower(strings.TrimSpace(url))
-	if cached, ok := d.researchCache["scrape_"+key]; ok && cached != "" {
+	d.mu.RLock()
+	cached, ok := d.researchCache["scrape_"+key]
+	d.mu.RUnlock()
+	if ok && cached != "" {
 		fmt.Printf("💾 [Cache] Dùng kết quả scrape đã cache cho: %s\n", url)
 		api.BroadcastLog("Dùng kết quả đọc nội dung từ cache (tiết kiệm quota)", "success")
 		return cached
@@ -273,7 +288,9 @@ func (d *Dispatcher) handleFinancialScrapeTool(args map[string]interface{}) stri
 
 	result := tools.ScrapeWeb(url)
 	if result != "" && !strings.HasPrefix(result, "Lỗi") && !strings.HasPrefix(result, "Error") {
+		d.mu.Lock()
 		d.researchCache["scrape_"+key] = result
+		d.mu.Unlock()
 	}
 	return result
 }

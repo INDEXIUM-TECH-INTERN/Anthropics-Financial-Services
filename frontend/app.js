@@ -86,16 +86,87 @@ document.addEventListener('DOMContentLoaded', async () => {
     let allChats = []; // [{id, title, ...} from /api/chats]
     let currentChatId = null;
 
+    const chatsList = document.getElementById('chats-list');
+
+    function updateSidebarList() {
+        if (!chatsList) return;
+        chatsList.innerHTML = '';
+        if (allChats.length === 0) {
+            chatsList.innerHTML = '<div style="padding: 12px; font-size:13px; opacity:0.6; text-align:center;">Chưa có đoạn chat nào.</div>';
+            return;
+        }
+        allChats.forEach(chat => {
+            const isCurrent = chat.id === currentChatId;
+            const chatItem = document.createElement('div');
+            chatItem.className = `chat-item ${isCurrent ? 'active' : ''}`;
+            
+            // Title span
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'chat-item-title';
+            titleSpan.textContent = chat.title || 'Cuộc trò chuyện mới';
+            titleSpan.addEventListener('click', () => {
+                switchToChat(chat.id);
+            });
+            chatItem.appendChild(titleSpan);
+
+            // Delete button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-chat-btn';
+            deleteBtn.title = 'Xóa đoạn chat';
+            deleteBtn.innerHTML = '<i data-lucide="trash-2"></i>';
+            deleteBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                if (confirm('Bạn có chắc chắn muốn xóa đoạn chat này?')) {
+                    await deleteChatFromServer(chat.id);
+                }
+            });
+            chatItem.appendChild(deleteBtn);
+
+            chatsList.appendChild(chatItem);
+        });
+
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+    }
+
+    async function deleteChatFromServer(chatId) {
+        try {
+            const res = await fetch(`${currentBaseUrl}/api/chats?chat_id=${encodeURIComponent(chatId)}`, {
+                method: 'DELETE'
+            });
+            if (!res.ok) throw new Error('delete failed');
+            
+            allChats = allChats.filter(c => c.id !== chatId);
+            logToConsole('Đã xóa đoạn chat thành công.', 'success');
+            
+            if (currentChatId === chatId) {
+                if (allChats.length > 0) {
+                    await switchToChat(allChats[0].id);
+                } else {
+                    await createNewChatOnServer();
+                }
+            } else {
+                updateSidebarList();
+            }
+        } catch (e) {
+            console.error(e);
+            logToConsole('Không thể xóa đoạn chat: ' + e.message, 'error');
+        }
+    }
+
     async function fetchChatsFromServer() {
         try {
             const res = await fetch(`${currentBaseUrl}/api/chats`);
             if (!res.ok) throw new Error(await res.text());
             const data = await res.json();
             allChats = Array.isArray(data.chats) ? data.chats : (Array.isArray(data) ? data : []);
+            updateSidebarList();
             return allChats;
         } catch (e) {
             console.warn('[UI] fetch /api/chats failed, falling back to empty', e);
             allChats = [];
+            updateSidebarList();
             return [];
         }
     }
@@ -118,6 +189,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (welcomeSection) welcomeSection.style.display = 'flex';
 
             logToConsole('Đã tạo đoạn chat mới (lưu Redis).', 'success');
+            updateSidebarList();
             return created;
         } catch (e) {
             console.error(e);
@@ -128,12 +200,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const existing = chatHistory.querySelectorAll('.message');
             existing.forEach(el => el.remove());
             if (welcomeSection) welcomeSection.style.display = 'flex';
+            updateSidebarList();
             return fb;
         }
     }
 
     async function switchToChat(chatId) {
         currentChatId = chatId;
+        updateSidebarList();
         const chatMeta = allChats.find(c => c.id === chatId);
 
         // clear UI
@@ -353,86 +427,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initial setup
     setupEventSource();
 
-    // Wire the "Tất cả đoạn chat" button (folder-kanban)
+    // Wire the "Tất cả đoạn chat" button (folder-kanban) to toggle the sidebar
     const allChatsBtn = document.getElementById('all-chats-btn');
-    if (allChatsBtn) {
-        allChatsBtn.addEventListener('click', async () => {
-            await showAllChatsList();
+    const chatsSidebar = document.getElementById('chats-sidebar');
+    if (allChatsBtn && chatsSidebar) {
+        allChatsBtn.addEventListener('click', () => {
+            chatsSidebar.classList.toggle('collapsed');
         });
-    }
-
-    async function showAllChatsList() {
-        // refresh list from server (Redis)
-        await fetchChatsFromServer();
-
-        const listDiv = document.createElement('div');
-        listDiv.style.cssText = `
-            position: fixed; top: 60px; left: 70px; z-index: 9999;
-            background: var(--bg-surface, #1f2937); color: var(--on-surface, #fff);
-            border: 1px solid var(--outline, #374151); border-radius: 8px;
-            padding: 8px; min-width: 280px; max-height: 340px; overflow-y: auto;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            font-size: 14px;
-        `;
-        listDiv.innerHTML = `<div style="padding: 6px 10px; font-weight: 600; border-bottom: 1px solid var(--outline);">Tất cả đoạn chat (Redis)</div>`;
-
-        if (allChats.length === 0) {
-            const empty = document.createElement('div');
-            empty.style.padding = '12px 10px';
-            empty.textContent = 'Chưa có đoạn chat nào.';
-            listDiv.appendChild(empty);
-        } else {
-            allChats.forEach(chat => {
-                const item = document.createElement('div');
-                item.style.cssText = 'padding: 8px 10px; cursor: pointer; border-radius: 4px; margin: 2px 0;';
-                const isCurrent = chat.id === currentChatId;
-                item.innerHTML = `
-                    <div style="font-weight:${isCurrent ? '600' : '500'};">${chat.title} ${isCurrent ? '(đang mở)' : ''}</div>
-                    <div style="font-size:11px; opacity:0.7;">${(chat.messages && chat.messages.length) || 0} tin nhắn</div>
-                `;
-                if (isCurrent) {
-                    item.style.background = 'rgba(255,255,255,0.1)';
-                }
-                item.onclick = async () => {
-                    await switchToChat(chat.id);
-                    document.body.removeChild(listDiv);
-                };
-                item.onmouseover = () => { if (!isCurrent) item.style.background = 'rgba(255,255,255,0.08)'; };
-                item.onmouseout = () => { if (!isCurrent) item.style.background = ''; };
-                listDiv.appendChild(item);
-            });
-        }
-
-        // New chat button in the list
-        const newItem = document.createElement('div');
-        newItem.style.cssText = 'padding: 8px 10px; cursor: pointer; border-top: 1px solid var(--outline); margin-top: 4px; font-weight:500;';
-        newItem.textContent = '+ Tạo đoạn chat mới';
-        newItem.onclick = async () => {
-            await createNewChatOnServer();
-            document.body.removeChild(listDiv);
-        };
-        listDiv.appendChild(newItem);
-
-        // Close when clicking outside
-        const closeHandler = (ev) => {
-            if (!listDiv.contains(ev.target)) {
-                if (listDiv.parentNode) listDiv.parentNode.removeChild(listDiv);
-                document.removeEventListener('click', closeHandler, true);
-            }
-        };
-        setTimeout(() => document.addEventListener('click', closeHandler, true), 10);
-
-        // Also close button for convenience
-        const closeBtn = document.createElement('div');
-        closeBtn.textContent = '✕ Đóng';
-        closeBtn.style.cssText = 'padding:4px 8px; cursor:pointer; text-align:right; font-size:12px; opacity:0.7;';
-        closeBtn.onclick = () => {
-            if (listDiv.parentNode) listDiv.parentNode.removeChild(listDiv);
-            document.removeEventListener('click', closeHandler, true);
-        };
-        listDiv.appendChild(closeBtn);
-
-        document.body.appendChild(listDiv);
     }
 
     const testQueries = [
@@ -1071,6 +1072,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Messages will be loaded by backend when sending with this chat_id.
         // Show welcome for a clean start.
         if (welcomeSection) welcomeSection.style.display = 'flex';
+        updateSidebarList();
     }
 
     // Note: Server history hydration disabled to avoid conflicting with client-side multi-chat sessions.

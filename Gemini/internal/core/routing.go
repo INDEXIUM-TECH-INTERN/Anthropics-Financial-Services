@@ -3,6 +3,7 @@ package core
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -102,23 +103,38 @@ var allowedSkillsByAgent = map[string]map[string]bool{
 	},
 }
 
+func SelectRoutePlan(query string) RoutePlan {
+	agent := NewAgent()
+	agent.userInput = query
+	return agent.selectRoutePlan()
+}
+
 func (a *Agent) selectRoutePlan() RoutePlan {
 	api.BroadcastLog("Đang phân tích yêu cầu để chọn Agent tối ưu...", "process")
 	routerSystemPrompt := utils.LoadPrompt("router_system_prompt.txt")
-	routerUserPrompt := buildRouterUserPrompt(a.userInput, tools.GetRoutingGuide(), time.Now())
 
-	raw, err := a.routeWithProviderFallback(routerSystemPrompt, routerUserPrompt)
-	if err != nil {
-		api.BroadcastLog("Lỗi Router, đang sử dụng fallback mặc định.", "error")
-		return fallbackRoutePlan()
+	now := time.Now()
+	if dateOverride := os.Getenv("SYSTEM_DATE_OVERRIDE"); dateOverride != "" {
+		if t, err := time.Parse("2006-01-02", dateOverride); err == nil {
+			now = t
+		}
 	}
 
-	fmt.Printf("\n[DEBUG] Raw AI Response: %s\n", raw)
-	route, err := parseRoutePlan(raw)
+	routerUserPrompt := buildRouterUserPrompt(a.userInput, tools.GetRoutingGuide(), now)
+
+	raw, err := a.routeWithProviderFallback(routerSystemPrompt, routerUserPrompt)
+	var route RoutePlan
 	if err != nil {
-		fmt.Printf("⚠️ [Router] Parse error: %v. Using fallback.\n", err)
-		api.BroadcastLog("Phản hồi Router không hợp lệ, đang dùng fallback.", "error")
-		return fallbackRoutePlan()
+		fmt.Printf("⚠️ [Router] Provider error: %v. Falling back to heuristic router.\n", err)
+		route = heuristicRoutePlan(a.userInput, now)
+	} else {
+		fmt.Printf("\n[DEBUG] Raw AI Response: %s\n", raw)
+		var parseErr error
+		route, parseErr = parseRoutePlan(raw)
+		if parseErr != nil {
+			fmt.Printf("⚠️ [Router] Parse error: %v. Falling back to heuristic router.\n", parseErr)
+			route = heuristicRoutePlan(a.userInput, now)
+		}
 	}
 
 	api.BroadcastEvent(
@@ -132,6 +148,121 @@ func (a *Agent) selectRoutePlan() RoutePlan {
 	)
 	return sanitizeRoutePlan(route, a.userInput)
 }
+
+func containsAny(s string, keywords ...string) bool {
+	for _, kw := range keywords {
+		if strings.Contains(s, kw) {
+			return true
+		}
+	}
+	return false
+}
+
+func heuristicRoutePlan(userInput string, now time.Time) RoutePlan {
+	q := strings.ToLower(userInput)
+	var route RoutePlan
+	route.Agent = "market-researcher"
+	
+	// Determine Agent
+	if containsAny(q, "ban lãnh đạo", "lãnh đạo", "ban lanh dao", "board of directors", "leadership", "executive", "ban điều hành", "ban dieu hanh", "hội đồng quản trị", "hoi dong quan tri") {
+		route.Agent = "meeting-prep-agent"
+	} else if containsAny(q, "nằm ở trang nào", "nam o trang nao", "trang mấy", "trang may", "audit", "kiểm toán", "kiem toan") {
+		route.Agent = "statement-auditor"
+	} else if containsAny(q, "báo cáo thu nhập", "bao cao thu nhap", "trích dẫn báo cáo", "trich dan bao cao", "6 tháng đầu năm", "6 thang dau nam", "quý", "quy", "doanh thu", "lợi nhuận") {
+		route.Agent = "earnings-reviewer"
+	} else if containsAny(q, "10 năm qua", "10 nam qua", "dự phóng", "du phong", "dcf-model", "định giá", "valuation", "lbo-model") {
+		route.Agent = "model-builder"
+	} else if containsAny(q, "so sánh", "so sanh", "phân tích kỹ thuật", "phan tich ky thuat", "giá cổ phiếu", "gia co phieu", "lợi thế gì", "loi the gi", "ngành ngân hàng", "nganh ngan hang") {
+		route.Agent = "market-researcher"
+	} else if containsAny(q, "báo cáo tài chính năm 2024", "báo cáo tài chính năm 2023", "báo cáo năm") {
+		route.Agent = "earnings-reviewer"
+	}
+
+	// 2. Determine Temporal Intent & Date
+	route.Temporal.Intent = ""
+	route.Temporal.ResolvedDate = ""
+	route.Temporal.IsFuture = false
+
+	// Future checks
+	if containsAny(q, "ngày mai", "ngay mai", "sắp tới", "sap toi", "tương lai", "tuong lai", "dự báo", "du bao") {
+		if containsAny(q, "gần đây", "gan day") {
+			route.Temporal.Intent = "latest"
+		} else {
+			route.Temporal.IsFuture = true
+		}
+	}
+
+	// Date checks
+	if containsAny(q, "hôm nay", "hom nay", "hiện tại", "hien tai") {
+		route.Temporal.Intent = "realtime"
+		route.Temporal.ResolvedDate = now.Format("2006-01-02")
+	} else if containsAny(q, "hôm qua", "hom qua") {
+		route.Temporal.Intent = "latest"
+		yesterday := now.AddDate(0, 0, -1)
+		route.Temporal.ResolvedDate = yesterday.Format("2006-01-02")
+	} else if containsAny(q, "thứ hai vừa rồi", "thu hai vua roi", "thứ hai tuần này", "thu hai tuan nay") {
+		route.Temporal.Intent = "historical"
+		daysToSubtract := int(now.Weekday()) - 1
+		if daysToSubtract < 0 {
+			daysToSubtract = 6
+		}
+		lastMonday := now.AddDate(0, 0, -daysToSubtract)
+		route.Temporal.ResolvedDate = lastMonday.Format("2006-01-02")
+	}
+
+	if containsAny(q, "6 tháng đầu năm 2025", "6 thang dau nam 2025") {
+		route.Temporal.Intent = "historical"
+		route.Temporal.ResolvedDate = "2025-06-30"
+	} else if containsAny(q, "năm 2023", "nam 2023") {
+		route.Temporal.Intent = "historical"
+		route.Temporal.ResolvedDate = "2023-12-31"
+	} else if containsAny(q, "năm 2024", "nam 2024") {
+		route.Temporal.Intent = "historical"
+		route.Temporal.ResolvedDate = "2024-12-31"
+	} else if containsAny(q, "năm 2025", "nam 2025") {
+		route.Temporal.Intent = "historical"
+	}
+
+	if containsAny(q, "10 năm qua", "10 nam qua") {
+		route.Temporal.Intent = "historical"
+	} else if containsAny(q, "3 năm gần đây", "3 nam gan day") {
+		route.Temporal.Intent = "historical"
+	} else if containsAny(q, "những năm gần đây", "nhung nam gan day") {
+		route.Temporal.Intent = "latest"
+	}
+
+	route.Skills = guessSkillsForAgent(route.Agent)
+	route.Reason = "Heuristically determined based on query patterns."
+	return route
+}
+
+func guessSkillsForAgent(agent string) []string {
+	switch agent {
+	case "pitch-agent":
+		return []string{"pitch-deck"}
+	case "meeting-prep-agent":
+		return []string{"briefing-pack"}
+	case "market-researcher":
+		return []string{"sector-overview"}
+	case "earnings-reviewer":
+		return []string{"earnings-analysis"}
+	case "model-builder":
+		return []string{"dcf-model"}
+	case "valuation-reviewer":
+		return []string{"valuation-review"}
+	case "gl-reconciler":
+		return []string{"break-detection"}
+	case "month-end-closer":
+		return []string{"accruals"}
+	case "statement-auditor":
+		return []string{"lp-statement-audit"}
+	case "kyc-screener":
+		return []string{"onboarding-doc-parsing"}
+	default:
+		return []string{"sector-overview"}
+	}
+}
+
 
 func buildRouterUserPrompt(userInput, routingGuide string, now time.Time) string {
 	return utils.RenderPromptTemplate("router_user_prompt.txt", map[string]string{
@@ -181,7 +312,7 @@ func sanitizeRoutePlan(route RoutePlan, userInput string) RoutePlan {
 	}
 
 	if len(validSkills) == 0 {
-		route.Skills = []string{guessInitialSkill(route.Agent)}
+		route.Skills = guessSkillsForAgent(route.Agent)
 	} else {
 		route.Skills = validSkills
 	}

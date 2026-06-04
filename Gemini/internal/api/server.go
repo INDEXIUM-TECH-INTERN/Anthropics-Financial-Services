@@ -154,6 +154,22 @@ func StartServer(agent AgentInterface) {
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(sess)
 
+		case "DELETE":
+			chatID := r.URL.Query().Get("chat_id")
+			if chatID == "" {
+				http.Error(w, "missing chat_id query parameter", http.StatusBadRequest)
+				return
+			}
+			if err := store.DeleteSession(chatID); err != nil {
+				http.Error(w, "failed to delete chat session", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]string{
+				"status":  "deleted",
+				"chat_id": chatID,
+			})
+
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}

@@ -25,3 +25,7 @@ Gemini/internal/evaluator/test_results.json
 # Documentation (Local Only)
 docs/
 
+# Teamwork agent workspace files (runtime artifacts)
+.agents/
+ORIGINAL_REQUEST.md
+PROJECT.md
