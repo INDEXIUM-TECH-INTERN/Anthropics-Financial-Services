@@ -3,6 +3,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const renderer = new marked.Renderer();
     const linkRenderer = renderer.link;
     renderer.link = (href, title, text) => {
+        if (!href || typeof href !== 'string') {
+            return `<a href="#" title="${title || ''}">${text}</a>`;
+        }
         const localLink = href.startsWith(`${window.location.protocol}//${window.location.host}`) || href.startsWith('/') || href.startsWith('#');
         const html = linkRenderer.call(renderer, href, title, text);
         if (!localLink) {
@@ -75,7 +78,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const res = await fetch(`${currentBaseUrl}/api/chats`);
             if (!res.ok) throw new Error(await res.text());
             const data = await res.json();
-            allChats = data.chats || data || [];
+            allChats = Array.isArray(data.chats) ? data.chats : (Array.isArray(data) ? data : []);
             return allChats;
         } catch (e) {
             console.warn('[UI] fetch /api/chats failed, falling back to empty', e);
@@ -758,12 +761,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                 botMsgDiv.classList.add('error-message');
                 contentDiv.innerHTML = `
                     <div class="error-container">
-                        <div class="error-header"><i data-lucide="alert-octagon"></i> LỖI HỆ THỐNG</div>
-                        <div class="error-body"></div>
-                        <div class="error-footer">Vui lòng kiểm tra lại cấu hình API Key hoặc thử lại sau ít phút.</div>
+                        <div class="error-header"><i data-lucide="alert-triangle"></i> LỖI HỆ THỐNG</div>
+                        <div class="error-body">Đã xảy ra lỗi khi Agent xử lý yêu cầu của bạn.</div>
+                        <div class="error-details-accordion">
+                            <button class="details-toggle-btn">
+                                <span>Chi tiết kỹ thuật</span>
+                                <i data-lucide="chevron-down"></i>
+                            </button>
+                            <div class="details-content" style="display: none;">
+                                <code>${data.error}</code>
+                            </div>
+                        </div>
+                        <div class="error-footer">Vui lòng kiểm tra lại cấu hình API Key trong mục Cài đặt hoặc thử lại sau ít phút.</div>
                     </div>
                 `;
-                contentDiv.querySelector('.error-body').textContent = data.error;
+                
+                const toggleBtn = contentDiv.querySelector('.details-toggle-btn');
+                const detailsContent = contentDiv.querySelector('.details-content');
+                if (toggleBtn && detailsContent) {
+                    toggleBtn.addEventListener('click', () => {
+                        const isHidden = detailsContent.style.display === 'none';
+                        detailsContent.style.display = isHidden ? 'block' : 'none';
+                        toggleBtn.querySelector('i').setAttribute('data-lucide', isHidden ? 'chevron-up' : 'chevron-down');
+                        if (window.lucide) lucide.createIcons();
+                    });
+                }
+                
                 footer.innerHTML = `<span class="timer" style="color:var(--danger)">Thất bại sau ${finalDuration}s</span>`;
                 if (window.lucide) lucide.createIcons();
                 return false;
@@ -827,16 +850,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (error) {
             clearInterval(timerInterval);
             clearTimeout(timeoutId);
-            const errorMsg = error.name === 'AbortError' ? "Yêu cầu quá thời gian phản hồi (300s). Hệ thống Agent đang xử lý quá nhiều dữ liệu hoặc Server phản hồi chậm." : "Không thể kết nối đến máy chủ Backend. Vui lòng kiểm tra kết nối mạng hoặc trạng thái Server.";
+            const errorMsg = error.name === 'AbortError' 
+                ? "Yêu cầu quá thời gian phản hồi (300s). Hệ thống Agent đang xử lý quá nhiều dữ liệu hoặc Server phản hồi chậm." 
+                : "Không thể kết nối đến máy chủ Backend. Vui lòng kiểm tra kết nối mạng hoặc trạng thái hoạt động của Server.";
             
+            const errorName = error.name || 'Error';
+            const errorDetails = error.message || String(error);
+            const errorStack = error.stack || '';
+
             botMsgDiv.classList.add('error-message');
-            botMsgDiv.querySelector('.msg-content').innerHTML = `
+            const contentDiv = botMsgDiv.querySelector('.msg-content');
+            contentDiv.innerHTML = `
                 <div class="error-container">
                     <div class="error-header"><i data-lucide="wifi-off"></i> LỖI KẾT NỐI</div>
-                    <div class="error-body"></div>
+                    <div class="error-body">${errorMsg}</div>
+                    <div class="error-details-accordion">
+                        <button class="details-toggle-btn">
+                            <span>Chi tiết kỹ thuật</span>
+                            <i data-lucide="chevron-down"></i>
+                        </button>
+                        <div class="details-content" style="display: none;">
+                            <div style="font-weight: 700; margin-bottom: 4px; color: #f87171;">[${errorName}]</div>
+                            <div style="margin-bottom: 8px;">${errorDetails}</div>
+                            ${errorStack ? `<pre style="margin: 0; padding: 0; background: transparent; border: none; overflow-x: auto;"><code>${errorStack}</code></pre>` : ''}
+                        </div>
+                    </div>
                 </div>
             `;
-            botMsgDiv.querySelector('.error-body').textContent = errorMsg;
+
+            const toggleBtn = contentDiv.querySelector('.details-toggle-btn');
+            const detailsContent = contentDiv.querySelector('.details-content');
+            if (toggleBtn && detailsContent) {
+                toggleBtn.addEventListener('click', () => {
+                    const isHidden = detailsContent.style.display === 'none';
+                    detailsContent.style.display = isHidden ? 'block' : 'none';
+                    toggleBtn.querySelector('i').setAttribute('data-lucide', isHidden ? 'chevron-up' : 'chevron-down');
+                    if (window.lucide) lucide.createIcons();
+                });
+            }
 
             footer.innerHTML = `<span class="timer" style="color:var(--danger)">Lỗi kết nối</span>`;
             if (window.lucide) lucide.createIcons();
@@ -910,10 +961,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (window.lucide) lucide.createIcons();
-
-    console.log('[UI] Chat interface initialized and ready for interaction. Try typing or clicking a chip.');
-});
-teIcons();
 
     console.log('[UI] Chat interface initialized and ready for interaction. Try typing or clicking a chip.');
 });
