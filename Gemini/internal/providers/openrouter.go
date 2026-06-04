@@ -14,24 +14,68 @@ import (
 	"gemini-cli/internal/models/messaging"
 )
 
+// Free-tier model fallback chain for OpenRouter
+// When primary model fails, we cycle through these alternatives.
+var openRouterFreeModels = []string{
+	"meta-llama/llama-3.3-70b-instruct:free",
+	"mistralai/mistral-7b-instruct:free",
+	"google/gemini-2.0-flash-exp:free",
+	"microsoft/mai-ds-r1:free",
+	"deepseek/deepseek-r1-0528:free",
+}
+
 type OpenRouterProvider struct {
 	APIKey string
 	Model  string
 }
 
 func (p *OpenRouterProvider) Generate(ctx context.Context, req messaging.Request) (messaging.Message, error) {
-	url := "https://openrouter.ai/api/v1/chat/completions"
-
 	model := strings.TrimSpace(p.Model)
 	if model == "" {
-		model = "google/gemini-1.5-flash"
+		model = openRouterFreeModels[0]
 	}
+
+	// Try the configured model first, then fallback chain
+	modelsToTry := []string{model}
+	for _, m := range openRouterFreeModels {
+		if m != model {
+			modelsToTry = append(modelsToTry, m)
+		}
+	}
+
+	var lastErr error
+	for i, m := range modelsToTry {
+		msg, err := p.generateWithModel(ctx, req, m)
+		if err == nil {
+			if i > 0 {
+				fmt.Printf("🔀 [OpenRouter] Succeeded with fallback model: %s\n", m)
+			}
+			return msg, nil
+		}
+		lastErr = err
+		errStr := err.Error()
+		// Only try next model on specific transient / model-unavailable errors
+		if strings.Contains(errStr, "Provider returned error") ||
+			strings.Contains(errStr, "model not found") ||
+			strings.Contains(errStr, "overloaded") ||
+			strings.Contains(errStr, "503") ||
+			strings.Contains(errStr, "502") {
+			fmt.Printf("⚠️ [OpenRouter] Model %s failed (%v), trying next...\n", m, err)
+			continue
+		}
+		// For other errors (auth, quota, bad request) stop immediately
+		break
+	}
+	return messaging.Message{}, lastErr
+}
+
+func (p *OpenRouterProvider) generateWithModel(ctx context.Context, req messaging.Request, model string) (messaging.Message, error) {
+	url := "https://openrouter.ai/api/v1/chat/completions"
 
 	// 1. Translate tools from messaging.ToolSchema to models.OpenRouterTool
 	var orTools []models.OpenRouterTool
 	for _, t := range req.Tools {
 		var params models.Parameters
-		// Convert map[string]interface{} to the concrete struct via marshaling
 		paramBytes, err := json.Marshal(t.Parameters)
 		if err != nil {
 			return messaging.Message{}, fmt.Errorf("error marshalling tool parameters for '%s': %w", t.Name, err)
@@ -115,8 +159,8 @@ func (p *OpenRouterProvider) Generate(ctx context.Context, req messaging.Request
 
 	httpReq.Header.Set("Authorization", "Bearer "+p.APIKey)
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("HTTP-Referer", "https://github.com/kichsatst/Gemini-CLI")
-	httpReq.Header.Set("X-Title", "Gemini CLI")
+	httpReq.Header.Set("HTTP-Referer", "https://github.com/INDEXIUM-TECH-INTERN/Anthropics-Financial-Services")
+	httpReq.Header.Set("X-Title", "Indexium Financial AI Agent")
 
 	client := &http.Client{Timeout: 100 * time.Second}
 	resp, err := client.Do(httpReq)
@@ -130,16 +174,21 @@ func (p *OpenRouterProvider) Generate(ctx context.Context, req messaging.Request
 		return messaging.Message{}, fmt.Errorf("error reading response body: %w", err)
 	}
 
+	// Log raw response for debugging when status >= 400
+	if resp.StatusCode >= 400 {
+		fmt.Printf("⚠️ [OpenRouter] HTTP %d from model %s — Body: %s\n", resp.StatusCode, model, string(body))
+	}
+
 	var orResp models.OpenRouterResponse
 	if err := json.Unmarshal(body, &orResp); err != nil {
-		return messaging.Message{}, fmt.Errorf("error unmarshalling openrouter response: %s", string(body))
+		return messaging.Message{}, fmt.Errorf("error unmarshalling openrouter response (model=%s): body=%s", model, string(body))
 	}
 
 	if orResp.Error.Message != "" {
-		return messaging.Message{}, fmt.Errorf("openrouter API error: %s", orResp.Error.Message)
+		return messaging.Message{}, fmt.Errorf("openrouter API error (model=%s): %s", model, orResp.Error.Message)
 	}
 	if len(orResp.Choices) == 0 {
-		return messaging.Message{}, fmt.Errorf("no choices returned from OpenRouter")
+		return messaging.Message{}, fmt.Errorf("no choices returned from OpenRouter (model=%s)", model)
 	}
 
 	// 3. Translate response from models.OpenRouterMessage to messaging.Message
@@ -152,8 +201,6 @@ func (p *OpenRouterProvider) Generate(ctx context.Context, req messaging.Request
 	for _, tc := range orMsg.ToolCalls {
 		var args map[string]interface{}
 		if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
-			// In case of malformed arguments, we skip this tool call but don't fail the whole request
-			// A log would be appropriate here in a real application
 			continue
 		}
 		responseMsg.ToolCalls = append(responseMsg.ToolCalls, messaging.ToolCall{

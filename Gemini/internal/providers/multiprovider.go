@@ -3,12 +3,25 @@ package providers
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"strings"
 	"sync"
+	"time"
 
 	"gemini-cli/internal/api"
 	"gemini-cli/internal/models/messaging"
 )
+
+// retryDelay sleeps for base * 2^attempt + jitter milliseconds (capped at 5s).
+func retryDelay(attempt int) {
+	base := 500 * time.Millisecond
+	backoff := base * (1 << uint(attempt))
+	if backoff > 5*time.Second {
+		backoff = 5 * time.Second
+	}
+	jitter := time.Duration(rand.Intn(300)) * time.Millisecond
+	time.Sleep(backoff + jitter)
+}
 
 type MultiProvider struct {
 	mu               sync.Mutex
@@ -73,6 +86,9 @@ func (m *MultiProvider) tryFallbacksOnlyText(systemPrompt, userPrompt string) (s
 
 	var lastErr error
 	for i := 0; i < numFallbacks; i++ {
+		if i > 0 {
+			retryDelay(i - 1)
+		}
 		m.mu.Lock()
 		activeIdx := m.currentIdx
 		m.currentIdx = (m.currentIdx + 1) % numFallbacks
@@ -160,6 +176,9 @@ func (m *MultiProvider) tryFallbacksOnly(ctx context.Context, req messaging.Requ
 
 	var lastErr error
 	for i := 0; i < numFallbacks; i++ {
+		if i > 0 {
+			retryDelay(i - 1)
+		}
 		m.mu.Lock()
 		activeIdx := m.currentIdx
 		m.currentIdx = (m.currentIdx + 1) % numFallbacks

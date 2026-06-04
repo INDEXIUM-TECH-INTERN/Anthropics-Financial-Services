@@ -430,9 +430,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Wire the "Tất cả đoạn chat" button (folder-kanban) to toggle the sidebar
     const allChatsBtn = document.getElementById('all-chats-btn');
     const chatsSidebar = document.getElementById('chats-sidebar');
+    let sidebarLoaded = false;
     if (allChatsBtn && chatsSidebar) {
-        allChatsBtn.addEventListener('click', () => {
-            chatsSidebar.classList.toggle('collapsed');
+        allChatsBtn.addEventListener('click', async () => {
+            const isCollapsed = chatsSidebar.classList.toggle('collapsed');
+            allChatsBtn.classList.toggle('active', !isCollapsed);
+            // Lazy-load chats from server on first open
+            if (!isCollapsed && !sidebarLoaded) {
+                sidebarLoaded = true;
+                await fetchChatsFromServer();
+            } else if (!isCollapsed) {
+                // Refresh list each open to show latest
+                await fetchChatsFromServer();
+            }
         });
     }
 
