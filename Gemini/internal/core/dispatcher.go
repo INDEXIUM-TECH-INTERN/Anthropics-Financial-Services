@@ -39,7 +39,10 @@ func (d *Dispatcher) HandleToolCalls(aiMessage messaging.Message) bool {
 
 	for _, toolCall := range aiMessage.ToolCalls {
 		fmt.Printf("🎯 [Action] AI invokes MCP tool: %s\n", toolCall.Name)
-		api.BroadcastLog(fmt.Sprintf("Thực thi Tool: %s...", toolCall.Name), "tool")
+		api.BroadcastEvent(fmt.Sprintf("Thực thi Tool: %s...", toolCall.Name), "tool_executed", map[string]interface{}{
+			"tool": toolCall.Name,
+			"args": toolCall.Args,
+		})
 
 		result := d.resolveToolCallResult(&toolCall)
 		d.appendFunctionResponse(&toolCall, result)

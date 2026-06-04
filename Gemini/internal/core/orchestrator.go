@@ -149,7 +149,9 @@ func (o *Orchestrator) buildBootstrapContextInternal(route RoutePlan) []string {
 
 	// Nạp tất cả các skills hợp lệ từ route plan
 	for _, skill := range route.Skills {
-		api.BroadcastLog(fmt.Sprintf("Đang nạp skill chuyên biệt: %s", skill), "process")
+		api.BroadcastEvent(fmt.Sprintf("Đang nạp skill chuyên biệt: %s", skill), "skill_loaded", map[string]interface{}{
+			"skill": skill,
+		})
 		skillDoc := tools.LoadDocumentWithMetadata("skill", route.Agent+"/"+skill)
 		
 		if strings.HasPrefix(skillDoc.Content, "Lỗi:") {

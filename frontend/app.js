@@ -229,7 +229,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         eventSource.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                logToConsole(data.payload, data.type);
+                logToConsole(data); // Pass the full structured event
             } catch (e) {}
         };
         

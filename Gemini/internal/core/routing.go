@@ -121,7 +121,15 @@ func (a *Agent) selectRoutePlan() RoutePlan {
 		return fallbackRoutePlan()
 	}
 
-	api.BroadcastLog(fmt.Sprintf("Đã chọn Agent: %s (Lý do: %s)", route.Agent, route.Reason), "success")
+	api.BroadcastEvent(
+		fmt.Sprintf("Đã chọn Agent: %s (Lý do: %s)", route.Agent, route.Reason),
+		"agent_selected",
+		map[string]interface{}{
+			"agent":  route.Agent,
+			"reason": route.Reason,
+			"skills": route.Skills,
+		},
+	)
 	return sanitizeRoutePlan(route, a.userInput)
 }
 

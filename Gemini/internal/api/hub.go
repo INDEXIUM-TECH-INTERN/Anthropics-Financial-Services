@@ -6,8 +6,9 @@ import (
 )
 
 type Event struct {
-	Type    string `json:"type"`
-	Payload string `json:"payload"`
+	Type     string                 `json:"type"`
+	Payload  string                 `json:"payload"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
 type LogHub struct {
@@ -46,8 +47,16 @@ func (h *LogHub) Broadcast(e Event) {
 	}
 }
 
-// Hàm tiện ích để log nhanh từ bất kỳ đâu
+// BroadcastEvent allows sending structured metadata
+func BroadcastEvent(payload string, eventType string, metadata map[string]interface{}) {
+	if metadata == nil {
+		metadata = make(map[string]interface{})
+	}
+	fmt.Printf("📡 [Event:%s] %s %v\n", eventType, payload, metadata)
+	GlobalHub.Broadcast(Event{Type: eventType, Payload: payload, Metadata: metadata})
+}
+
+// BroadcastLog is kept for legacy unstructured logs
 func BroadcastLog(payload string, eventType string) {
-	fmt.Printf("📡 [Broadcast] %s: %s\n", eventType, payload)
-	GlobalHub.Broadcast(Event{Type: eventType, Payload: payload})
+	BroadcastEvent(payload, eventType, nil)
 }
