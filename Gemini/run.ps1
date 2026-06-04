@@ -50,11 +50,11 @@ if (Test-Path '.env') {
 
 $tcpClient = New-Object System.Net.Sockets.TcpClient
 $parts = $RedisAddr.Split(':')
-$host = $parts[0]
+$redisHost = $parts[0]
 $port = if ($parts.Length -gt 1) { [int]$parts[1] } else { 6379 }
 
 try {
-    $wait = $tcpClient.ConnectAsync($host, $port)
+    $wait = $tcpClient.ConnectAsync($redisHost, $port)
     if (-not $wait.Wait(500)) { throw "Timeout" }
     Write-Host "✅ [Redis] Detected running on $RedisAddr" -ForegroundColor Gray
 } catch {
