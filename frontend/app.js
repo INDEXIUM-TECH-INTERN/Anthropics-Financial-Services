@@ -627,11 +627,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             uniqueUrls.forEach((url, index) => {
                 let domain = url;
                 try { domain = new URL(url).hostname.replace('www.', ''); } catch(e) {}
-                const card = document.createElement('div');
+                const card = document.createElement('a');
+                card.href = url;
+                card.target = "_blank";
+                card.rel = "noopener noreferrer";
                 card.className = 'inline-source-card';
+                card.style.textDecoration = 'none';
                 card.innerHTML = `
                     <div class="source-index">${index+1}</div>
-                    <a href="${url}" target="_blank" rel="noopener noreferrer" class="source-link">${domain}</a>
+                    <span class="source-link">${domain}</span>
                 `;
                 grid.appendChild(card);
             });
@@ -906,6 +910,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (window.lucide) lucide.createIcons();
+
+    console.log('[UI] Chat interface initialized and ready for interaction. Try typing or clicking a chip.');
+});
+teIcons();
 
     console.log('[UI] Chat interface initialized and ready for interaction. Try typing or clicking a chip.');
 });
