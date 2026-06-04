@@ -686,6 +686,81 @@ document.addEventListener('DOMContentLoaded', async () => {
         return msgDiv;
     }
 
+    function diagnoseError(errorName, errorMessage, errorStack = '') {
+        const name = String(errorName || '').trim();
+        const msg = String(errorMessage || '').toLowerCase();
+        
+        let badge = 'Hệ thống';
+        let title = 'Lỗi xử lý hệ thống';
+        let icon = 'alert-triangle';
+        let description = errorMessage || 'Đã xảy ra lỗi không xác định khi Agent xử lý yêu cầu của bạn.';
+        let suggestions = [
+            'Kiểm tra lại cấu hình API Key trong mục Cài đặt (biểu tượng thanh trượt ở góc dưới cùng bên trái).',
+            'Thử lại sau ít phút hoặc nhấn nút Reset cuộc trò chuyện (biểu tượng cộng ở thanh bên trái).'
+        ];
+
+        // 1. Connection Refused / Fetch failure
+        if (msg.includes('failed to fetch') || msg.includes('connection refused') || msg.includes('network error') || msg.includes('net::err_connection_refused')) {
+            badge = 'Kết nối mạng';
+            title = 'Lỗi kết nối máy chủ';
+            icon = 'wifi-off';
+            description = 'Không thể kết nối đến máy chủ Backend (địa chỉ ' + currentBaseUrl + '). Vui lòng kiểm tra kết nối mạng hoặc trạng thái hoạt động của Server.';
+            suggestions = [
+                'Chắc chắn rằng bạn đã khởi chạy backend Go (bằng lệnh <code>go run cmd/gemini-cli/main.go -server</code> hoặc chạy file script <code>run-server.ps1</code>).',
+                'Kiểm tra xem cổng dịch vụ <code>8080</code> có đang bị chặn bởi tường lửa hoặc ứng dụng khác chiếm dụng không.',
+                'Nếu chạy trên môi trường Docker hoặc máy chủ ảo, hãy xác minh cấu hình port forwarding.'
+            ];
+        }
+        // 2. Rate limits or Quota exceeded
+        else if (msg.includes('quota') || msg.includes('rate') || msg.includes('429') || msg.includes('limit') || msg.includes('exceeded')) {
+            badge = 'Giới hạn dùng';
+            title = 'Hết hạn mức truy cập (429)';
+            icon = 'alert-octagon';
+            description = 'Tài khoản của bạn đã vượt quá giới hạn cuộc gọi cho phép (Quota Exceeded hoặc Rate Limit) từ nhà cung cấp API (Gemini / OpenRouter).';
+            suggestions = [
+                'Mở mục <b>Cài đặt Workspace</b> (biểu tượng thanh trượt ở góc dưới bên trái) và điền thêm các API Key dự phòng (mỗi dòng một khóa) để kích hoạt cơ chế luân phiên (key rotation) tự động của backend.',
+                'Sử dụng một API Key khác có hạn mức cao hơn.',
+                'Vui lòng chờ khoảng 1-2 phút trước khi gửi yêu cầu tiếp theo để giới hạn lượt dùng được khôi phục.'
+            ];
+        }
+        // 3. Model signature issue
+        else if (msg.includes('thought_signature') || msg.includes('thought signature') || msg.includes('missing a thought_signature') || msg.includes('function call is missing')) {
+            badge = 'Tương thích Model';
+            title = 'Lỗi chữ ký mô hình';
+            icon = 'shield-alert';
+            description = 'Mô hình Gemini Preview mới (ví dụ: gemini-3.1-flash-lite) yêu cầu chữ ký tư duy đặc biệt (thought_signature) mà backend Go hiện tại chưa tương thích đầy đủ khi chạy tool calling.';
+            suggestions = [
+                'Mở file cấu hình <code>.env</code> ở thư mục gốc của dự án và thay đổi giá trị thành <code>GEMINI_MODEL=gemini-1.5-flash</code> hoặc <code>gemini-1.5-pro</code> (các bản ổn định không bắt buộc thought_signature).',
+                'Khởi động lại backend server sau khi cập nhật file cấu hình .env.'
+            ];
+        }
+        // 4. Timeout error
+        else if (name === 'AbortError' || msg.includes('timeout') || msg.includes('quá thời gian')) {
+            badge = 'Thời gian chờ';
+            title = 'Yêu cầu quá thời gian phản hồi';
+            icon = 'clock';
+            description = 'Thời gian xử lý của Agent đã vượt quá giới hạn tối đa cho phép (300 giây). Hệ thống đang xử lý quá nhiều tài liệu lớn hoặc dịch vụ AI phản hồi quá chậm.';
+            suggestions = [
+                'Kiểm tra console/terminal của Backend Go để xem Agent đang bị treo ở công cụ tìm kiếm hay scraping nào.',
+                'Rút ngắn câu hỏi hoặc chia nhỏ tác vụ để giảm tải khối lượng xử lý cho AI.',
+                'Kiểm tra lại đường truyền mạng Internet của bạn.'
+            ];
+        }
+        // 5. Frontend TypeError or code bug
+        else if (name.includes('Type') || name.includes('Syntax') || name.includes('Reference') || msg.includes('starts-with') || msg.includes('is not a function')) {
+            badge = 'Mã nguồn Giao diện';
+            title = 'Lỗi xử lý logic giao diện';
+            icon = 'code';
+            description = 'Đã xảy ra lỗi lập trình Javascript không mong muốn ở trình duyệt khi hiển thị tin nhắn.';
+            suggestions = [
+                'Vui lòng làm mới trang (nhấn <b>F5</b> hoặc Ctrl+F5) để khôi phục lại trạng thái giao diện sạch và thử lại.',
+                'Sao chép chi tiết ngăn xếp lỗi (stack trace) ở phần dưới và gửi cho lập trình viên để vá lỗi trong file <code>app.js</code>.'
+            ];
+        }
+
+        return { badge, title, icon, description, suggestions };
+    }
+
     async function sendMessage(textOverride = null) {
         const text = textOverride !== null ? textOverride : chatInput.value.trim();
         if (!text) return false;
@@ -759,20 +834,43 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (data.error) {
                 botMsgDiv.classList.add('error-message');
+                const diag = diagnoseError('BackendError', data.error);
                 contentDiv.innerHTML = `
                     <div class="error-container">
-                        <div class="error-header"><i data-lucide="alert-triangle"></i> LỖI HỆ THỐNG</div>
-                        <div class="error-body">Đã xảy ra lỗi khi Agent xử lý yêu cầu của bạn.</div>
+                        <div class="error-header-row">
+                            <div class="error-badge-title">
+                                <i data-lucide="${diag.icon}"></i>
+                                <span>${diag.title}</span>
+                            </div>
+                            <span class="error-class-badge">${diag.badge}</span>
+                        </div>
+                        <div class="error-explanation-box">
+                            <div class="error-body-text">${diag.description}</div>
+                        </div>
+                        <div class="error-action-panel">
+                            <div class="error-action-title">
+                                <i data-lucide="check-square" style="width: 14px; height: 14px;"></i>
+                                Đề xuất khắc phục
+                            </div>
+                            <ul class="error-action-list">
+                                ${diag.suggestions.map(s => `
+                                    <li class="error-action-item">
+                                        <i data-lucide="arrow-right-circle"></i>
+                                        <span>${s}</span>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
                         <div class="error-details-accordion">
                             <button class="details-toggle-btn">
-                                <span>Chi tiết kỹ thuật</span>
+                                <span>Chi tiết kỹ thuật (Developer)</span>
                                 <i data-lucide="chevron-down"></i>
                             </button>
                             <div class="details-content" style="display: none;">
-                                <code>${data.error}</code>
+                                <div style="font-weight: 700; margin-bottom: 6px; color: #fca5a5; font-family: var(--font-mono); font-size: 12px;">[BackendError]</div>
+                                <div style="margin-bottom: 10px; font-family: var(--font-mono); font-size: 12px; color: #fecaca; line-height: 1.5;">${data.error}</div>
                             </div>
                         </div>
-                        <div class="error-footer">Vui lòng kiểm tra lại cấu hình API Key trong mục Cài đặt hoặc thử lại sau ít phút.</div>
                     </div>
                 `;
                 
@@ -850,29 +948,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (error) {
             clearInterval(timerInterval);
             clearTimeout(timeoutId);
-            const errorMsg = error.name === 'AbortError' 
-                ? "Yêu cầu quá thời gian phản hồi (300s). Hệ thống Agent đang xử lý quá nhiều dữ liệu hoặc Server phản hồi chậm." 
-                : "Không thể kết nối đến máy chủ Backend. Vui lòng kiểm tra kết nối mạng hoặc trạng thái hoạt động của Server.";
             
             const errorName = error.name || 'Error';
             const errorDetails = error.message || String(error);
             const errorStack = error.stack || '';
+            const diag = diagnoseError(errorName, errorDetails, errorStack);
 
             botMsgDiv.classList.add('error-message');
             const contentDiv = botMsgDiv.querySelector('.msg-content');
             contentDiv.innerHTML = `
                 <div class="error-container">
-                    <div class="error-header"><i data-lucide="wifi-off"></i> LỖI KẾT NỐI</div>
-                    <div class="error-body">${errorMsg}</div>
+                    <div class="error-header-row">
+                        <div class="error-badge-title">
+                            <i data-lucide="${diag.icon}"></i>
+                            <span>${diag.title}</span>
+                        </div>
+                        <span class="error-class-badge">${diag.badge}</span>
+                    </div>
+                    <div class="error-explanation-box">
+                        <div class="error-body-text">${diag.description}</div>
+                    </div>
+                    <div class="error-action-panel">
+                        <div class="error-action-title">
+                            <i data-lucide="check-square" style="width: 14px; height: 14px;"></i>
+                            Đề xuất khắc phục
+                        </div>
+                        <ul class="error-action-list">
+                            ${diag.suggestions.map(s => `
+                                <li class="error-action-item">
+                                    <i data-lucide="arrow-right-circle"></i>
+                                    <span>${s}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
                     <div class="error-details-accordion">
                         <button class="details-toggle-btn">
-                            <span>Chi tiết kỹ thuật</span>
+                            <span>Chi tiết kỹ thuật (Developer)</span>
                             <i data-lucide="chevron-down"></i>
                         </button>
                         <div class="details-content" style="display: none;">
-                            <div style="font-weight: 700; margin-bottom: 4px; color: #f87171;">[${errorName}]</div>
-                            <div style="margin-bottom: 8px;">${errorDetails}</div>
-                            ${errorStack ? `<pre style="margin: 0; padding: 0; background: transparent; border: none; overflow-x: auto;"><code>${errorStack}</code></pre>` : ''}
+                            <div style="font-weight: 700; margin-bottom: 6px; color: #fca5a5; font-family: var(--font-mono); font-size: 12px;">[${errorName}]</div>
+                            <div style="margin-bottom: 10px; font-family: var(--font-mono); font-size: 12px; color: #fecaca; line-height: 1.5;">${errorDetails}</div>
+                            ${errorStack ? `<pre style="margin: 0; padding: 10px; background: rgba(0,0,0,0.4); border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,0.05); overflow-x: auto; max-height: 150px;"><code style="font-size: 11px; color: #fca5a5; white-space: pre;">${errorStack}</code></pre>` : ''}
                         </div>
                     </div>
                 </div>
