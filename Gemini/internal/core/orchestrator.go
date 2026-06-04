@@ -57,21 +57,42 @@ func (o *Orchestrator) ProcessMessage(userInput string) (string, error) {
 
 func isCasualGreeting(text string) bool {
 	lower := strings.ToLower(strings.TrimSpace(text))
-	// Loại bỏ dấu câu cơ bản
+	// Remove basic punctuation
 	lower = strings.NewReplacer(".", "", "!", "", "?", "", ",", "").Replace(lower)
 	
+	// Convert Vietnamese accents to unsigned for robust matching
+	lower = removeAccents(lower)
+
 	greetings := []string{
 		"hi", "hello", "xin chao", "chao ban", "chao", "hey", "alo", 
-		"tên bạn là gì", "ban la ai", "ai do", "who are you",
-		"giúp tôi", "huong dan", "huong dan su dung",
+		"ten ban la gi", "ban la ai", "ai do", "who are you",
+		"giup toi", "huong dan", "su dung", "test",
 	}
 	
 	for _, g := range greetings {
-		if lower == g || strings.HasPrefix(lower, g+" ") {
+		if lower == g || strings.HasPrefix(lower, g+" ") || strings.Contains(lower, "la ai") || strings.Contains(lower, "ten gi") {
 			return true
 		}
 	}
-	return len(lower) < 5 // Câu cực ngắn cũng coi là xã giao/cần check thêm
+	return len(lower) < 5 
+}
+
+func removeAccents(s string) string {
+	accents := map[string]string{
+		"a": "áàảãạăắằẳẵặâấầẩẫậ",
+		"d": "đ",
+		"e": "éèẻẽẹêếềểễệ",
+		"i": "íìỉĩị",
+		"o": "óòỏõọôốồổỗộơớờởỡợ",
+		"u": "úùủũụưứừửữự",
+		"y": "ýỳỷỹỵ",
+	}
+	for unaccented, accentedChars := range accents {
+		for _, char := range accentedChars {
+			s = strings.ReplaceAll(s, string(char), unaccented)
+		}
+	}
+	return s
 }
 
 func (o *Orchestrator) handleSlashCommandInternal(input string) bool {

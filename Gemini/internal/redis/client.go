@@ -27,6 +27,8 @@ func Init() error {
 
 	_, err := Client.Ping(Ctx).Result()
 	if err != nil {
+		Client.Close()
+		Client = nil
 		return fmt.Errorf("failed to connect to Redis at %s: %w", addr, err)
 	}
 
