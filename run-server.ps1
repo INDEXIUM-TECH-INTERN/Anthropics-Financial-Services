@@ -1,12 +1,18 @@
 # run-server.ps1 - Unified launcher for Indexium Financial AI (Frontend + Backend)
-# Usage:  .\run-server.ps1
+# Usage:  .\run-server.ps1 [-Query "your query"]
+#         .\run-server.ps1 (starts backend server & UI browser)
 
-$RootPath = Get-Location
+param(
+    [string]$Query = ""
+)
+
+# Use $PSScriptRoot to avoid hardcoding or relying on Get-Location
+$RootPath = $PSScriptRoot
 $GeminiPath = Join-Path $RootPath "Gemini"
 
 if (-not (Test-Path $GeminiPath)) {
     Write-Host "❌ Error: Gemini directory not found at $GeminiPath" -ForegroundColor Red
-    exit
+    exit 1
 }
 
 Set-Location $GeminiPath
@@ -22,7 +28,7 @@ Write-Host "Working Directory: $GeminiPath" -ForegroundColor Gray
 if (-not (Get-Command "go" -ErrorAction SilentlyContinue)) {
     Write-Host "❌ Error: Go is not installed or not in PATH." -ForegroundColor Red
     Write-Host "Please install Go from https://go.dev/dl/ before running." -ForegroundColor Yellow
-    exit
+    exit 1
 }
 
 # 2. Check for .env
@@ -33,10 +39,10 @@ if (-not (Test-Path '.env')) {
         Write-Host "📝 Please EDIT the .env file and add your real API keys before continuing." -ForegroundColor Yellow
         notepad '.env'
         Write-Host "After saving .env, re-run this script." -ForegroundColor Yellow
-        exit
+        exit 0
     } else {
         Write-Host "❌ Error: .env or .env.example not found in $GeminiPath" -ForegroundColor Red
-        exit
+        exit 1
     }
 }
 
@@ -72,16 +78,20 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "✅ Backend compiled successfully." -ForegroundColor Green
 
-Write-Host ""
-Write-Host "🚀 Starting Backend Server & Serving Frontend..." -ForegroundColor Green
-Write-Host "🌐 Local URL: http://localhost:8080" -ForegroundColor White
-Write-Host "💡 The browser will open automatically in 3 seconds..." -ForegroundColor Gray
-Write-Host "----------------------------------------------------" -ForegroundColor Gray
+if ($Query) {
+    Write-Host "Running one-shot query: $Query" -ForegroundColor Green
+    .\server.exe $Query
+} else {
+    Write-Host ""
+    Write-Host "🚀 Starting Backend Server & Serving Frontend..." -ForegroundColor Green
+    Write-Host "🌐 Local URL: http://localhost:8080" -ForegroundColor White
+    Write-Host "💡 The browser will open automatically in 3 seconds..." -ForegroundColor Gray
+    Write-Host "----------------------------------------------------" -ForegroundColor Gray
 
-# Start browser in background
-Start-Sleep -Seconds 3
-Start-Process "http://localhost:8080"
+    # Start browser in background
+    Start-Sleep -Seconds 3
+    Start-Process "http://localhost:8080"
 
-# Run Backend
-.\server.exe -server
-
+    # Run Backend Server
+    .\server.exe -server
+}
