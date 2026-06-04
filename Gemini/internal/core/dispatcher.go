@@ -24,6 +24,7 @@ func NewDispatcher(a *Agent) *Dispatcher {
 func (d *Dispatcher) GetTools() []messaging.ToolSchema {
 	return []messaging.ToolSchema{
 		d.newFinancialResearchTool(),
+		d.newTavilySearchTool(),
 		d.newFinancialScrapeTool(),
 		d.newFinancialCalculateTool(),
 		d.newHandoffRequestTool(),
@@ -50,8 +51,12 @@ func (d *Dispatcher) resolveToolCallResult(toolCall *messaging.ToolCall) string 
 	switch toolCall.Name {
 	case "financial_research":
 		query, _ := toolCall.Args["query"].(string)
-		api.BroadcastLog(fmt.Sprintf("Tra cứu dữ liệu: %s", query), "tool")
+		api.BroadcastLog(fmt.Sprintf("Tra cứu dữ liệu (Google): %s", query), "tool")
 		return d.handleFinancialResearchTool(toolCall.Args)
+	case "tavily_search":
+		query, _ := toolCall.Args["query"].(string)
+		api.BroadcastLog(fmt.Sprintf("Tra cứu dữ liệu (Tavily): %s", query), "tool")
+		return d.handleTavilySearchTool(toolCall.Args)
 	case "financial_scrape":
 		url, _ := toolCall.Args["url"].(string)
 		api.BroadcastLog(fmt.Sprintf("Đang đọc nội dung từ: %s", url), "tool")
@@ -87,15 +92,40 @@ func (d *Dispatcher) handleFinancialResearchTool(args map[string]interface{}) st
 
 	// Simple cache để tránh gọi lại cùng query nhiều lần (rất hay xảy ra trong ReAct loop)
 	key := strings.ToLower(strings.TrimSpace(searchQuery))
-	if cached, ok := d.researchCache[key]; ok && cached != "" {
+	if cached, ok := d.researchCache["google_"+key]; ok && cached != "" {
 		fmt.Printf("💾 [Cache] Dùng kết quả research đã cache cho: %s\n", searchQuery)
 		api.BroadcastLog("Dùng kết quả tìm kiếm từ cache (tiết kiệm quota)", "success")
 		return cached
 	}
 
+	result := tools.SearchGoogle(searchQuery)
+	if result != "" && !strings.HasPrefix(result, "Lỗi") && !strings.HasPrefix(result, "Error") {
+		d.researchCache["google_"+key] = result
+	}
+	return result
+}
+
+func (d *Dispatcher) handleTavilySearchTool(args map[string]interface{}) string {
+	query, ok := args["query"].(string)
+	if !ok {
+		return "Error: Missing query parameter"
+	}
+
+	searchQuery := query
+	if tools.NeedsRealtimeData(d.agent.userInput) {
+		searchQuery = tools.BuildMarketQueryPlan(d.agent.userInput).SearchQuery
+	}
+
+	key := strings.ToLower(strings.TrimSpace(searchQuery))
+	if cached, ok := d.researchCache["tavily_"+key]; ok && cached != "" {
+		fmt.Printf("💾 [Cache] Dùng kết quả research đã cache (Tavily) cho: %s\n", searchQuery)
+		api.BroadcastLog("Dùng kết quả tìm kiếm Tavily từ cache (tiết kiệm quota)", "success")
+		return cached
+	}
+
 	result := tools.SearchTavily(searchQuery)
 	if result != "" && !strings.HasPrefix(result, "Lỗi") && !strings.HasPrefix(result, "Error") {
-		d.researchCache[key] = result
+		d.researchCache["tavily_"+key] = result
 	}
 	return result
 }
@@ -130,7 +160,21 @@ func (d *Dispatcher) appendFunctionResponse(toolCall *messaging.ToolCall, result
 func (d *Dispatcher) newFinancialResearchTool() messaging.ToolSchema {
 	return messaging.ToolSchema{
 		Name:        "financial_research",
-		Description: "Truy vấn dữ liệu thị trường thực tế (tương đương MCP Data Connectors).",
+		Description: "Truy vấn dữ liệu thị trường thực tế bằng Google Search (tương đương MCP Data Connectors).",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"query": map[string]interface{}{"type": "string", "description": "Từ khóa hoặc mã chứng khoán cần tra cứu"},
+			},
+			"required": []string{"query"},
+		},
+	}
+}
+
+func (d *Dispatcher) newTavilySearchTool() messaging.ToolSchema {
+	return messaging.ToolSchema{
+		Name:        "tavily_search",
+		Description: "Truy vấn dữ liệu thị trường thực tế bằng Tavily Search (phù hợp để tìm thông tin tài chính chuyên sâu, câu trả lời trực tiếp).",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{

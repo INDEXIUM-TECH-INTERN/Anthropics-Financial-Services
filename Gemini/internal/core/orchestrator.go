@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	"gemini-cli/internal/api"
 	"gemini-cli/internal/models/messaging"
@@ -169,8 +170,31 @@ func (o *Orchestrator) buildBootstrapContextInternal(route RoutePlan) []string {
 	if tools.NeedsRealtimeData(o.agent.userInput) {
 		api.BroadcastLog("Phát hiện nhu cầu dữ liệu Real-time. Đang tìm kiếm...", "process")
 		queryPlan := tools.BuildMarketQueryPlan(o.agent.userInput)
-		realtimeResult := tools.SearchTavily(queryPlan.SearchQuery)
-		contextParts = append(contextParts, fmt.Sprintf("REAL-TIME MARKET DATA\n%s", realtimeResult))
+		
+		var googleResult, tavilyResult string
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			googleResult = tools.SearchGoogle(queryPlan.SearchQuery)
+		}()
+		go func() {
+			defer wg.Done()
+			tavilyResult = tools.SearchTavily(queryPlan.SearchQuery)
+		}()
+		wg.Wait()
+
+		var combinedResults []string
+		if googleResult != "" && !strings.HasPrefix(googleResult, "Lỗi") && !strings.HasPrefix(googleResult, "Error") {
+			combinedResults = append(combinedResults, "--- TỪ GOOGLE SEARCH ---\n"+googleResult)
+		}
+		if tavilyResult != "" && !strings.HasPrefix(tavilyResult, "Lỗi") && !strings.HasPrefix(tavilyResult, "Error") {
+			combinedResults = append(combinedResults, "--- TỪ TAVILY SEARCH ---\n"+tavilyResult)
+		}
+
+		if len(combinedResults) > 0 {
+			contextParts = append(contextParts, fmt.Sprintf("REAL-TIME MARKET DATA\n%s", strings.Join(combinedResults, "\n\n")))
+		}
 	}
 
 	contextParts = append(contextParts, utils.LoadPrompt("bootstrap_context_suffix.txt"))
