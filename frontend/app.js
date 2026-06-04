@@ -1,4 +1,17 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // Configure marked to open links in new tab
+    const renderer = new marked.Renderer();
+    const linkRenderer = renderer.link;
+    renderer.link = (href, title, text) => {
+        const localLink = href.startsWith(`${window.location.protocol}//${window.location.host}`) || href.startsWith('/') || href.startsWith('#');
+        const html = linkRenderer.call(renderer, href, title, text);
+        if (!localLink) {
+            return html.replace(/^<a /, '<a target="_blank" rel="noopener noreferrer" ');
+        }
+        return html;
+    };
+    marked.setOptions({ renderer });
+
     const chatInput = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-btn');
     const chatHistory = document.getElementById('chat-history');
@@ -598,7 +611,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <i data-lucide="file-text" style="width: 12px; height: 12px; color: var(--primary);"></i>
                         <span style="color: var(--on-surface-variant); font-size: 11px; font-weight: 700;">SOURCE [${index+1}]</span>
                     </div>
-                    <a href="${url}" target="_blank">${domain}</a>
+                    <a href="${url}" target="_blank" rel="noopener noreferrer">${domain}</a>
                 `;
                 sourcesList.appendChild(card);
             });
@@ -618,7 +631,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 card.className = 'inline-source-card';
                 card.innerHTML = `
                     <div class="source-index">${index+1}</div>
-                    <a href="${url}" target="_blank" class="source-link">${domain}</a>
+                    <a href="${url}" target="_blank" rel="noopener noreferrer" class="source-link">${domain}</a>
                 `;
                 grid.appendChild(card);
             });
@@ -738,8 +751,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             botMsgDiv.classList.remove('loading');
 
             if (data.error) {
-                contentDiv.textContent = `❌ Lỗi: ${data.error}`;
+                botMsgDiv.classList.add('error-message');
+                contentDiv.innerHTML = `
+                    <div class="error-container">
+                        <div class="error-header"><i data-lucide="alert-octagon"></i> LỖI HỆ THỐNG</div>
+                        <div class="error-body"></div>
+                        <div class="error-footer">Vui lòng kiểm tra lại cấu hình API Key hoặc thử lại sau ít phút.</div>
+                    </div>
+                `;
+                contentDiv.querySelector('.error-body').textContent = data.error;
                 footer.innerHTML = `<span class="timer" style="color:var(--danger)">Thất bại sau ${finalDuration}s</span>`;
+                if (window.lucide) lucide.createIcons();
                 return false;
             } else {
                 contentDiv.innerHTML = marked.parse(data.reply);
@@ -801,9 +823,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (error) {
             clearInterval(timerInterval);
             clearTimeout(timeoutId);
-            const errText = error.name === 'AbortError' ? "❌ Lỗi: Yêu cầu quá thời gian phản hồi (300s)" : "❌ Lỗi: Không thể kết nối server.";
-            botMsgDiv.querySelector('.msg-content').textContent = errText;
+            const errorMsg = error.name === 'AbortError' ? "Yêu cầu quá thời gian phản hồi (300s). Hệ thống Agent đang xử lý quá nhiều dữ liệu hoặc Server phản hồi chậm." : "Không thể kết nối đến máy chủ Backend. Vui lòng kiểm tra kết nối mạng hoặc trạng thái Server.";
+            
+            botMsgDiv.classList.add('error-message');
+            botMsgDiv.querySelector('.msg-content').innerHTML = `
+                <div class="error-container">
+                    <div class="error-header"><i data-lucide="wifi-off"></i> LỖI KẾT NỐI</div>
+                    <div class="error-body"></div>
+                </div>
+            `;
+            botMsgDiv.querySelector('.error-body').textContent = errorMsg;
+
             footer.innerHTML = `<span class="timer" style="color:var(--danger)">Lỗi kết nối</span>`;
+            if (window.lucide) lucide.createIcons();
             return false;
         } finally {
             sendBtn.disabled = false;

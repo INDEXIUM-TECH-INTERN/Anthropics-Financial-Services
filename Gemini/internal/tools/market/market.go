@@ -145,7 +145,7 @@ func BuildMarketQueryPlan(query string) MarketQueryPlan {
 
 	if explicitDate, ok := extractExplicitDate(normalized); ok {
 		return MarketQueryPlan{
-			SearchQuery: fmt.Sprintf("%s HOSE%s", normalized, tickerHint),
+			SearchQuery: fmt.Sprintf("%s báo cáo tài chính chi tiết ngày %s HOSE%s", normalized, explicitDate, tickerHint),
 			TimeNote:    fmt.Sprintf("Yêu cầu đã chỉ rõ ngày cụ thể: %s.", explicitDate),
 		}
 	}
@@ -153,14 +153,14 @@ func BuildMarketQueryPlan(query string) MarketQueryPlan {
 	if resolvedDate, label, ok := resolveTemporalReference(normalized, now); ok {
 		dateStr := resolvedDate.Format("02/01/2006")
 		return MarketQueryPlan{
-			SearchQuery: fmt.Sprintf("%s ngày %s HOSE%s", normalized, dateStr, tickerHint),
+			SearchQuery: fmt.Sprintf("%s tin tức báo cáo chi tiết ngày %s HOSE%s", normalized, dateStr, tickerHint),
 			TimeNote:    fmt.Sprintf("Yêu cầu thời gian đã được resolve: %s = %s (%s).", label, utils.TranslateWeekday(resolvedDate.Weekday()), dateStr),
 		}
 	}
 
 	dateStr := now.Format("02/01/2006")
 	return MarketQueryPlan{
-		SearchQuery: fmt.Sprintf("%s %s phiên gần nhất HOSE%s", normalized, dateStr, tickerHint),
+		SearchQuery: fmt.Sprintf("%s tin tức báo cáo chi tiết mới nhất %s HOSE%s", normalized, dateStr, tickerHint),
 		TimeNote:    fmt.Sprintf("Yêu cầu dùng dữ liệu mới nhất tính đến thời điểm hiện tại: %s (%s).", utils.TranslateWeekday(now.Weekday()), dateStr),
 	}
 }

@@ -91,7 +91,7 @@ func (m *MultiProvider) tryFallbacksOnlyText(systemPrompt, userPrompt string) (s
 		fmt.Printf("⚠️ [Fallback] Fallback #%d error: %v\n", activeIdx+1, lastErr)
 	}
 
-	return "", fmt.Errorf("all %d fallbacks failed: %v", numFallbacks, lastErr)
+	return "", fmt.Errorf("Tất cả các dịch vụ (Primary & %d Fallbacks) đều gặp lỗi hoặc hết hạn mức (Quota). Lỗi cuối cùng: %v", numFallbacks, lastErr)
 }
 
 func (m *MultiProvider) Generate(ctx context.Context, req messaging.Request) (messaging.Message, error) {
@@ -145,7 +145,7 @@ func (m *MultiProvider) Generate(ctx context.Context, req messaging.Request) (me
 func (m *MultiProvider) tryFallbacksOnly(ctx context.Context, req messaging.Request) (messaging.Message, error) {
 	numFallbacks := len(m.fallbacks)
 	if numFallbacks == 0 {
-		return messaging.Message{}, fmt.Errorf("no fallbacks configured")
+		return messaging.Message{}, fmt.Errorf("Dịch vụ chính gặp lỗi và không có dịch vụ dự phòng")
 	}
 
 	var lastErr error
@@ -175,7 +175,7 @@ func (m *MultiProvider) tryFallbacksOnly(ctx context.Context, req messaging.Requ
 		fmt.Printf("⚠️ [Fallback] Fallback #%d error: %v\n", activeIdx+1, err)
 	}
 
-	return messaging.Message{}, fmt.Errorf("all %d fallbacks failed: %v", numFallbacks, lastErr)
+	return messaging.Message{}, fmt.Errorf("Tất cả các dịch vụ (%d dự phòng) đều thất bại. Có thể do hết hạn mức (Quota) hoặc sự cố kết nối. Lỗi cuối cùng: %v", numFallbacks, lastErr)
 }
 
 func isQuotaOrRateLimitError(err error) bool {
