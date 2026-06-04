@@ -1,4 +1,4 @@
-# run-server.ps1 - Unified launcher for Indexium Financial AI (Frontend + Backend)
+﻿# run-server.ps1 - Unified launcher for Indexium Financial AI (Frontend + Backend)
 # Usage:  .\run-server.ps1 [-Query "your query"]
 #         .\run-server.ps1 (starts backend server & UI browser)
 
@@ -11,7 +11,7 @@ $RootPath = $PSScriptRoot
 $GeminiPath = Join-Path $RootPath "Gemini"
 
 if (-not (Test-Path $GeminiPath)) {
-    Write-Host "❌ Error: Gemini directory not found at $GeminiPath" -ForegroundColor Red
+    Write-Host "[Error] Gemini directory not found at $GeminiPath" -ForegroundColor Red
     exit 1
 }
 
@@ -26,7 +26,7 @@ Write-Host "Working Directory: $GeminiPath" -ForegroundColor Gray
 
 # 1. Check for Go
 if (-not (Get-Command "go" -ErrorAction SilentlyContinue)) {
-    Write-Host "❌ Error: Go is not installed or not in PATH." -ForegroundColor Red
+    Write-Host "[Error] Go is not installed or not in PATH." -ForegroundColor Red
     Write-Host "Please install Go from https://go.dev/dl/ before running." -ForegroundColor Yellow
     exit 1
 }
@@ -34,14 +34,14 @@ if (-not (Get-Command "go" -ErrorAction SilentlyContinue)) {
 # 2. Check for .env
 if (-not (Test-Path '.env')) {
     if (Test-Path '.env.example') {
-        Write-Host "⚠️  No .env found. Copying from .env.example ..." -ForegroundColor Yellow
+        Write-Host "[Warning] No .env found. Copying from .env.example ..." -ForegroundColor Yellow
         Copy-Item '.env.example' '.env'
-        Write-Host "📝 Please EDIT the .env file and add your real API keys before continuing." -ForegroundColor Yellow
+        Write-Host "[Info] Please EDIT the .env file and add your real API keys before continuing." -ForegroundColor Yellow
         notepad '.env'
         Write-Host "After saving .env, re-run this script." -ForegroundColor Yellow
         exit 0
     } else {
-        Write-Host "❌ Error: .env or .env.example not found in $GeminiPath" -ForegroundColor Red
+        Write-Host "[Error] .env or .env.example not found in $GeminiPath" -ForegroundColor Red
         exit 1
     }
 }
@@ -63,29 +63,29 @@ $port = if ($parts.Length -gt 1) { [int]$parts[1] } else { 6379 }
 try {
     $wait = $tcpClient.ConnectAsync($redisHost, $port)
     if (-not $wait.Wait(300)) { throw "Timeout" }
-    Write-Host "✅ [Redis] Detected running on $RedisAddr" -ForegroundColor Gray
+    Write-Host "[Redis] Detected running on $RedisAddr" -ForegroundColor Gray
 } catch {
-    Write-Host "⚠️  [Redis] Not detected. Multi-chat sessions will be in-memory only." -ForegroundColor Yellow
+    Write-Host "[Redis] Not detected. Multi-chat sessions will be in-memory only." -ForegroundColor Yellow
 } finally {
     $tcpClient.Close()
 }
 
-Write-Host "🔨 Building/Verifying Backend Executable..." -ForegroundColor Yellow
+Write-Host "[Build] Building/Verifying Backend Executable..." -ForegroundColor Yellow
 go build -o server.exe cmd/gemini-cli/main.go
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Compilation failed." -ForegroundColor Red
+    Write-Host "[Error] Compilation failed." -ForegroundColor Red
     exit $LASTEXITCODE
 }
-Write-Host "✅ Backend compiled successfully." -ForegroundColor Green
+Write-Host "[Success] Backend compiled successfully." -ForegroundColor Green
 
 if ($Query) {
     Write-Host "Running one-shot query: $Query" -ForegroundColor Green
     .\server.exe $Query
 } else {
     Write-Host ""
-    Write-Host "🚀 Starting Backend Server & Serving Frontend..." -ForegroundColor Green
-    Write-Host "🌐 Local URL: http://localhost:8080" -ForegroundColor White
-    Write-Host "💡 The browser will open automatically in 3 seconds..." -ForegroundColor Gray
+    Write-Host "[Start] Starting Backend Server and Serving Frontend..." -ForegroundColor Green
+    Write-Host "[URL] Local URL: http://localhost:8080" -ForegroundColor White
+    Write-Host "[Tip] The browser will open automatically in 3 seconds..." -ForegroundColor Gray
     Write-Host "----------------------------------------------------" -ForegroundColor Gray
 
     # Start browser in background
