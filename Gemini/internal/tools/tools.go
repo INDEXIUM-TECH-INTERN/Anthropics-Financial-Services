@@ -13,6 +13,10 @@ import (
 type MarketQueryPlan = market.MarketQueryPlan
 type LoadedDocument = registry.LoadedDocument
 
+func SearchTavily(query string) string {
+	return market.SearchTavily(query)
+}
+
 func SearchGoogle(query string) string {
 	return market.SearchGoogle(query)
 }

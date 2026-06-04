@@ -93,7 +93,7 @@ func (d *Dispatcher) handleFinancialResearchTool(args map[string]interface{}) st
 		return cached
 	}
 
-	result := tools.SearchGoogle(searchQuery)
+	result := tools.SearchTavily(searchQuery)
 	if result != "" && !strings.HasPrefix(result, "Lỗi") && !strings.HasPrefix(result, "Error") {
 		d.researchCache[key] = result
 	}

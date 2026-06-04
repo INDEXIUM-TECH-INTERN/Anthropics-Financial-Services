@@ -169,7 +169,7 @@ func (o *Orchestrator) buildBootstrapContextInternal(route RoutePlan) []string {
 	if tools.NeedsRealtimeData(o.agent.userInput) {
 		api.BroadcastLog("Phát hiện nhu cầu dữ liệu Real-time. Đang tìm kiếm...", "process")
 		queryPlan := tools.BuildMarketQueryPlan(o.agent.userInput)
-		realtimeResult := tools.SearchGoogle(queryPlan.SearchQuery)
+		realtimeResult := tools.SearchTavily(queryPlan.SearchQuery)
 		contextParts = append(contextParts, fmt.Sprintf("REAL-TIME MARKET DATA\n%s", realtimeResult))
 	}
 

@@ -1,6 +1,7 @@
 package market
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -17,6 +18,83 @@ import (
 type MarketQueryPlan struct {
 	SearchQuery string
 	TimeNote    string
+}
+
+func SearchTavily(query string) string {
+	apiKey := os.Getenv("TAVILY_API_KEY")
+	if apiKey == "" {
+		return "Lỗi: Chưa cấu hình TAVILY_API_KEY."
+	}
+	fmt.Printf("🌐 [Tool] Đang tìm kiếm (Tavily): %s...\n", query)
+	
+	reqBody, _ := json.Marshal(map[string]interface{}{
+		"api_key": apiKey,
+		"query": query,
+		"search_depth": "advanced",
+		"include_answer": true,
+		"include_images": false,
+		"include_raw_content": false,
+		"max_results": 5,
+	})
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	req, err := http.NewRequest("POST", "https://api.tavily.com/search", bytes.NewBuffer(reqBody))
+	if err != nil {
+		return "Lỗi khởi tạo request tìm kiếm."
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "Lỗi kết nối tìm kiếm."
+	}
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(body, &data); err != nil {
+		return "Lỗi giải mã kết quả tìm kiếm."
+	}
+
+	var sections []string
+
+	if answer, ok := data["answer"].(string); ok && answer != "" {
+		sections = append(sections, "Tavily Answer:\n"+answer)
+	}
+
+	if results, ok := data["results"].([]interface{}); ok {
+		var lines []string
+		for _, res := range results {
+			r, ok := res.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			title := strings.TrimSpace(fmt.Sprintf("%v", r["title"]))
+			if title == "" || title == "<nil>" {
+				continue
+			}
+			content := strings.TrimSpace(fmt.Sprintf("%v", r["content"]))
+			if len(content) > 300 {
+				content = content[:300] + "..."
+			}
+			link := strings.TrimSpace(fmt.Sprintf("%v", r["url"]))
+
+			line := fmt.Sprintf("- %s [URL: %s]", title, link)
+			if content != "" && content != "<nil>" {
+				line += fmt.Sprintf(": %s", content)
+			}
+			lines = append(lines, line)
+		}
+		if len(lines) > 0 {
+			sections = append(sections, "Search Results:\n"+strings.Join(lines, "\n"))
+		}
+	}
+
+	if len(sections) == 0 {
+		return "Không tìm thấy thông tin hữu ích từ Tavily."
+	}
+
+	return strings.Join(sections, "\n\n")
 }
 
 func SearchGoogle(query string) string {
