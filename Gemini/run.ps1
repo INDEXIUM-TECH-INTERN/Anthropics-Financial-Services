@@ -1,4 +1,4 @@
-﻿# run.ps1 - Helper to start the Indexium Financial AI Agent (Gemini)
+# run.ps1 - Helper to start the Indexium Financial AI Agent (Gemini)
 # Usage:  Right-click -> Run with PowerShell, or .\run.ps1
 
 param(
@@ -56,9 +56,17 @@ try {
     $tcpClient.Close()
 }
 
+Write-Host "🔨 Building/Verifying Backend Executable..." -ForegroundColor Yellow
+go build -o server.exe cmd/gemini-cli/main.go
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "❌ Compilation failed." -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+Write-Host "✅ Backend compiled successfully." -ForegroundColor Green
+
 if ($Query) {
     Write-Host "Running one-shot query: $Query" -ForegroundColor Green
-    go run cmd/gemini-cli/main.go $Query
+    .\server.exe $Query
 } else {
     Write-Host ""
     Write-Host "🚀 Starting Backend Server & Serving Frontend..." -ForegroundColor Green
@@ -68,6 +76,7 @@ if ($Query) {
     Start-Sleep -Seconds 2
     Start-Process "http://localhost:8080"
     
-    go run cmd/gemini-cli/main.go -server
+    .\server.exe -server
 }
+
 

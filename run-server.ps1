@@ -64,6 +64,14 @@ try {
     $tcpClient.Close()
 }
 
+Write-Host "🔨 Building/Verifying Backend Executable..." -ForegroundColor Yellow
+go build -o server.exe cmd/gemini-cli/main.go
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "❌ Compilation failed." -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+Write-Host "✅ Backend compiled successfully." -ForegroundColor Green
+
 Write-Host ""
 Write-Host "🚀 Starting Backend Server & Serving Frontend..." -ForegroundColor Green
 Write-Host "🌐 Local URL: http://localhost:8080" -ForegroundColor White
@@ -75,4 +83,5 @@ Start-Sleep -Seconds 3
 Start-Process "http://localhost:8080"
 
 # Run Backend
-go run cmd/gemini-cli/main.go -server
+.\server.exe -server
+
