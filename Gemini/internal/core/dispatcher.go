@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"strings"
 
 	"gemini-cli/internal/api"
 	"gemini-cli/internal/models/messaging"
@@ -9,11 +10,15 @@ import (
 )
 
 type Dispatcher struct {
-	agent *Agent
+	agent       *Agent
+	researchCache map[string]string // cache query -> result để giảm gọi tool lặp lại (giảm quota)
 }
 
 func NewDispatcher(a *Agent) *Dispatcher {
-	return &Dispatcher{agent: a}
+	return &Dispatcher{
+		agent:         a,
+		researchCache: make(map[string]string),
+	}
 }
 
 func (d *Dispatcher) GetTools() []messaging.ToolSchema {
@@ -79,7 +84,20 @@ func (d *Dispatcher) handleFinancialResearchTool(args map[string]interface{}) st
 	if tools.NeedsRealtimeData(d.agent.userInput) {
 		searchQuery = tools.BuildMarketQueryPlan(d.agent.userInput).SearchQuery
 	}
-	return tools.SearchGoogle(searchQuery)
+
+	// Simple cache để tránh gọi lại cùng query nhiều lần (rất hay xảy ra trong ReAct loop)
+	key := strings.ToLower(strings.TrimSpace(searchQuery))
+	if cached, ok := d.researchCache[key]; ok && cached != "" {
+		fmt.Printf("💾 [Cache] Dùng kết quả research đã cache cho: %s\n", searchQuery)
+		api.BroadcastLog("Dùng kết quả tìm kiếm từ cache (tiết kiệm quota)", "success")
+		return cached
+	}
+
+	result := tools.SearchGoogle(searchQuery)
+	if result != "" && !strings.HasPrefix(result, "Lỗi") && !strings.HasPrefix(result, "Error") {
+		d.researchCache[key] = result
+	}
+	return result
 }
 
 func (d *Dispatcher) handleHandoffTool(args map[string]interface{}) string {

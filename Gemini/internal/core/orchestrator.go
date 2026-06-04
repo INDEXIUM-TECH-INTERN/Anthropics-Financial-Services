@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 
 	"gemini-cli/internal/api"
@@ -128,11 +130,40 @@ func (o *Orchestrator) buildBootstrapContextInternal(route RoutePlan) []string {
 }
 
 func (o *Orchestrator) runConversationLoopInternal() (string, error) {
+	// === Cấu hình Summarization (có thể override bằng biến môi trường) ===
+	keepRecentMessages := getEnvInt("CONTEXT_KEEP_RECENT", 7)
+	maxContextTokens := getEnvInt("CONTEXT_MAX_TOKENS", 92000)
+	maxSummaryChars := getEnvInt("CONTEXT_MAX_SUMMARY_INPUT", 18000)
+
+	// Ghi chú: 92000 an toàn cho hầu hết model 128k. Với Gemini 1M+ có thể tăng lên 300k-500k.
+
 	for {
+		// === BƯỚC 1: KIỂM TRA VÀ TÓM TẮT NGỮ CẢNH NẾU CẦN (ngoài lock) ===
+		o.agent.mu.Lock()
+		cw := o.agent.conversation.ContextWindow
+		needsSummary := cw.ShouldSummarize(maxContextTokens, keepRecentMessages)
+		o.agent.mu.Unlock()
+
+		if needsSummary {
+			api.BroadcastLog("Context window lớn, đang tóm tắt lịch sử cũ...", "process")
+			fmt.Printf("🧠 [Context] Đang tóm tắt %d tin nhắn cũ để tiết kiệm context...\n", len(cw.History)-keepRecentMessages)
+
+			// Gọi tóm tắt (dùng provider hiện tại)
+			_, err := cw.SummarizeOldest(o.agent.provider, keepRecentMessages, maxSummaryChars)
+			if err != nil {
+				fmt.Printf("⚠️ [Context] Tóm tắt thất bại: %v. Tiếp tục với context đầy đủ.\n", err)
+				api.BroadcastLog("Tóm tắt context thất bại, tiếp tục với lịch sử gốc.", "error")
+			} else {
+				api.BroadcastLog("Đã tóm tắt thành công. Context đã được nén.", "success")
+				fmt.Printf("✅ [Context] Đã cập nhật MemorySummary và nén lịch sử.\n")
+			}
+		}
+
+		// === BƯỚC 2: Xây dựng messages gửi cho LLM (dùng phiên bản đã nén) ===
 		o.agent.mu.Lock()
 		systemPrompt := o.agent.systemPrompt
-		history := make([]messaging.Message, len(o.agent.conversation.ContextWindow.History))
-		copy(history, o.agent.conversation.ContextWindow.History)
+		// Dùng BuildLLMHistory thay vì copy toàn bộ
+		condensedHistory := o.agent.conversation.ContextWindow.BuildLLMHistory(keepRecentMessages)
 		tools := o.agent.dispatcher.GetTools()
 		o.agent.mu.Unlock()
 
@@ -143,7 +174,11 @@ func (o *Orchestrator) runConversationLoopInternal() (string, error) {
 				Content: systemPrompt,
 			})
 		}
-		messages = append(messages, history...)
+		messages = append(messages, condensedHistory...)
+
+		// Log kích thước context đang dùng (rất hữu ích)
+		estTokens := utils.EstimateFullPrompt(systemPrompt, extractHistoryTexts(condensedHistory), "tools")
+		fmt.Printf("📏 [Context] Gửi ~%d tokens (gửi %d messages cho LLM: summary + bootstrap + tin gần nhất)\n", estTokens, len(condensedHistory))
 
 		req := messaging.Request{
 			History: messages,
@@ -156,6 +191,7 @@ func (o *Orchestrator) runConversationLoopInternal() (string, error) {
 		}
 
 		o.agent.mu.Lock()
+		// Luôn append vào FULL history (để UI và lịch sử đầy đủ)
 		o.agent.conversation.ContextWindow.History = append(o.agent.conversation.ContextWindow.History, aiMessage)
 		hasToolCall := o.agent.dispatcher.HandleToolCalls(aiMessage)
 
@@ -175,10 +211,31 @@ func (o *Orchestrator) runConversationLoopInternal() (string, error) {
 	}
 }
 
+// extractHistoryTexts hỗ trợ EstimateFullPrompt
+func extractHistoryTexts(msgs []messaging.Message) []string {
+	texts := make([]string, len(msgs))
+	for i, m := range msgs {
+		texts[i] = m.Content
+	}
+	return texts
+}
+
 func (o *Orchestrator) logLoadedDocument(doc tools.LoadedDocument) {
 	fmt.Printf("📎 [Sync] %s: %s (Size: %d chars)\n", strings.ToUpper(doc.DocType), doc.Name, len(doc.Content))
 }
 
 func extractResponseText(aiMessage messaging.Message) string {
 	return aiMessage.Content
+}
+
+// getEnvInt đọc biến môi trường dạng int, fallback nếu không có hoặc lỗi
+func getEnvInt(key string, fallback int) int {
+	val := os.Getenv(key)
+	if val == "" {
+		return fallback
+	}
+	if i, err := strconv.Atoi(val); err == nil {
+		return i
+	}
+	return fallback
 }

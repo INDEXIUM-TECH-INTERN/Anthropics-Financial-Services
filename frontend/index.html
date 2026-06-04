@@ -25,7 +25,7 @@
                 <div class="rail-action active" title="Không gian Trò chuyện">
                     <i data-lucide="message-square"></i>
                 </div>
-                <div class="rail-action" title="Báo cáo & Tài liệu">
+                <div class="rail-action" id="all-chats-btn" title="Tất cả đoạn chat (click để xem/switch)">
                     <i data-lucide="folder-kanban"></i>
                 </div>
             </div>
@@ -68,13 +68,13 @@
                         <p>Hệ thống hỗ trợ phân tích kết quả kinh doanh chuyên sâu, so sánh các chỉ số tài chính ngân hàng và tự động hóa quy trình phân tích báo cáo tài chính.</p>
                     </div>
                     <div class="discovery-chips">
-                        <button class="chip" onclick="quickAsk('So sánh tổng tài sản HDB và ACB trong 3 năm gần đây')">
+                        <button class="chip" data-quick="So sánh tổng tài sản HDB và ACB trong 3 năm gần đây">
                             <i data-lucide="git-compare"></i> So sánh tổng tài sản
                         </button>
-                        <button class="chip" onclick="quickAsk('Chi phí dự phòng rủi ro tín dụng của HDB năm 2024')">
+                        <button class="chip" data-quick="Chi phí dự phòng rủi ro tín dụng của HDB năm 2024">
                             <i data-lucide="shield-alert"></i> Chi phí dự phòng HDB
                         </button>
-                        <button class="chip" onclick="quickAsk('Tổng quát ngành ngân hàng năm 2025')">
+                        <button class="chip" data-quick="Tổng quát ngành ngân hàng năm 2025">
                             <i data-lucide="trending-up"></i> Triển vọng ngành 2025
                         </button>
                     </div>
@@ -172,12 +172,5 @@
     </div>
 
     <script src="app.js"></script>
-    <script>
-        function quickAsk(text) {
-            document.getElementById('chat-input').value = text;
-            document.getElementById('send-btn').click();
-        }
-        lucide.createIcons();
-    </script>
 </body>
 </html>

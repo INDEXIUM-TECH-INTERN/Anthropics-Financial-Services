@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const chatInput = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-btn');
     const chatHistory = document.getElementById('chat-history');
@@ -52,6 +52,155 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentBackend = 'gemini';
     let currentBaseUrl = backends[currentBackend];
     let eventSource = null;
+
+    // --- Multi-chat sessions backed by Redis (server) ---
+    let allChats = []; // [{id, title, ...} from /api/chats]
+    let currentChatId = null;
+
+    async function fetchChatsFromServer() {
+        try {
+            const res = await fetch(`${currentBaseUrl}/api/chats`);
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            allChats = data.chats || data || [];
+            return allChats;
+        } catch (e) {
+            console.warn('[UI] fetch /api/chats failed, falling back to empty', e);
+            allChats = [];
+            return [];
+        }
+    }
+
+    async function createNewChatOnServer(title = 'Cuộc trò chuyện mới') {
+        try {
+            const res = await fetch(`${currentBaseUrl}/api/chats`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title })
+            });
+            if (!res.ok) throw new Error('create failed');
+            const created = await res.json();
+            allChats.unshift(created);
+            currentChatId = created.id;
+
+            // clear UI for new chat
+            const existing = chatHistory.querySelectorAll('.message');
+            existing.forEach(el => el.remove());
+            if (welcomeSection) welcomeSection.style.display = 'flex';
+
+            logToConsole('Đã tạo đoạn chat mới (lưu Redis).', 'success');
+            return created;
+        } catch (e) {
+            console.error(e);
+            // local fallback
+            const fb = { id: 'local_' + Date.now(), title, messages: [] };
+            allChats.unshift(fb);
+            currentChatId = fb.id;
+            const existing = chatHistory.querySelectorAll('.message');
+            existing.forEach(el => el.remove());
+            if (welcomeSection) welcomeSection.style.display = 'flex';
+            return fb;
+        }
+    }
+
+    async function switchToChat(chatId) {
+        currentChatId = chatId;
+        const chatMeta = allChats.find(c => c.id === chatId);
+
+        // clear UI
+        const existing = chatHistory.querySelectorAll('.message');
+        existing.forEach(el => el.remove());
+
+        // Fetch full history for this chat_id from Redis via server for immediate display
+        try {
+            const res = await fetch(`${currentBaseUrl}/api/history?chat_id=${encodeURIComponent(chatId)}`);
+            if (res.ok) {
+                const data = await res.json();
+                const hist = data.history || [];
+                let hasContent = false;
+                hist.forEach(h => {
+                    const role = String(h.role || h.Role || '').toLowerCase();
+                    if (role === 'tool') return;
+                    let text = h.content || h.Content || '';
+                    if (!text || text.length > 4000 ||
+                        text.includes('ANTHROPIC AGENT CONFIG') ||
+                        text.includes('SKILL MARKDOWN') ||
+                        text.includes('=== TÓM TẮT NGỮ CẢNH')) {
+                        return;
+                    }
+                    const sender = (role === 'user') ? 'user' : 'bot';
+                    addMessage(text, sender);
+                    hasContent = true;
+                });
+                if (hasContent) {
+                    if (welcomeSection) welcomeSection.style.display = 'none';
+                    chatHistory.scrollTop = chatHistory.scrollHeight;
+                    return;
+                }
+            }
+        } catch (e) {
+            console.warn('Failed to fetch history for switch', e);
+        }
+
+        if (welcomeSection) welcomeSection.style.display = 'flex';
+
+        logToConsole(`Đã chuyển sang đoạn chat: ${chatMeta ? chatMeta.title : chatId}`, 'info');
+    }
+
+    function getCurrentChat() {
+        if (!currentChatId) return null;
+        return allChats.find(c => c.id === currentChatId);
+    }
+
+    // Load and render chat segments from server (source of truth for current session)
+    // This makes F5 / refresh restore the "đoạn chat" from backend history
+    async function loadAndRenderHistoryFromServer() {
+        try {
+            const res = await fetch(`${currentBaseUrl}/api/history`);
+            if (!res.ok) return;
+            const data = await res.json();
+            const hist = data.history || data.History || [];
+            if (!Array.isArray(hist) || hist.length === 0) return;
+
+            const current = getCurrentChat();
+            if (!current) return;
+
+            // Remove any existing message bubbles (keep welcome for now)
+            const existing = chatHistory.querySelectorAll('.message');
+            existing.forEach(el => el.remove());
+
+            let hasVisible = false;
+            hist.forEach(h => {
+                const role = String(h.role || h.Role || '').toLowerCase();
+                if (role === 'tool') return; // internal, don't show in main chat
+
+                let text = h.content || h.Content || '';
+                // Skip internal bootstrap / huge context injections
+                if (!text || text.length > 4000 || 
+                    text.includes('ANTHROPIC AGENT CONFIG') || 
+                    text.includes('SKILL MARKDOWN') ||
+                    text.includes('=== TÓM TẮT NGỮ CẢNH')) {
+                    return;
+                }
+
+                const sender = (role === 'user') ? 'user' : 'bot';
+                addMessage(text, sender);
+                hasVisible = true;
+
+                // add to current chat
+                current.messages.push({sender, text});
+            });
+
+            if (hasVisible) {
+                if (welcomeSection) welcomeSection.style.display = 'none';
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            }
+
+            console.log('[UI] Restored', hist.length, 'history items from server into current chat');
+        } catch (e) {
+            console.warn('[UI] Could not load history from server:', e);
+        }
+    }
 
     function setupEventSource() {
         if (eventSource) {
@@ -159,13 +308,11 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const resetUrl = `${currentBaseUrl}/api/reset`;
                 const response = await fetch(resetUrl);
-                const data = await response.json();
                 
-                if (response.ok && data.status === 'reset') {
-                    // Clear UI states
-                    chatHistory.innerHTML = '';
-                    chatHistory.appendChild(welcomeSection);
-                    welcomeSection.style.display = 'flex';
+                // FIX: Chỉ cần response.ok (gọi API thành công) là tiến hành reset UI
+                // Không phụ thuộc vào data.status để tránh lỗi không khớp dữ liệu từ Backend
+                if (response.ok) {
+                    await createNewChatOnServer(); // creates on server (Redis) + clears UI
                     
                     sourcesList.innerHTML = '<div class="empty-state">Chưa có tài liệu nào trong ngữ cảnh hiện tại.</div>';
                     consoleLogs.innerHTML = '<div class="pipeline-empty">Sẵn sàng phân tích yêu cầu khi có câu hỏi.</div>';
@@ -176,19 +323,103 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('current-tool').textContent = "Đang chờ câu hỏi...";
                     document.getElementById('current-reason').textContent = "Chưa có dữ liệu phân tích";
                     
-                    logToConsole('Reset cuộc hội thoại thành công. Hệ thống đã sẵn sàng.', 'success');
-                    alert('Khởi tạo cuộc hội thoại mới thành công!');
+                    logToConsole('Reset cuộc hội thoại thành công (Redis).', 'success');
                 } else {
-                    logToConsole('Reset cuộc hội thoại thất bại.', 'error');
+                    logToConsole('Reset cuộc hội thoại thất bại từ phía server.', 'error');
                 }
             } catch (err) {
-                logToConsole('Không thể kết nối đến server để reset cuộc hội thoại: ' + err.message, 'error');
+                logToConsole('Không thể kết nối đến server để reset cuộc hội thoại. Đang ép reset giao diện cục bộ.', 'warning');
+                
+                // FIX (Fallback): Ép reset giao diện ngay cả khi mất kết nối mạng để user không bị kẹt
+                await createNewChatOnServer();
             }
         });
     }
 
     // Initial setup
     setupEventSource();
+
+    // Wire the "Tất cả đoạn chat" button (folder-kanban)
+    const allChatsBtn = document.getElementById('all-chats-btn');
+    if (allChatsBtn) {
+        allChatsBtn.addEventListener('click', async () => {
+            await showAllChatsList();
+        });
+    }
+
+    async function showAllChatsList() {
+        // refresh list from server (Redis)
+        await fetchChatsFromServer();
+
+        const listDiv = document.createElement('div');
+        listDiv.style.cssText = `
+            position: fixed; top: 60px; left: 70px; z-index: 9999;
+            background: var(--bg-surface, #1f2937); color: var(--on-surface, #fff);
+            border: 1px solid var(--outline, #374151); border-radius: 8px;
+            padding: 8px; min-width: 280px; max-height: 340px; overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            font-size: 14px;
+        `;
+        listDiv.innerHTML = `<div style="padding: 6px 10px; font-weight: 600; border-bottom: 1px solid var(--outline);">Tất cả đoạn chat (Redis)</div>`;
+
+        if (allChats.length === 0) {
+            const empty = document.createElement('div');
+            empty.style.padding = '12px 10px';
+            empty.textContent = 'Chưa có đoạn chat nào.';
+            listDiv.appendChild(empty);
+        } else {
+            allChats.forEach(chat => {
+                const item = document.createElement('div');
+                item.style.cssText = 'padding: 8px 10px; cursor: pointer; border-radius: 4px; margin: 2px 0;';
+                const isCurrent = chat.id === currentChatId;
+                item.innerHTML = `
+                    <div style="font-weight:${isCurrent ? '600' : '500'};">${chat.title} ${isCurrent ? '(đang mở)' : ''}</div>
+                    <div style="font-size:11px; opacity:0.7;">${(chat.messages && chat.messages.length) || 0} tin nhắn</div>
+                `;
+                if (isCurrent) {
+                    item.style.background = 'rgba(255,255,255,0.1)';
+                }
+                item.onclick = async () => {
+                    await switchToChat(chat.id);
+                    document.body.removeChild(listDiv);
+                };
+                item.onmouseover = () => { if (!isCurrent) item.style.background = 'rgba(255,255,255,0.08)'; };
+                item.onmouseout = () => { if (!isCurrent) item.style.background = ''; };
+                listDiv.appendChild(item);
+            });
+        }
+
+        // New chat button in the list
+        const newItem = document.createElement('div');
+        newItem.style.cssText = 'padding: 8px 10px; cursor: pointer; border-top: 1px solid var(--outline); margin-top: 4px; font-weight:500;';
+        newItem.textContent = '+ Tạo đoạn chat mới';
+        newItem.onclick = async () => {
+            await createNewChatOnServer();
+            document.body.removeChild(listDiv);
+        };
+        listDiv.appendChild(newItem);
+
+        // Close when clicking outside
+        const closeHandler = (ev) => {
+            if (!listDiv.contains(ev.target)) {
+                if (listDiv.parentNode) listDiv.parentNode.removeChild(listDiv);
+                document.removeEventListener('click', closeHandler, true);
+            }
+        };
+        setTimeout(() => document.addEventListener('click', closeHandler, true), 10);
+
+        // Also close button for convenience
+        const closeBtn = document.createElement('div');
+        closeBtn.textContent = '✕ Đóng';
+        closeBtn.style.cssText = 'padding:4px 8px; cursor:pointer; text-align:right; font-size:12px; opacity:0.7;';
+        closeBtn.onclick = () => {
+            if (listDiv.parentNode) listDiv.parentNode.removeChild(listDiv);
+            document.removeEventListener('click', closeHandler, true);
+        };
+        listDiv.appendChild(closeBtn);
+
+        document.body.appendChild(listDiv);
+    }
 
     const testQueries = [
         "Tổng tài sản của HDB trong 10 năm qua thay đổi thế nào?",
@@ -400,6 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function addMessage(text, sender, isLoading = false) {
+        console.log('[UI] Creating chat segment:', sender, text ? text.substring(0, 50) + '...' : '(loading)');
         const msgDiv = document.createElement('div');
         msgDiv.className = `message ${sender}`;
         
@@ -438,12 +670,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const text = textOverride !== null ? textOverride : chatInput.value.trim();
         if (!text) return false;
 
+        // ensure we have a current chat session (server-backed)
+        if (!getCurrentChat()) {
+            await createNewChatOnServer();
+        }
+
         // Hide welcome section on first query
         if (welcomeSection && welcomeSection.style.display !== 'none') {
             welcomeSection.style.display = 'none';
         }
 
         addMessage(text, 'user');
+
         chatInput.value = '';
         chatInput.style.height = '24px';
         sendBtn.disabled = true;
@@ -480,10 +718,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const apiUrl = `${currentBaseUrl}/api/chat`;
+            const payload = { message: text };
+            if (currentChatId) {
+                payload.chat_id = currentChatId;
+            }
             const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: text }),
+                body: JSON.stringify(payload),
                 signal: controller.signal
             });
             const data = await response.json();
@@ -502,6 +744,8 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 contentDiv.innerHTML = marked.parse(data.reply);
                 renderSources(data.reply, contentDiv);
+                
+                // no local persist needed, server is source of truth
                 
                 // Add copy buttons to code blocks
                 contentDiv.querySelectorAll('pre').forEach(pre => {
@@ -549,12 +793,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
                 if (window.lucide) lucide.createIcons();
+
+                // refresh chat list in background (for title/count updates from server)
+                fetchChatsFromServer().catch(() => {});
                 return true;
             }
         } catch (error) {
             clearInterval(timerInterval);
             clearTimeout(timeoutId);
-            botMsgDiv.querySelector('.msg-content').textContent = error.name === 'AbortError' ? "❌ Lỗi: Yêu cầu quá thời gian phản hồi (300s)" : "❌ Lỗi: Không thể kết nối server.";
+            const errText = error.name === 'AbortError' ? "❌ Lỗi: Yêu cầu quá thời gian phản hồi (300s)" : "❌ Lỗi: Không thể kết nối server.";
+            botMsgDiv.querySelector('.msg-content').textContent = errText;
             footer.innerHTML = `<span class="timer" style="color:var(--danger)">Lỗi kết nối</span>`;
             return false;
         } finally {
@@ -592,4 +840,40 @@ document.addEventListener('DOMContentLoaded', () => {
             sendMessage();
         }
     });
+
+    // Attach quick suggestion chips (data-quick)
+    document.querySelectorAll('.discovery-chips .chip[data-quick]').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const text = chip.getAttribute('data-quick');
+            if (text) {
+                chatInput.value = text;
+                sendMessage();
+            }
+        });
+    });
+
+    // Initialize multi-chat from Redis-backed server on load
+    await fetchChatsFromServer();
+    if (allChats.length === 0) {
+        await createNewChatOnServer('Cuộc trò chuyện đầu tiên');
+    } else {
+        // load the most recent one
+        currentChatId = allChats[0].id;
+        // Messages will be loaded by backend when sending with this chat_id.
+        // Show welcome for a clean start.
+        if (welcomeSection) welcomeSection.style.display = 'flex';
+    }
+
+    // Note: Server history hydration disabled to avoid conflicting with client-side multi-chat sessions.
+    // The /api/history can still be used manually if needed for single-session backend state.
+    // loadAndRenderHistoryFromServer();
+
+    // Ensure input is focusable and ready
+    if (chatInput) {
+        setTimeout(() => chatInput.focus(), 100);
+    }
+
+    if (window.lucide) lucide.createIcons();
+
+    console.log('[UI] Chat interface initialized and ready for interaction. Try typing or clicking a chip.');
 });

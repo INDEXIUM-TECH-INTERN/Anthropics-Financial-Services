@@ -47,11 +47,24 @@ func NewAgent() *Agent {
 		}
 	}
 
+	// Hỗ trợ bypass Gemini khi free tier quota hết hoặc muốn ưu tiên OpenRouter
+	useOnlyOR := os.Getenv("USE_OPENROUTER_ONLY") == "1" || os.Getenv("GEMINI_API_KEY") == "" || os.Getenv("GEMINI_API_KEY") == "disabled"
+
 	a := &Agent{
 		systemPrompt: buildGroundedSystemPrompt(time.Now()),
 		conversation: NewConversation("default"),
 	}
-	a.provider = providers.NewMultiProvider(gemini, orProviders)
+
+	if useOnlyOR && len(orProviders) > 0 {
+		fmt.Println("🚀 [Config] Sử dụng OpenRouter làm primary (bypass Gemini để tránh quota)")
+		// Dùng OR đầu tiên làm primary, các key còn lại làm fallback
+		primaryOR := orProviders[0]
+		fallbackORs := orProviders[1:]
+		a.provider = providers.NewMultiProvider(primaryOR, fallbackORs)
+	} else {
+		a.provider = providers.NewMultiProvider(gemini, orProviders)
+	}
+
 	a.orchestrator = NewOrchestrator(a)
 	a.dispatcher = NewDispatcher(a)
 
@@ -167,4 +180,12 @@ func (a *Agent) GetHistory() []messaging.Message {
 	cp := make([]messaging.Message, len(a.conversation.ContextWindow.History))
 	copy(cp, a.conversation.ContextWindow.History)
 	return cp
+}
+
+// LoadHistory replaces the current conversation history (used for multi-session support with Redis).
+func (a *Agent) LoadHistory(msgs []messaging.Message) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.conversation.ContextWindow.History = make([]messaging.Message, len(msgs))
+	copy(a.conversation.ContextWindow.History, msgs)
 }

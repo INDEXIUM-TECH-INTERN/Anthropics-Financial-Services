@@ -148,6 +148,12 @@ func fallbackRoutePlan() RoutePlan {
 }
 
 func sanitizeRoutePlan(route RoutePlan, userInput string) RoutePlan {
+	// Bắt buộc phải nằm trong danh sách cho phép (tránh hallucination như "administrative-researcher")
+	if !allowedAgents[route.Agent] {
+		fmt.Printf("⚠️ [Router] Agent '%s' không nằm trong danh sách allowedAgents. Fallback an toàn.\n", route.Agent)
+		return fallbackRoutePlan()
+	}
+
 	// Kiểm tra xem agent có tồn tại trong repo không bằng cách thử nạp metadata
 	agentDoc := tools.LoadDocumentWithMetadata("agent", route.Agent)
 	if strings.HasPrefix(agentDoc.Content, "Lỗi:") {

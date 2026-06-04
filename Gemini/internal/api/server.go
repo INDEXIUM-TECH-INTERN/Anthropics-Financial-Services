@@ -9,17 +9,21 @@ import (
 	"time"
 
 	"gemini-cli/internal/models/messaging"
+	"gemini-cli/internal/redis"
+	"gemini-cli/internal/store"
 )
 
 type AgentInterface interface {
 	Reset()
 	ProcessMessage(string) (string, error)
 	GetHistory() []messaging.Message
+	LoadHistory([]messaging.Message)
 	SetOpenRouterKeys([]string)
 }
 
 type ChatRequest struct {
 	Message string `json:"message"`
+	ChatID  string `json:"chat_id,omitempty"` // for multi-chat / Redis sessions
 }
 
 type Metrics struct {
@@ -48,6 +52,13 @@ func getSystemMetrics() (string, string) {
 }
 
 func StartServer(agent AgentInterface) {
+	// Init Redis for persistent chat sessions (multi-chat support)
+	if err := redis.Init(); err != nil {
+		fmt.Printf("⚠️ [Redis] %v — falling back to in-memory only\n", err)
+	} else {
+		defer redis.Close()
+	}
+
 	mux := http.NewServeMux()
 
 	// API routes
@@ -101,6 +112,53 @@ func StartServer(agent AgentInterface) {
 		json.NewEncoder(w).Encode(map[string]string{"status": "reset"})
 	})
 
+	// === Redis-backed multi-chat session management ===
+	mux.HandleFunc("/api/chats", func(w http.ResponseWriter, r *http.Request) {
+		enableCORS(w)
+		if r.Method == "OPTIONS" {
+			return
+		}
+
+		switch r.Method {
+		case "GET":
+			// List all sessions (lightweight)
+			sessions, err := store.ListSessions()
+			if err != nil {
+				http.Error(w, "failed to list chats", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{"chats": sessions})
+
+		case "POST":
+			// Create new session
+			var payload struct {
+				Title string `json:"title"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&payload)
+
+			title := payload.Title
+			if title == "" {
+				title = "Cuộc trò chuyện mới"
+			}
+
+			sess := &store.ChatSession{
+				ID:       fmt.Sprintf("chat_%d", time.Now().UnixNano()),
+				Title:    title,
+				Messages: []messaging.Message{},
+			}
+			if err := store.SaveSession(sess); err != nil {
+				http.Error(w, "failed to create chat", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(sess)
+
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
 	mux.HandleFunc("/api/chat", func(w http.ResponseWriter, r *http.Request) {
 		enableCORS(w)
 		if r.Method == "OPTIONS" {
@@ -116,7 +174,21 @@ func StartServer(agent AgentInterface) {
 			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
 		}
-		fmt.Printf("📩 [Server] Received message: %s\n", req.Message)
+		fmt.Printf("📩 [Server] Received message: %s (chat_id=%s)\n", req.Message, req.ChatID)
+
+		chatID := req.ChatID
+		if chatID == "" {
+			chatID = "default" // fallback for legacy single-chat clients
+		}
+
+		// Load session history from Redis (or empty)
+		sess, err := store.GetSession(chatID)
+		if err != nil {
+			sess = &store.ChatSession{ID: chatID, Title: "Cuộc trò chuyện mới", Messages: []messaging.Message{}}
+		}
+
+		// Load into agent for this request (multi-session support)
+		agent.LoadHistory(sess.Messages)
 
 		startTime := time.Now()
 		reply, err := agent.ProcessMessage(req.Message)
@@ -131,9 +203,15 @@ func StartServer(agent AgentInterface) {
 			return
 		}
 
+		// Save updated history back to Redis
+		updatedHistory := agent.GetHistory()
+		sess.Messages = updatedHistory
+		sess.Title = generateTitleIfNeeded(sess.Title, req.Message, reply)
+		_ = store.SaveSession(sess)
+
 		resp := ChatResponse{
 			Reply:   reply,
-			History: agent.GetHistory(),
+			History: updatedHistory,
 			Metrics: Metrics{
 				LatencyMs: latency,
 				TokenIn:   len(req.Message) / 4, // Ước tính tạm
@@ -182,6 +260,34 @@ func StartServer(agent AgentInterface) {
 		json.NewEncoder(w).Encode(map[string]string{"status": "success", "message": "OpenRouter keys updated"})
 	})
 
+	// GET current full history (for UI to restore chat segments on refresh/F5)
+	mux.HandleFunc("/api/history", func(w http.ResponseWriter, r *http.Request) {
+		enableCORS(w)
+		if r.Method == "OPTIONS" {
+			return
+		}
+		if r.Method != "GET" {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		chatID := r.URL.Query().Get("chat_id")
+		var history []messaging.Message
+		if chatID != "" {
+			sess, err := store.GetSession(chatID)
+			if err == nil && sess != nil {
+				history = sess.Messages
+			}
+		} else {
+			history = agent.GetHistory()
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"history": history,
+		})
+	})
+
 	server := &http.Server{
 		Addr:        ":8080",
 		Handler:     mux,
@@ -200,4 +306,19 @@ func enableCORS(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+}
+
+// generateTitleIfNeeded creates a nice title from the first user message if still default.
+func generateTitleIfNeeded(currentTitle, userMsg, reply string) string {
+	if currentTitle != "" && currentTitle != "Cuộc trò chuyện mới" {
+		return currentTitle
+	}
+	// simple title from first user message
+	if len(userMsg) > 60 {
+		return userMsg[:57] + "..."
+	}
+	if userMsg != "" {
+		return userMsg
+	}
+	return "Cuộc trò chuyện mới"
 }
