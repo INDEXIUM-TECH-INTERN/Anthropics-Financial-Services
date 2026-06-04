@@ -28,12 +28,20 @@ func (o *Orchestrator) ProcessMessage(userInput string) (string, error) {
 	isNewConversation := len(o.agent.conversation.ContextWindow.History) == 0
 
 	if isNewConversation {
-		api.BroadcastLog("Khởi tạo cuộc hội thoại mới...", "process")
 		if strings.HasPrefix(userInput, "/") {
 			if o.handleSlashCommandInternal(userInput) {
 				// handled
 			}
 		} else {
+			// KIỂM TRA NHANH: Nếu là câu chào hỏi hoặc câu ngắn xã giao -> Bỏ qua Routing nặng nề
+			if isCasualGreeting(userInput) {
+				api.BroadcastLog("Nhận diện ý định xã giao. Đang phản hồi nhanh...", "routing")
+				o.agent.appendUserTextInternal(userInput)
+				o.agent.mu.Unlock()
+				return o.runConversationLoopInternal()
+			}
+
+			api.BroadcastLog("Khởi tạo cuộc hội thoại mới...", "process")
 			o.agent.appendUserTextInternal(userInput)
 			o.agent.mu.Unlock() // Unlock before calling bootstrapContextInternal to avoid deadlock
 			o.bootstrapContextInternal()
@@ -45,6 +53,25 @@ func (o *Orchestrator) ProcessMessage(userInput string) (string, error) {
 	o.agent.mu.Unlock()
 
 	return o.runConversationLoopInternal()
+}
+
+func isCasualGreeting(text string) bool {
+	lower := strings.ToLower(strings.TrimSpace(text))
+	// Loại bỏ dấu câu cơ bản
+	lower = strings.NewReplacer(".", "", "!", "", "?", "", ",", "").Replace(lower)
+	
+	greetings := []string{
+		"hi", "hello", "xin chao", "chao ban", "chao", "hey", "alo", 
+		"tên bạn là gì", "ban la ai", "ai do", "who are you",
+		"giúp tôi", "huong dan", "huong dan su dung",
+	}
+	
+	for _, g := range greetings {
+		if lower == g || strings.HasPrefix(lower, g+" ") {
+			return true
+		}
+	}
+	return len(lower) < 5 // Câu cực ngắn cũng coi là xã giao/cần check thêm
 }
 
 func (o *Orchestrator) handleSlashCommandInternal(input string) bool {
