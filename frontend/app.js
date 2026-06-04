@@ -329,38 +329,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Reset Chat / New Chat handler
     if (newChatBtn) {
         newChatBtn.addEventListener('click', async () => {
-            const confirmReset = confirm("Bạn có chắc chắn muốn xóa lịch sử trò chuyện và bắt đầu cuộc hội thoại mới?");
-            if (!confirmReset) return;
-
-            logToConsole('Đang yêu cầu reset cuộc hội thoại...', 'process');
+            logToConsole('Đang tạo cuộc trò chuyện mới...', 'process');
             
             try {
-                const resetUrl = `${currentBaseUrl}/api/reset`;
-                const response = await fetch(resetUrl);
+                await createNewChatOnServer(); // creates a new session on Redis and clears active UI viewport
                 
-                // FIX: Chỉ cần response.ok (gọi API thành công) là tiến hành reset UI
-                // Không phụ thuộc vào data.status để tránh lỗi không khớp dữ liệu từ Backend
-                if (response.ok) {
-                    await createNewChatOnServer(); // creates on server (Redis) + clears UI
-                    
-                    sourcesList.innerHTML = '<div class="empty-state">Chưa có tài liệu nào trong ngữ cảnh hiện tại.</div>';
-                    consoleLogs.innerHTML = '<div class="pipeline-empty">Sẵn sàng phân tích yêu cầu khi có câu hỏi.</div>';
-                    
-                    // Reset Live Status Board
-                    document.getElementById('current-agent').textContent = "Chưa hoạt động";
-                    document.getElementById('current-skill').textContent = "Chưa nạp";
-                    document.getElementById('current-tool').textContent = "Đang chờ câu hỏi...";
-                    document.getElementById('current-reason').textContent = "Chưa có dữ liệu phân tích";
-                    
-                    logToConsole('Reset cuộc hội thoại thành công (Redis).', 'success');
-                } else {
-                    logToConsole('Reset cuộc hội thoại thất bại từ phía server.', 'error');
-                }
+                sourcesList.innerHTML = '<div class="empty-state">Chưa có tài liệu nào trong ngữ cảnh hiện tại.</div>';
+                consoleLogs.innerHTML = '<div class="pipeline-empty">Sẵn sàng phân tích yêu cầu khi có câu hỏi.</div>';
+                
+                // Reset Live Status Board
+                document.getElementById('current-agent').textContent = "Chưa hoạt động";
+                document.getElementById('current-skill').textContent = "Chưa nạp";
+                document.getElementById('current-tool').textContent = "Đang chờ câu hỏi...";
+                document.getElementById('current-reason').textContent = "Chưa có dữ liệu phân tích";
+                
+                logToConsole('Đã tạo cuộc trò chuyện mới.', 'success');
             } catch (err) {
-                logToConsole('Không thể kết nối đến server để reset cuộc hội thoại. Đang ép reset giao diện cục bộ.', 'warning');
-                
-                // FIX (Fallback): Ép reset giao diện ngay cả khi mất kết nối mạng để user không bị kẹt
-                await createNewChatOnServer();
+                logToConsole('Lỗi khi khởi tạo cuộc trò chuyện mới.', 'error');
             }
         });
     }
