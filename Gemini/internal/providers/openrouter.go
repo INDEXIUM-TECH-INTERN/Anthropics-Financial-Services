@@ -17,11 +17,11 @@ import (
 // Free-tier model fallback chain for OpenRouter
 // When primary model fails, we cycle through these alternatives.
 var openRouterFreeModels = []string{
+	"nvidia/nemotron-3-super-120b-a12b:free",
+	"google/gemini-flash-1.5:free",
 	"meta-llama/llama-3.3-70b-instruct:free",
 	"mistralai/mistral-7b-instruct:free",
-	"google/gemini-2.0-flash-exp:free",
-	"microsoft/mai-ds-r1:free",
-	"deepseek/deepseek-r1-0528:free",
+	"qwen/qwen-2.5-72b-instruct:free",
 }
 
 type OpenRouterProvider struct {

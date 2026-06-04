@@ -14,7 +14,7 @@ var Ctx = context.Background()
 func Init() error {
 	addr := os.Getenv("REDIS_ADDR")
 	if addr == "" {
-		addr = "localhost:6379"
+		addr = "127.0.0.1:6379"
 	}
 	password := os.Getenv("REDIS_PASSWORD")
 	db := 0 // default

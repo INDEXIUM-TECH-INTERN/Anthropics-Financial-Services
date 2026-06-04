@@ -13,49 +13,38 @@ import (
 // --- Các hàm tiện ích ---
 
 func LoadEnv() {
-	exePath, _ := os.Executable()
-	exeDir := filepath.Dir(exePath)
-
-	envPaths := []string{
-		".env",
-		filepath.Join(exeDir, ".env"),
-		filepath.Join(exeDir, "Gemini", ".env"),
-		ResolveProjectPath(".env"),
-		filepath.Join(filepath.Dir(ResolveProjectPath(".")), ".env"),
-	}
-
-	for _, envPath := range envPaths {
-		file, err := os.Open(envPath)
+	envPath := ".env"
+	file, err := os.Open(envPath)
+	if err != nil {
+		// Fallback to absolute path if running from different location but prefer CWD
+		exePath, _ := os.Executable()
+		envPath = filepath.Join(filepath.Dir(exePath), ".env")
+		file, err = os.Open(envPath)
 		if err != nil {
+			return
+		}
+	}
+	defer file.Close()
+
+	fmt.Printf("📂 [Config] Loading environment from: %s\n", envPath)
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		line = strings.TrimPrefix(line, "\ufeff")
+		line = strings.TrimSpace(line)
+
+		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		fmt.Printf("📂 [Config] Loading environment from: %s\n", envPath)
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			val := strings.TrimSpace(parts[1])
+			val = strings.Trim(val, `"'`)
 
-		scanner := bufio.NewScanner(file)
-		found := false
-		for scanner.Scan() {
-			line := scanner.Text()
-			line = strings.TrimPrefix(line, "\ufeff")
-			line = strings.TrimSpace(line)
-
-			if line == "" || strings.HasPrefix(line, "#") {
-				continue
+			if key != "" {
+				os.Setenv(key, val)
 			}
-			parts := strings.SplitN(line, "=", 2)
-			if len(parts) == 2 {
-				key := strings.TrimSpace(parts[0])
-				val := strings.TrimSpace(parts[1])
-				val = strings.Trim(val, `"'`)
-
-				if key != "" {
-					os.Setenv(key, val)
-					found = true
-				}
-			}
-		}
-		file.Close()
-		if found {
-			return
 		}
 	}
 }

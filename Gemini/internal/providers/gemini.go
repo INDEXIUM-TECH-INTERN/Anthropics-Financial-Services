@@ -22,12 +22,13 @@ type GeminiProvider struct {
 func (p *GeminiProvider) Generate(ctx context.Context, req messaging.Request) (messaging.Message, error) {
 	model := strings.TrimSpace(p.Model)
 	if model == "" {
-		model = "gemini-1.5-flash"
+		model = "gemini-2.0-flash" // Updated default for 2026
 	}
 	modelPath := model
 	if !strings.HasPrefix(modelPath, "models/") {
 		modelPath = "models/" + modelPath
 	}
+	// Use v1beta as it supports systemInstruction and tools fields in the JSON payload.
 	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/%s:generateContent", modelPath)
 
 	// Translate messaging.Request to models.GeminiRequest
