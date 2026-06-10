@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -65,7 +64,7 @@ func main() {
 
 func runTests() ([]TestResult, bool) {
 	testCasesPath := resolvePath("Gemini/internal/evaluator/test_cases.json")
-	data, err := ioutil.ReadFile(testCasesPath)
+	data, err := os.ReadFile(testCasesPath)
 	if err != nil {
 		fmt.Printf("Error reading test cases from %s: %v\n", testCasesPath, err)
 		return nil, false
@@ -208,6 +207,6 @@ func runTests() ([]TestResult, bool) {
 func refinePrompt(results []TestResult) {
 	data, _ := json.MarshalIndent(results, "", "  ")
 	testResultsPath := resolvePath("Gemini/internal/evaluator/test_results.json")
-	ioutil.WriteFile(testResultsPath, data, 0644)
+	os.WriteFile(testResultsPath, data, 0644)
 	fmt.Printf("📝 Đã ghi kết quả vào %s. AI đang phân tích...\n", testResultsPath)
 }

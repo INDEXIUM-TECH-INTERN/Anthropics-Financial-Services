@@ -10,9 +10,12 @@ import (
 	"gemini-cli/internal/tools"
 )
 
+const maxCacheEntries = 200 // prevent unbounded memory growth
+
 type Dispatcher struct {
 	agent         *Agent
 	researchCache map[string]string // cache query -> result để giảm gọi tool lặp lại (giảm quota)
+	cacheOrder    []string          // LRU eviction order (oldest first)
 	mu            sync.RWMutex
 }
 
@@ -20,6 +23,17 @@ func NewDispatcher(a *Agent) *Dispatcher {
 	return &Dispatcher{
 		agent:         a,
 		researchCache: make(map[string]string),
+		cacheOrder:    make([]string, 0, maxCacheEntries),
+	}
+}
+
+// evictCacheIfNeeded removes oldest entries when cache exceeds maxCacheEntries.
+// Must be called with d.mu held (write lock).
+func (d *Dispatcher) evictCacheIfNeeded() {
+	for len(d.cacheOrder) > maxCacheEntries {
+		oldest := d.cacheOrder[0]
+		d.cacheOrder = d.cacheOrder[1:]
+		delete(d.researchCache, oldest)
 	}
 }
 
@@ -110,6 +124,8 @@ func (d *Dispatcher) handleFinancialResearchTool(args map[string]interface{}) st
 	if result != "" && !strings.HasPrefix(result, "Lỗi") && !strings.HasPrefix(result, "Error") {
 		d.mu.Lock()
 		d.researchCache["google_"+key] = result
+		d.cacheOrder = append(d.cacheOrder, "google_"+key)
+		d.evictCacheIfNeeded()
 		d.mu.Unlock()
 	}
 	return result
@@ -140,6 +156,8 @@ func (d *Dispatcher) handleTavilySearchTool(args map[string]interface{}) string 
 	if result != "" && !strings.HasPrefix(result, "Lỗi") && !strings.HasPrefix(result, "Error") {
 		d.mu.Lock()
 		d.researchCache["tavily_"+key] = result
+		d.cacheOrder = append(d.cacheOrder, "tavily_"+key)
+		d.evictCacheIfNeeded()
 		d.mu.Unlock()
 	}
 	return result
@@ -154,7 +172,7 @@ func (d *Dispatcher) handleHandoffTool(args map[string]interface{}) string {
 
 	d.agent.handoffPlan = &RoutePlan{
 		Agent:  targetAgent,
-		Skills: []string{guessInitialSkill(targetAgent)},
+		Skills: guessSkillsForAgent(targetAgent),
 		Reason: fmt.Sprintf("Handoff from previous agent: %s. Task: %s", reason, payload),
 	}
 
@@ -259,17 +277,6 @@ func (d *Dispatcher) newLoadContextTool() messaging.ToolSchema {
 	}
 }
 
-func guessInitialSkill(agent string) string {
-	switch agent {
-	case "earnings-reviewer":
-		return "earnings-analysis"
-	case "market-researcher":
-		return "sector-overview"
-	default:
-		return "general-analysis"
-	}
-}
-
 func (d *Dispatcher) handleFinancialScrapeTool(args map[string]interface{}) string {
 	url, ok := args["url"].(string)
 	if !ok {
@@ -290,6 +297,8 @@ func (d *Dispatcher) handleFinancialScrapeTool(args map[string]interface{}) stri
 	if result != "" && !strings.HasPrefix(result, "Lỗi") && !strings.HasPrefix(result, "Error") {
 		d.mu.Lock()
 		d.researchCache["scrape_"+key] = result
+		d.cacheOrder = append(d.cacheOrder, "scrape_"+key)
+		d.evictCacheIfNeeded()
 		d.mu.Unlock()
 	}
 	return result

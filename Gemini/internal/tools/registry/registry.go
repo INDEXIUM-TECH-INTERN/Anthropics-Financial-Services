@@ -2,9 +2,10 @@ package registry
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -16,11 +17,40 @@ type LoadedDocument struct {
 	ContentSize int
 }
 
+// documentCache caches loaded documents to avoid repeated GitHub HTTP calls.
+// Key format: "<docType>:<name>" (e.g., "agent:market-researcher").
+var (
+	documentCache   = make(map[string]LoadedDocument)
+	documentCacheMu sync.RWMutex
+)
+
 func LoadDocument(docType, name string) string {
 	return LoadDocumentWithMetadata(docType, name).Content
 }
 
 func LoadDocumentWithMetadata(docType, name string) LoadedDocument {
+	cacheKey := docType + ":" + name
+
+	// Check cache first (fast path, no network)
+	documentCacheMu.RLock()
+	if cached, ok := documentCache[cacheKey]; ok {
+		documentCacheMu.RUnlock()
+		return cached
+	}
+	documentCacheMu.RUnlock()
+
+	// Slow path: fetch from GitHub
+	doc := fetchDocument(docType, name)
+
+	// Store in cache
+	documentCacheMu.Lock()
+	documentCache[cacheKey] = doc
+	documentCacheMu.Unlock()
+
+	return doc
+}
+
+func fetchDocument(docType, name string) LoadedDocument {
 	repoRawRoot := "https://raw.githubusercontent.com/anthropics/financial-services/main/plugins"
 	docType = strings.ToLower(strings.TrimSpace(docType))
 	name = strings.Trim(strings.TrimSpace(name), "/")
@@ -57,7 +87,7 @@ func LoadDocumentWithMetadata(docType, name string) LoadedDocument {
 		}
 	}
 
-	content, err := ioutil.ReadAll(resp.Body)
+	content, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return LoadedDocument{
 			DocType:   docType,
@@ -90,7 +120,7 @@ func GetRoutingGuide() string {
 		return fmt.Sprintf("Lỗi: Không tải được routing guide từ GitHub (Status: %d).", resp.StatusCode)
 	}
 
-	content, err := ioutil.ReadAll(resp.Body)
+	content, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Sprintf("Lỗi khi đọc routing guide: %v", err)
 	}

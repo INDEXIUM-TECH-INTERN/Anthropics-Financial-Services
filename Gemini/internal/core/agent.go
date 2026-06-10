@@ -22,6 +22,7 @@ type Agent struct {
 	conversation *Conversation
 	orchestrator *Orchestrator
 	dispatcher   *Dispatcher
+	requestMu    sync.Mutex // serialises concurrent HTTP requests using the same agent
 }
 
 func NewAgent() *Agent {
@@ -143,11 +144,13 @@ func (a *Agent) Start() {
 			fmt.Printf("❌ [Lỗi] %v\n", err)
 			continue
 		}
-		_ = reply
+		fmt.Printf("🤖 Agent: %s\n", reply)
 	}
 }
 
 func (a *Agent) ProcessMessage(userInput string) (string, error) {
+	a.requestMu.Lock()
+	defer a.requestMu.Unlock()
 	return a.orchestrator.ProcessMessage(userInput)
 }
 
@@ -180,6 +183,14 @@ func (a *Agent) GetHistory() []messaging.Message {
 	cp := make([]messaging.Message, len(a.conversation.ContextWindow.History))
 	copy(cp, a.conversation.ContextWindow.History)
 	return cp
+}
+
+// GetProvider returns the current provider safely under the mutex.
+// This prevents data races when SetOpenRouterKeys is called concurrently.
+func (a *Agent) GetProvider() providers.Provider {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.provider
 }
 
 // LoadHistory replaces the current conversation history (used for multi-session support with Redis).

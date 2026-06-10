@@ -3,185 +3,182 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Indexium - Financial AI Agent Workspace</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <title>Indexium — AI Financial Agent</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body class="indexium-app">
-    <div class="workspace-layout">
-        <!-- Navigation Rail (Left) -->
-        <nav class="app-rail">
-            <div class="rail-top">
-                <div class="logo-box" title="Indexium FinIntelligence">
-                    <i data-lucide="sparkles" class="logo-icon"></i>
-                </div>
-                <button class="rail-action" id="new-chat-btn" title="Cuộc trò chuyện mới (Reset)">
-                    <i data-lucide="plus-circle"></i>
+<body>
+
+<div class="workspace-layout">
+
+    <!-- ═══ Left Sidebar: Conversation List ═══ -->
+    <aside class="app-sidebar-left" id="conversations-sidebar">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-inner">
+                <div class="brand-mark">IX</div>
+                <span class="brand-name">Indexium</span>
+            </div>
+            <button class="sidebar-new-btn" id="new-chat-btn" title="Cuộc trò chuyện mới">
+                <i data-lucide="plus"></i>
+            </button>
+        </div>
+
+        <div class="sidebar-search">
+            <input type="text" class="sidebar-search-input" placeholder="Tìm kiếm cuộc trò chuyện..." id="search-input">
+        </div>
+
+        <div class="sidebar-section-label">Gần đây</div>
+        <div class="sidebar-conversations" id="conversations-list">
+            <!-- Rendered dynamically -->
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="sidebar-status">
+                <span class="sidebar-status-dot"></span>
+                <span>Sẵn sàng</span>
+            </div>
+            <button class="sidebar-settings-btn" id="settings-trigger" title="Cài đặt">
+                <i data-lucide="settings"></i>
+            </button>
+        </div>
+    </aside>
+
+    <!-- ═══ Main Chat Area ═══ -->
+    <main class="app-main">
+        <!-- Top bar -->
+        <header class="chat-topbar">
+            <div class="topbar-left">
+                <button class="topbar-btn" id="toggle-conversations" title="Danh sách cuộc trò chuyện">
+                    <i data-lucide="panel-left"></i>
                 </button>
-                <div class="rail-action active" title="Không gian Trò chuyện">
-                    <i data-lucide="message-square"></i>
-                </div>
-                <div class="rail-action" id="all-chats-btn" title="Tất cả đoạn chat (click để xem/switch)">
-                    <i data-lucide="folder-kanban"></i>
-                </div>
+                <span class="topbar-title">Financial AI Agent</span>
+                <span class="topbar-subtitle" id="current-chat-title">Cuộc trò chuyện mới</span>
             </div>
-            <div class="rail-bottom">
-                <button class="rail-action" id="settings-trigger" title="Cài đặt Workspace">
-                    <i data-lucide="settings"></i>
+            <div class="topbar-right">
+                <select class="backend-select" id="backend-select">
+                    <option value="gemini">Gemini</option>
+                    <option value="claude">Claude</option>
+                </select>
+                <button class="topbar-btn theme-toggle" id="theme-toggle" title="Chuyển theme">
+                    <i data-lucide="sun" class="sun-icon"></i>
+                    <i data-lucide="moon" class="moon-icon"></i>
+                </button>
+                <button class="topbar-btn" id="toggle-pipeline" title="Pipeline">
+                    <i data-lucide="activity"></i>
                 </button>
             </div>
+        </header>
 
-        </nav>
-
-        <!-- Collapsible Chats Sidebar (starts collapsed) -->
-        <aside class="chats-sidebar collapsed" id="chats-sidebar">
-            <div class="sidebar-header">
-                <h3>Đoạn chat gần đây</h3>
-            </div>
-            <div class="chats-list" id="chats-list">
-                <!-- Chat items will be dynamically rendered here -->
-            </div>
-        </aside>
-
-        <!-- Main Workspace (Center) -->
-        <main class="app-main">
-            <header class="app-header">
-                <div class="header-left">
-                    <span class="breadcrumb"><i data-lucide="folder" class="bread-icon"></i> Không gian làm việc / <span class="active">Nghiên cứu Tài chính (Gemini Agent)</span></span>
-                </div>
-                <div class="header-right">
-                    <div class="backend-selector">
-                        <select id="backend-select" class="backend-select">
-                            <option value="gemini">Gemini (8080)</option>
-                            <option value="claude">Claude (8081)</option>
-                        </select>
-                    </div>
-                    <button id="theme-toggle" class="icon-btn theme-toggle-btn" title="Chuyển chế độ Sáng/Tối">
-                        <i data-lucide="sun" class="sun-icon"></i>
-                        <i data-lucide="moon" class="moon-icon"></i>
-                    </button>
-                    <div class="status-badge">
-                        <span class="status-dot"></span>
-                        <span class="status-text">AI Agent Sẵn sàng</span>
-                    </div>
-                </div>
-            </header>
-
-            <div class="chat-viewport" id="chat-history">
-                <!-- Welcome Card -->
-                <div class="welcome-section" id="welcome-section">
-                    <div class="discovery-header">
-                        <h1>Tôi có thể giúp gì cho bạn hôm nay?</h1>
-                        <p>Hệ thống hỗ trợ phân tích kết quả kinh doanh chuyên sâu, so sánh các chỉ số tài chính ngân hàng và tự động hóa quy trình phân tích báo cáo tài chính.</p>
-                    </div>
-                    <div class="discovery-chips">
-                        <button class="chip" data-quick="So sánh tổng tài sản HDB và ACB trong 3 năm gần đây">
+        <!-- Chat viewport -->
+        <div class="chat-viewport" id="chat-viewport">
+            <div class="chat-content" id="chat-content">
+                <!-- Welcome state -->
+                <div class="welcome-state" id="welcome-state">
+                    <div class="welcome-logo">IX</div>
+                    <h1 class="welcome-title">Tôi có thể giúp gì cho bạn?</h1>
+                    <p class="welcome-desc">Phân tích kết quả kinh doanh, so sánh chỉ số tài chính ngân hàng và tự động hóa quy trình phân tích báo cáo tài chính.</p>
+                    <div class="welcome-chips">
+                        <button class="welcome-chip" data-quick="So sánh tổng tài sản HDB và ACB trong 3 năm gần đây">
                             <i data-lucide="git-compare"></i> So sánh tổng tài sản
                         </button>
-                        <button class="chip" data-quick="Chi phí dự phòng rủi ro tín dụng của HDB năm 2024">
+                        <button class="welcome-chip" data-quick="Chi phí dự phòng rủi ro tín dụng của HDB năm 2024">
                             <i data-lucide="shield-alert"></i> Chi phí dự phòng HDB
                         </button>
-                        <button class="chip" data-quick="Tổng quát ngành ngân hàng năm 2025">
+                        <button class="welcome-chip" data-quick="Tổng quát ngành ngân hàng năm 2025">
                             <i data-lucide="trending-up"></i> Triển vọng ngành 2025
                         </button>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <div class="input-area">
-                <div class="input-container">
-                    <textarea id="chat-input" rows="1" placeholder="Nhập câu hỏi nghiên cứu tài chính của bạn ở đây..."></textarea>
-                    <div class="input-actions">
-
-                        <button id="send-btn" class="send-btn">
-                            <i data-lucide="arrow-up-right"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="input-footer">
-                    Tích hợp dữ liệu báo cáo tài chính nội bộ và dữ liệu thị trường theo thời gian thực dựa trên AI Agent.
-                </div>
-            </div>
-        </main>
-
-        <!-- Intelligence Panel (Right Sidebar) -->
-        <aside class="app-sidebar">
-            <div class="sidebar-section execution-section">
-                <div class="section-header">
-                    <span><i data-lucide="activity" class="status-icon"></i> Kế hoạch thực thi LIVE</span>
-                </div>
-                <div class="live-status-board" id="live-status-board">
-                    <div class="status-card active-agent-card">
-                        <div class="status-card-label">AGENT ĐANG CHẠY</div>
-                        <div class="status-card-value" id="current-agent">Chưa hoạt động</div>
-                    </div>
-                    <div class="status-card active-skill-card">
-                        <div class="status-card-label">SKILL CHUYÊN BIỆT</div>
-                        <div class="status-card-value" id="current-skill">Chưa nạp</div>
-                    </div>
-                    <div class="status-card active-tool-card">
-                        <div class="status-card-label">CÔNG CỤ HOẠT ĐỘNG</div>
-                        <div class="status-card-value" id="current-tool">Đang chờ câu hỏi...</div>
-                    </div>
-                    <div class="status-card reason-card">
-                        <div class="status-card-label">LÝ DO LỰA CHỌN</div>
-                        <div class="status-card-value" id="current-reason">Chưa có dữ liệu phân tích</div>
-                    </div>
-                </div>
-                <div class="pipeline-section-title">
-                    <i data-lucide="git-branch" class="title-icon"></i> Luồng xử lý chi tiết (Pipeline)
-                </div>
-                <div class="todo-list" id="console-logs">
-                    <!-- Logs will be transformed into progress cards -->
-                    <div class="pipeline-empty">Sẵn sàng phân tích yêu cầu khi có câu hỏi.</div>
-                </div>
-            </div>
-
-            <div class="sidebar-section sources-section">
-                <div class="section-header">
-                    <span><i data-lucide="database" class="status-icon"></i> Tài liệu đã trích xuất</span>
-                </div>
-                <div class="sources-list" id="sources-list">
-                    <div class="empty-state">Chưa có tài liệu nào trong ngữ cảnh hiện tại.</div>
-                </div>
-            </div>
-
-            <div class="sidebar-action-container">
-                <button id="run-test-btn" class="btn btn-primary btn-full">
-                    <i data-lucide="play-circle"></i> CHẠY BỘ KIỂM THỬ TỰ ĐỘNG
+        <!-- Input area -->
+        <div class="input-area">
+            <div class="input-wrapper">
+                <textarea id="chat-input" rows="1" placeholder="Hỏi về dữ liệu tài chính, báo cáo, phân tích ngành..."></textarea>
+                <button class="send-btn" id="send-btn" title="Gửi">
+                    <i data-lucide="arrow-up"></i>
                 </button>
             </div>
-        </aside>
-    </div>
+            <div class="input-hint">Indexium AI có thể mắc lỗi. Xác minh thông tin quan trọng.</div>
+        </div>
+    </main>
 
-    <!-- Settings Modal -->
-    <div id="settings-modal" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2><i data-lucide="settings" class="modal-title-icon"></i> Cài đặt Workspace</h2>
-                <button id="close-settings" class="close-modal">&times;</button>
+    <!-- ═══ Right Sidebar: Execution Pipeline (default collapsed) ═══ -->
+    <aside class="app-sidebar-right collapsed" id="pipeline-sidebar">
+        <div class="right-panel-header">
+            <div class="right-panel-title">
+                <i data-lucide="activity"></i>
+                Pipeline
             </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="gemini-key-input">Gemini API Key</label>
-                    <input type="password" id="gemini-key-input" class="modal-input" placeholder="Nhập Gemini API Key (để trống nếu dùng .env)">
-                </div>
-                <div class="form-group" style="margin-top: 16px;">
-                    <label for="or-keys-input">OpenRouter API Keys (Mỗi dòng một khóa, tối đa 3)</label>
-                    <textarea id="or-keys-input" class="modal-textarea" rows="3" placeholder="sk-or-v1-xxxxxx&#10;sk-or-v1-yyyyyy"></textarea>
-                    <div class="helper-text">Các khóa sẽ được luân phiên (key rotation) tự động bởi backend khi gặp lỗi giới hạn lượt dùng.</div>
-                </div>
+            <button class="right-panel-toggle" id="close-pipeline" title="Đóng">
+                <i data-lucide="x"></i>
+            </button>
+        </div>
+
+        <div class="live-pipeline" id="live-pipeline">
+            <div class="pipeline-card accent">
+                <div class="pipeline-card-label">Agent</div>
+                <div class="pipeline-card-value idle" id="pipe-agent">Chưa hoạt động</div>
             </div>
-            <div class="modal-footer">
-                <button id="save-settings-btn" class="btn btn-primary">Lưu cấu hình</button>
+            <div class="pipeline-card success">
+                <div class="pipeline-card-label">Skill</div>
+                <div class="pipeline-card-value idle" id="pipe-skill">Chưa nạp</div>
+            </div>
+            <div class="pipeline-card warning">
+                <div class="pipeline-card-label">Công cụ</div>
+                <div class="pipeline-card-value idle" id="pipe-tool">Đang chờ...</div>
+            </div>
+            <div class="pipeline-card">
+                <div class="pipeline-card-label">Lý do</div>
+                <div class="pipeline-card-value idle" id="pipe-reason">Chưa có dữ liệu</div>
             </div>
         </div>
-    </div>
 
-    <script src="app.js"></script>
+        <div class="log-stream" id="log-stream">
+            <div class="log-stream-empty">Sẵn sàng phân tích yêu cầu khi có câu hỏi.</div>
+        </div>
+
+        <div class="sources-panel" id="sources-panel" style="display:none;">
+            <div class="sources-panel-title">Nguồn tham khảo</div>
+            <div id="sources-list"></div>
+        </div>
+
+        <div class="panel-actions">
+            <button class="btn-run-test" id="run-test-btn">
+                <i data-lucide="play"></i>
+                Chạy bộ kiểm thử
+            </button>
+        </div>
+    </aside>
+</div>
+
+<!-- ═══ Settings Modal ═══ -->
+<div class="modal-overlay" id="settings-modal" style="display:none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i data-lucide="settings"></i> Cài đặt</h2>
+            <button class="modal-close" id="close-settings">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div>
+                <label class="form-label">Gemini API Key</label>
+                <input type="password" class="form-input" id="gemini-key-input" placeholder="AIza...">
+            </div>
+            <div>
+                <label class="form-label">OpenRouter API Keys <span style="font-weight:400;color:var(--text-quaternary)">(mỗi dòng một key)</span></label>
+                <textarea class="form-input form-textarea" id="or-keys-input" placeholder="sk-or-v1-..."></textarea>
+                <div class="form-hint">Các khóa sẽ được luân phiên tự động khi gặp giới hạn.</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" id="close-settings-btn">Hủy</button>
+            <button class="btn btn-primary" id="save-settings-btn">Lưu cấu hình</button>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
 </body>
 </html>

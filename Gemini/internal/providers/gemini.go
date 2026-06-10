@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -146,7 +146,7 @@ func (p *GeminiProvider) Generate(ctx context.Context, req messaging.Request) (m
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return messaging.Message{}, fmt.Errorf("error reading response body: %w", err)
 	}

@@ -275,7 +275,7 @@ func buildRouterUserPrompt(userInput, routingGuide string, now time.Time) string
 }
 
 func (a *Agent) routeWithProviderFallback(systemPrompt, userPrompt string) (string, error) {
-	return a.provider.GenerateText(systemPrompt, userPrompt)
+	return a.GetProvider().GenerateText(systemPrompt, userPrompt)
 }
 
 func fallbackRoutePlan() RoutePlan {

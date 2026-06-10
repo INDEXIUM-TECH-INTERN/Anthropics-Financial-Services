@@ -223,7 +223,7 @@ func (o *Orchestrator) runConversationLoopInternal() (string, error) {
 			fmt.Printf("🧠 [Context] Đang tóm tắt %d tin nhắn cũ để tiết kiệm context...\n", len(cw.History)-keepRecentMessages)
 
 			// Gọi tóm tắt (dùng provider hiện tại)
-			_, err := cw.SummarizeOldest(o.agent.provider, keepRecentMessages, maxSummaryChars)
+			_, err := cw.SummarizeOldest(o.agent.GetProvider(), keepRecentMessages, maxSummaryChars)
 			if err != nil {
 				fmt.Printf("⚠️ [Context] Tóm tắt thất bại: %v. Tiếp tục với context đầy đủ.\n", err)
 				api.BroadcastLog("Tóm tắt context thất bại, tiếp tục với lịch sử gốc.", "error")
@@ -259,7 +259,7 @@ func (o *Orchestrator) runConversationLoopInternal() (string, error) {
 			Tools:   tools,
 		}
 
-		aiMessage, err := o.agent.provider.Generate(context.Background(), req)
+		aiMessage, err := o.agent.GetProvider().Generate(context.Background(), req)
 		if err != nil {
 			return "", err
 		}

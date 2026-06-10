@@ -35,13 +35,6 @@ func EstimateTokens(text string) int {
 	return est
 }
 
-// EstimateMessagesTokens ước tính tổng token của một danh sách messaging.Message
-// (không import messaging để tránh circular dep - gọi từ nơi có messaging)
-func EstimateMessagesTokens(getHistory func() []interface{ GetRoleAndContent() (string, string) }) int {
-	// Cách đơn giản hơn: gọi trực tiếp từ orchestrator với chuỗi đã build
-	return 0 // placeholder, sẽ implement trực tiếp ở nơi sử dụng
-}
-
 // EstimateFullPrompt ước tính token của toàn bộ prompt sẽ gửi đi (system + history + tool defs)
 func EstimateFullPrompt(systemPrompt string, historyTexts []string, toolDefsText string) int {
 	total := EstimateTokens(systemPrompt)

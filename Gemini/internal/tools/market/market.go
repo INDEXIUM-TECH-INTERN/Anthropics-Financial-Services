@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -49,7 +49,7 @@ func SearchTavily(query string) string {
 		return "Lỗi kết nối tìm kiếm."
 	}
 	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	var data map[string]interface{}
 	if err := json.Unmarshal(body, &data); err != nil {
@@ -114,7 +114,7 @@ func SearchGoogle(query string) string {
 		return "Lỗi kết nối tìm kiếm."
 	}
 	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	// Giải mã JSON để lọc thông tin quan trọng
 	var data map[string]interface{}

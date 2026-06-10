@@ -3,8 +3,6 @@ package core
 type Conversation struct {
 	ID            string
 	ContextWindow *ContextWindow
-	UserInput     string
-	HandoffPlan   *RoutePlan
 }
 
 func NewConversation(id string) *Conversation {
@@ -15,7 +13,5 @@ func NewConversation(id string) *Conversation {
 }
 
 func (c *Conversation) Reset() {
-	c.UserInput = ""
-	c.HandoffPlan = nil
 	c.ContextWindow.Reset()
 }

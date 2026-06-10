@@ -42,6 +42,9 @@ func NewMultiProvider(primary Provider, fallbacks []Provider) *MultiProvider {
 func (m *MultiProvider) GenerateText(systemPrompt, userPrompt string) (string, error) {
 	m.mu.Lock()
 	skipPrimary := m.skipPrimaryUntil > 0
+	if skipPrimary {
+		m.skipPrimaryUntil--
+	}
 	m.mu.Unlock()
 
 	if skipPrimary && len(m.fallbacks) > 0 {
