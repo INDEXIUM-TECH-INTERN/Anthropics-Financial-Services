@@ -68,6 +68,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     let allChats = [];
     let currentChatId = null;
 
+    // Streaming / abort state
+    let activeAbortController = null;
+    let isGenerating = false;
+    let currentBotMessageEl = null;
+    let currentBotContentEl = null;
+    let currentBotFooterEl = null;
+
     // ── Theme ──
     const savedTheme = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
@@ -123,7 +130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 addLogEntry('Đã cập nhật API Keys.', 'success');
                 hideSettings();
             } else {
-                addLogEntry('Lỗi: ' + (resData?.message || 'Không xác định'), 'error');
+                addLogEntry('Lỗi: ' + (data?.message || 'Không xác định'), 'error');
             }
         } catch (err) {
             addLogEntry('Không thể kết nối backend: ' + err.message, 'error');
@@ -142,7 +149,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         addLogEntry(`Đã chuyển sang ${currentBackend}`, 'info');
     });
 
-    // ── SSE ──
+    // ── SSE (pipeline events) ──
     function setupEventSource() {
         if (eventSource) eventSource.close();
         eventSource = new EventSource(`${currentBaseUrl}/api/events`);
@@ -294,7 +301,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ── Chat ──
-    function appendMessageBubble(text, sender) {
+    function appendMessageBubble(text, sender, isStreaming = false) {
         welcomeState.style.display = 'none';
         const el = document.createElement('div');
         el.className = `message ${sender}`;
@@ -313,8 +320,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         content.className = 'msg-content';
 
         if (sender === 'bot') {
-            content.innerHTML = marked.parse(text);
-            renderSourcesInline(text, content);
+            if (isStreaming) {
+                content.innerHTML = '';
+            } else {
+                content.innerHTML = marked.parse(text);
+                renderSourcesInline(text, content);
+            }
         } else {
             content.textContent = text;
         }
@@ -322,18 +333,71 @@ document.addEventListener('DOMContentLoaded', async () => {
         body.appendChild(senderLabel);
         body.appendChild(content);
 
+        const footer = document.createElement('div');
+        footer.className = 'msg-footer';
+
         if (sender === 'bot') {
-            const footer = document.createElement('div');
-            footer.className = 'msg-footer';
-            footer.innerHTML = '<span class="msg-timer">—</span>';
+            if (isStreaming) {
+                footer.innerHTML = '<span class="msg-timer streaming">Đang trả lời…</span>';
+            } else {
+                footer.innerHTML = '<span class="msg-timer">—</span>';
+            }
             body.appendChild(footer);
+        }
+
+        // Action buttons for bot messages (not streaming)
+        if (sender === 'bot' && !isStreaming) {
+            const actions = document.createElement('div');
+            actions.className = 'msg-actions';
+
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'msg-action-btn';
+            copyBtn.title = 'Copy';
+            copyBtn.innerHTML = '<i data-lucide="copy" style="width:13px;height:13px;"></i>';
+            copyBtn.addEventListener('click', () => {
+                const plainText = content.innerText || content.textContent;
+                navigator.clipboard.writeText(plainText).then(() => {
+                    copyBtn.innerHTML = '<i data-lucide="check" style="width:13px;height:13px;color:var(--success);"></i>';
+                    if (window.lucide) lucide.createIcons();
+                    setTimeout(() => {
+                        copyBtn.innerHTML = '<i data-lucide="copy" style="width:13px;height:13px;"></i>';
+                        if (window.lucide) lucide.createIcons();
+                    }, 2000);
+                });
+            });
+            actions.appendChild(copyBtn);
+
+            const regenBtn = document.createElement('button');
+            regenBtn.className = 'msg-action-btn';
+            regenBtn.title = 'Tạo lại câu trả lời';
+            regenBtn.innerHTML = '<i data-lucide="refresh-cw" style="width:13px;height:13px;"></i>';
+            regenBtn.addEventListener('click', () => {
+                const allMsgs = chatContent.querySelectorAll('.message');
+                let prevUserMsg = null;
+                for (let i = allMsgs.length - 1; i >= 0; i--) {
+                    if (allMsgs[i] === el) continue;
+                    if (allMsgs[i].classList.contains('user')) {
+                        prevUserMsg = allMsgs[i].querySelector('.msg-content')?.textContent;
+                        break;
+                    }
+                }
+                if (prevUserMsg) {
+                    el.remove();
+                    sendMessage(prevUserMsg, true);
+                }
+            });
+            actions.appendChild(regenBtn);
+
+            body.appendChild(actions);
         }
 
         el.appendChild(avatar);
         el.appendChild(body);
         chatContent.appendChild(el);
         scrollToBottom();
-        return { el, content, footer: body.querySelector('.msg-footer') };
+
+        if (window.lucide) lucide.createIcons();
+        return { el, content, footer };
     }
 
     function scrollToBottom() {
@@ -370,7 +434,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         container.appendChild(grid);
         targetEl.appendChild(container);
 
-        // Also update right panel
         sourcesPanel.style.display = 'block';
         sourcesList.innerHTML = '';
         urls.forEach((url, i) => {
@@ -389,100 +452,208 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // ── Thinking card (shown while waiting for response) ──
-    function createThinkingCard() {
-        const el = document.createElement('div');
-        el.className = 'thinking-card';
-        el.innerHTML = `
-            <div class="thinking-dots">
-                <span></span><span></span><span></span>
-            </div>
-            <span class="thinking-text">Đang suy nghĩ…</span>
-        `;
-        return el;
+    // ── Stop generation ──
+    function stopGeneration() {
+        if (activeAbortController) {
+            activeAbortController.abort();
+            activeAbortController = null;
+        }
+        isGenerating = false;
+        updateSendButtonState();
+        if (currentBotContentEl && currentBotContentEl.innerHTML === '') {
+            currentBotContentEl.innerHTML = '<em style="color:var(--text-quaternary)">Đã dừng.</em>';
+        }
+        if (currentBotFooterEl) {
+            currentBotFooterEl.innerHTML = '<span class="msg-timer" style="color:var(--warning)">Đã dừng</span>';
+        }
+        currentBotMessageEl = null;
+        currentBotContentEl = null;
+        currentBotFooterEl = null;
     }
 
-    // ── Send message ──
-    async function sendMessage(textOverride = null) {
+    function updateSendButtonState() {
+        if (isGenerating) {
+            sendBtn.innerHTML = '<i data-lucide="square" style="width:16px;height:16px;"></i>';
+            sendBtn.title = 'Dừng';
+            sendBtn.classList.add('stop-mode');
+            sendBtn.disabled = false;
+            if (runTestBtn) runTestBtn.disabled = true;
+        } else {
+            sendBtn.innerHTML = '<i data-lucide="arrow-up" style="width:16px;height:16px;"></i>';
+            sendBtn.title = 'Gửi';
+            sendBtn.classList.remove('stop-mode');
+            sendBtn.disabled = false;
+            if (runTestBtn) runTestBtn.disabled = false;
+        }
+        if (window.lucide) lucide.createIcons();
+    }
+
+    // ── Send message (STREAMING) ──
+    async function sendMessage(textOverride = null, isRegenerate = false) {
         const text = textOverride !== null ? textOverride : chatInput.value.trim();
         if (!text) return false;
 
-        if (!currentChatId) await createNewChat();
-
-        welcomeState.style.display = 'none';
-        appendMessageBubble(text, 'user');
-        chatInput.value = '';
-        chatInput.style.height = '24px';
-        sendBtn.disabled = true;
-        if (runTestBtn) runTestBtn.disabled = true;
-
-        // Create thinking card inline in chat
-        const thinkingEl = createThinkingCard();
-        if (thinkingEl) {
-            chatContent.appendChild(thinkingEl);
-            scrollToBottom();
+        if (!isRegenerate) {
+            if (!currentChatId) await createNewChat();
+            welcomeState.style.display = 'none';
+            appendMessageBubble(text, 'user');
         }
 
+        chatInput.value = '';
+        chatInput.style.height = '24px';
+
+        isGenerating = true;
+        updateSendButtonState();
+
         const startTime = Date.now();
-        const TIMEOUT_MS = 300000;
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+        const { el: msgEl, content, footer } = appendMessageBubble('', 'bot', true);
+        currentBotMessageEl = msgEl;
+        currentBotContentEl = content;
+        currentBotFooterEl = footer;
+
+        activeAbortController = new AbortController();
 
         try {
             const payload = { message: text };
             if (currentChatId) payload.chat_id = currentChatId;
 
-            const response = await fetch(`${currentBaseUrl}/api/chat`, {
+            const response = await fetch(`${currentBaseUrl}/api/chat/stream`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
-                signal: controller.signal
+                signal: activeAbortController.signal
             });
-            const data = await response.json();
-            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
-            clearTimeout(timeoutId);
-            thinkingEl.remove();
-
-            if (data.error) {
-                const diag = diagnoseError('BackendError', data.error);
-                const { el: msgEl } = appendMessageBubble('', 'bot');
-                const content = msgEl.querySelector('.msg-content');
-                content.innerHTML = renderErrorHTML(diag);
-                const footer = msgEl.querySelector('.msg-footer');
-                footer.innerHTML = `<span class="msg-timer" style="color:var(--danger)">Thất bại · ${elapsed}s</span>`;
-                setupErrorAccordion(msgEl);
-                if (window.lucide) lucide.createIcons();
-                return false;
-            } else {
-                const { content, footer } = appendMessageBubble(data.reply, 'bot');
-                addCopyButtons(content);
-                footer.innerHTML = `
-                    <span class="msg-timer">${elapsed}s</span>
-                    <span class="msg-metrics">
-                        <span class="msg-metric">↑ ${data.metrics?.token_in || 0}</span>
-                        <span class="msg-metric-sep">·</span>
-                        <span class="msg-metric">↓ ${data.metrics?.token_out || 0}</span>
-                        <span class="msg-metric-sep">·</span>
-                        <span class="msg-metric">${data.metrics?.ram_mb || ''}</span>
-                    </span>
-                `;
-                if (window.lucide) lucide.createIcons();
-                fetchConversations(); // refresh list for title updates
-                return true;
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
             }
-        } catch (error) {
-            clearTimeout(timeoutId);
-            thinkingEl.remove();
 
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let fullText = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop();
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed.startsWith('data: ')) continue;
+                    const dataStr = trimmed.substring(6);
+
+                    try {
+                        const data = JSON.parse(dataStr);
+                        if (data.type === 'token' && data.text) {
+                            fullText += data.text;
+                            content.innerHTML = marked.parse(fullText);
+                            scrollToBottom();
+                        }
+                        if (data.type === 'done') {
+                            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                            content.innerHTML = marked.parse(fullText);
+                            renderSourcesInline(fullText, content);
+                            addCopyButtons(content);
+
+                            footer.innerHTML = `
+                                <span class="msg-timer">${elapsed}s</span>
+                                <span class="msg-metrics">
+                                    <span class="msg-metric">↑ ${data.metrics?.token_in || 0}</span>
+                                    <span class="msg-metric-sep">·</span>
+                                    <span class="msg-metric">↓ ${data.metrics?.token_out || 0}</span>
+                                    <span class="msg-metric-sep">·</span>
+                                    <span class="msg-metric">${data.metrics?.ram_mb || ''}</span>
+                                </span>
+                            `;
+
+                            // Add action buttons
+                            const actions = document.createElement('div');
+                            actions.className = 'msg-actions';
+
+                            const copyBtn = document.createElement('button');
+                            copyBtn.className = 'msg-action-btn';
+                            copyBtn.title = 'Copy';
+                            copyBtn.innerHTML = '<i data-lucide="copy" style="width:13px;height:13px;"></i>';
+                            copyBtn.addEventListener('click', () => {
+                                navigator.clipboard.writeText(fullText).then(() => {
+                                    copyBtn.innerHTML = '<i data-lucide="check" style="width:13px;height:13px;color:var(--success);"></i>';
+                                    if (window.lucide) lucide.createIcons();
+                                    setTimeout(() => {
+                                        copyBtn.innerHTML = '<i data-lucide="copy" style="width:13px;height:13px;"></i>';
+                                        if (window.lucide) lucide.createIcons();
+                                    }, 2000);
+                                });
+                            });
+                            actions.appendChild(copyBtn);
+
+                            const regenBtn = document.createElement('button');
+                            regenBtn.className = 'msg-action-btn';
+                            regenBtn.title = 'Tạo lại câu trả lời';
+                            regenBtn.innerHTML = '<i data-lucide="refresh-cw" style="width:13px;height:13px;"></i>';
+                            regenBtn.addEventListener('click', () => {
+                                const allMsgs = chatContent.querySelectorAll('.message');
+                                let prevUserMsg = null;
+                                for (let i = allMsgs.length - 1; i >= 0; i--) {
+                                    if (allMsgs[i] === msgEl) continue;
+                                    if (allMsgs[i].classList.contains('user')) {
+                                        prevUserMsg = allMsgs[i].querySelector('.msg-content')?.textContent;
+                                        break;
+                                    }
+                                }
+                                if (prevUserMsg) {
+                                    msgEl.remove();
+                                    sendMessage(prevUserMsg, true);
+                                }
+                            });
+                            actions.appendChild(regenBtn);
+
+                            msgEl.querySelector('.msg-body').appendChild(actions);
+                            if (window.lucide) lucide.createIcons();
+                        }
+                        if (data.type === 'error') {
+                            throw new Error(data.error || 'Unknown streaming error');
+                        }
+                    } catch (parseErr) {
+                        if (parseErr.message && !parseErr.message.includes('JSON')) {
+                            throw parseErr;
+                        }
+                    }
+                }
+            }
+
+            isGenerating = false;
+            updateSendButtonState();
+            activeAbortController = null;
+            currentBotMessageEl = null;
+            currentBotContentEl = null;
+            currentBotFooterEl = null;
+            fetchConversations();
+            return true;
+
+        } catch (error) {
+            isGenerating = false;
+            updateSendButtonState();
+            activeAbortController = null;
+
+            if (error.name === 'AbortError') {
+                return false;
+            }
+
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
             const diag = diagnoseError(error.name || 'Error', error.message || String(error), error.stack || '');
-            const { el: msgEl } = appendMessageBubble('', 'bot');
-            const content = msgEl.querySelector('.msg-content');
             content.innerHTML = renderErrorHTML(diag);
-            const footer = msgEl.querySelector('.msg-footer');
-            footer.innerHTML = `<span class="msg-timer" style="color:var(--danger)">Lỗi kết nối</span>`;
+            footer.innerHTML = `<span class="msg-timer" style="color:var(--danger)">Thất bại · ${elapsed}s</span>`;
             setupErrorAccordion(msgEl);
             if (window.lucide) lucide.createIcons();
+
+            currentBotMessageEl = null;
+            currentBotContentEl = null;
+            currentBotFooterEl = null;
             return false;
         } finally {
             sendBtn.disabled = false;
@@ -567,7 +738,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // ── Copy buttons ──
+    // ── Copy buttons for code blocks ──
     function addCopyButtons(contentEl) {
         contentEl.querySelectorAll('pre').forEach(pre => {
             pre.style.position = 'relative';
@@ -669,7 +840,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // ── Event listeners ──
-    sendBtn.addEventListener('click', () => sendMessage());
+    sendBtn.addEventListener('click', () => {
+        if (isGenerating) {
+            stopGeneration();
+        } else {
+            sendMessage();
+        }
+    });
+
     chatInput.addEventListener('keypress', e => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     });
@@ -743,7 +921,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     setTimeout(() => chatInput.focus(), 100);
     if (window.lucide) lucide.createIcons();
 
-    // Add spin animation for loader
     const style = document.createElement('style');
     style.textContent = `@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`;
     document.head.appendChild(style);

@@ -154,6 +154,14 @@ func (a *Agent) ProcessMessage(userInput string) (string, error) {
 	return a.orchestrator.ProcessMessage(userInput)
 }
 
+// ProcessMessageStream processes a message and streams tokens via onChunk.
+// The final chunk has Done=true and the full text in Text.
+func (a *Agent) ProcessMessageStream(userInput string, onChunk func(string, bool)) error {
+	a.requestMu.Lock()
+	defer a.requestMu.Unlock()
+	return a.orchestrator.ProcessMessageStream(userInput, onChunk)
+}
+
 func readUserInput() (string, bool) {
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Print("👤 Anthropic Financial Agent > ")

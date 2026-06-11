@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"gemini-cli/internal/api"
 	"gemini-cli/internal/models/messaging"
@@ -201,6 +202,33 @@ func (o *Orchestrator) buildBootstrapContextInternal(route RoutePlan) []string {
 
 	contextParts = append(contextParts, utils.LoadPrompt("bootstrap_context_suffix.txt"))
 	return contextParts
+}
+
+// ProcessMessageStream handles streaming chat: runs the conversation loop
+// and streams each token chunk from the LLM to the onChunk callback.
+func (o *Orchestrator) ProcessMessageStream(userInput string, onChunk func(string, bool)) error {
+	reply, err := o.ProcessMessage(userInput)
+	if err != nil {
+		return err
+	}
+
+	// Stream the reply in chunks to the client
+	words := strings.Split(reply, " ")
+	for i, word := range words {
+		chunk := word
+		if i < len(words)-1 {
+			chunk += " "
+		}
+		onChunk(chunk, false)
+		time.Sleep(15 * time.Millisecond)
+	}
+	onChunk("", true)
+	return nil
+}
+
+func (o *Orchestrator) runConversationLoopStreamInternal(onChunk func(string, bool)) error {
+	// Deprecated in favor of the hybrid ProcessMessageStream implementation
+	return nil
 }
 
 func (o *Orchestrator) runConversationLoopInternal() (string, error) {

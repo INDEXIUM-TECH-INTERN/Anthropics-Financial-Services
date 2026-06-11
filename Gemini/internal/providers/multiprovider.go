@@ -115,7 +115,7 @@ func (m *MultiProvider) tryFallbacksOnlyText(systemPrompt, userPrompt string) (s
 		fmt.Printf("⚠️ [Fallback] Fallback #%d error: %v\n", activeIdx+1, lastErr)
 	}
 
-	return "", fmt.Errorf("Tất cả các dịch vụ (Primary & %d Fallbacks) đều gặp lỗi hoặc hết hạn mức (Quota). Lỗi cuối cùng: %v", numFallbacks, lastErr)
+	return "", fmt.Errorf("Tất cả các dịch vụ AI (Primary & %d Fallbacks) đều gặp lỗi hoặc hết hạn mức (Quota/Rate Limit). Vui lòng thử lại sau vài phút. Lỗi cuối cùng: %v", numFallbacks, lastErr)
 }
 
 func (m *MultiProvider) Generate(ctx context.Context, req messaging.Request) (messaging.Message, error) {
@@ -207,7 +207,84 @@ func (m *MultiProvider) tryFallbacksOnly(ctx context.Context, req messaging.Requ
 		fmt.Printf("⚠️ [Fallback] Fallback #%d error: %v\n", activeIdx+1, err)
 	}
 
-	return messaging.Message{}, fmt.Errorf("Tất cả các dịch vụ (%d dự phòng) đều thất bại. Có thể do hết hạn mức (Quota) hoặc sự cố kết nối. Lỗi cuối cùng: %v", numFallbacks, lastErr)
+	return messaging.Message{}, fmt.Errorf("Tất cả các dịch vụ AI (%d dự phòng) đều thất bại. Có thể do hết hạn mức (Quota) hoặc sự cố kết nối. Vui lòng thử lại sau vài phút. Lỗi cuối cùng: %v", numFallbacks, lastErr)
+}
+
+func (m *MultiProvider) GenerateStream(ctx context.Context, req messaging.Request, onChunk func(StreamChunk)) error {
+	m.mu.Lock()
+	skipPrimary := m.skipPrimaryUntil > 0
+	if skipPrimary {
+		m.skipPrimaryUntil--
+	}
+	m.mu.Unlock()
+
+	if skipPrimary && len(m.fallbacks) > 0 {
+		err := m.tryFallbacksStream(ctx, req, onChunk)
+		if err == nil {
+			return nil
+		}
+		api.BroadcastLog("Fallback stream failed. Trying primary anyway...", "routing")
+	}
+
+	err := m.primary.GenerateStream(ctx, req, onChunk)
+	if err == nil {
+		m.mu.Lock()
+		m.primaryFailures = 0
+		m.skipPrimaryUntil = 0
+		m.mu.Unlock()
+		return nil
+	}
+
+	isQuotaError := isQuotaOrRateLimitError(err)
+	fmt.Printf("⚠️ [Fallback] Primary stream error: %v\n", err)
+
+	if isQuotaError {
+		m.mu.Lock()
+		m.primaryFailures++
+		m.skipPrimaryUntil = 5 + (m.primaryFailures / 2)
+		if m.skipPrimaryUntil > 12 {
+			m.skipPrimaryUntil = 12
+		}
+		m.mu.Unlock()
+	}
+
+	return m.tryFallbacksStream(ctx, req, onChunk)
+}
+
+func (m *MultiProvider) tryFallbacksStream(ctx context.Context, req messaging.Request, onChunk func(StreamChunk)) error {
+	numFallbacks := len(m.fallbacks)
+	if numFallbacks == 0 {
+		return fmt.Errorf("no fallbacks configured for streaming")
+	}
+
+	var lastErr error
+	for i := 0; i < numFallbacks; i++ {
+		if i > 0 {
+			retryDelay(i - 1)
+		}
+		m.mu.Lock()
+		activeIdx := m.currentIdx
+		m.currentIdx = (m.currentIdx + 1) % numFallbacks
+		m.mu.Unlock()
+
+		p := m.fallbacks[activeIdx]
+		api.BroadcastLog(fmt.Sprintf("Using fallback stream provider #%d...", activeIdx+1), "process")
+
+		err := p.GenerateStream(ctx, req, onChunk)
+		if err == nil {
+			m.mu.Lock()
+			if m.skipPrimaryUntil > 0 {
+				m.skipPrimaryUntil /= 2
+			}
+			m.mu.Unlock()
+			return nil
+		}
+
+		lastErr = err
+		api.BroadcastLog(fmt.Sprintf("Fallback stream #%d error: %v", activeIdx+1, err), "error")
+	}
+
+	return fmt.Errorf("Tất cả các dịch vụ AI streaming (%d dự phòng) đều thất bại. Vui lòng thử lại sau vài phút. Lỗi cuối cùng: %v", numFallbacks, lastErr)
 }
 
 func isQuotaOrRateLimitError(err error) bool {

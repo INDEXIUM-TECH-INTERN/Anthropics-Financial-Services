@@ -21,6 +21,7 @@ type OpenRouterRequest struct {
 	Tools       []OpenRouterTool    `json:"tools,omitempty"`
 	MaxTokens   int                 `json:"max_tokens,omitempty"`
 	Temperature float64             `json:"temperature,omitempty"`
+	Stream      bool                `json:"stream,omitempty"`
 }
 
 type OpenRouterMessage struct {
@@ -59,4 +60,14 @@ type OpenRouterResponse struct {
 	Error struct {
 		Message string `json:"message"`
 	} `json:"error"`
+}
+
+// OpenRouterStreamChunk represents a single SSE delta from OpenRouter streaming.
+type OpenRouterStreamChunk struct {
+	Choices []struct {
+		Delta struct {
+			Content   string `json:"content"`
+			Reasoning string `json:"reasoning"`
+		} `json:"delta"`
+	} `json:"choices"`
 }

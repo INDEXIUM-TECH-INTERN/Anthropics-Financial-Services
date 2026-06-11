@@ -28,23 +28,6 @@ type TestResult struct {
 	Message string `json:"message"`
 }
 
-func resolvePath(relPath string) string {
-	if _, err := os.Stat(relPath); err == nil {
-		return relPath
-	}
-	if strings.HasPrefix(relPath, "Gemini/") {
-		noPrefix := strings.TrimPrefix(relPath, "Gemini/")
-		if _, err := os.Stat(noPrefix); err == nil {
-			return noPrefix
-		}
-	}
-	withPrefix := "Gemini/" + relPath
-	if _, err := os.Stat(withPrefix); err == nil {
-		return withPrefix
-	}
-	return relPath
-}
-
 func main() {
 	fmt.Println("🚀 Bắt đầu vòng lặp tối ưu hóa Router tự động...")
 
@@ -63,140 +46,19 @@ func main() {
 }
 
 func runTests() ([]TestResult, bool) {
-	testCasesPath := resolvePath("Gemini/internal/evaluator/test_cases.json")
-	data, err := os.ReadFile(testCasesPath)
+	tests, err := loadTestCases()
 	if err != nil {
-		fmt.Printf("Error reading test cases from %s: %v\n", testCasesPath, err)
+		fmt.Printf("Error loading test cases: %v\n", err)
 		return nil, false
 	}
 
-	var tests []TestCase
-	json.Unmarshal(data, &tests)
-
-	allPassed := true
 	var results []TestResult
+	allPassed := true
 
 	for _, t := range tests {
-		fmt.Printf("Testing Case #%d: %s... ", t.ID, t.UserQuery)
-
-		// Run test_router.go with SYSTEM_DATE_OVERRIDE=2026-05-21 to anchor "today"
-		cmd := exec.Command("go", "run", "cmd/gemini-cli/test_router.go", t.UserQuery)
-		cmd.Env = append(os.Environ(), "SYSTEM_DATE_OVERRIDE=2026-05-21")
-		
-		if _, err := os.Stat("go.mod"); err == nil {
-			cmd.Dir = ""
-		} else {
-			cmd.Dir = "Gemini"
-		}
-
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			fmt.Printf("ERROR running test: %v. Output: %s\n", err, string(out))
-			allPassed = false
-			results = append(results, TestResult{
-				ID:      t.ID,
-				Passed:  false,
-				Message: fmt.Sprintf("Error running test command: %v. Output: %s", err, string(out)),
-			})
-			continue
-		}
-
-		// Parse RESULT_JSON từ output
-		outputStr := string(out)
-		jsonLine := ""
-		for _, line := range strings.Split(outputStr, "\n") {
-			line = strings.TrimSpace(line)
-			if strings.HasPrefix(line, "RESULT_JSON: ") {
-				jsonLine = strings.TrimPrefix(line, "RESULT_JSON: ")
-				break
-			}
-		}
-
-		if jsonLine == "" {
-			fmt.Printf("ERROR: missing RESULT_JSON in output: %s\n", outputStr)
-			allPassed = false
-			results = append(results, TestResult{
-				ID:      t.ID,
-				Passed:  false,
-				Message: fmt.Sprintf("Missing RESULT_JSON in test_router output: %s", outputStr),
-			})
-			continue
-		}
-
-		var actual map[string]any
-		if err := json.Unmarshal([]byte(jsonLine), &actual); err != nil {
-			fmt.Printf("ERROR parsing actual JSON: %v. JSON line: %s\n", err, jsonLine)
-			allPassed = false
-			results = append(results, TestResult{
-				ID:      t.ID,
-				Passed:  false,
-				Message: fmt.Sprintf("Failed to unmarshal RESULT_JSON: %v", err),
-			})
-			continue
-		}
-
-		passed := true
-		msg := "OK"
-
-		// 1. Kiểm tra Agent (nếu được chỉ định mong đợi)
-		if t.Expected.Agent != "" {
-			actualAgent, _ := actual["agent"].(string)
-			if actualAgent != t.Expected.Agent {
-				passed = false
-				msg = fmt.Sprintf("Sai Agent: Mong đợi '%s', Nhận '%s'", t.Expected.Agent, actualAgent)
-			}
-		}
-
-		// 2. Kiểm tra Temporal (nếu được chỉ định mong đợi)
-		temporal, hasTemporal := actual["temporal"].(map[string]any)
-		if passed {
-			if t.Expected.Temporal.Intent != "" {
-				if !hasTemporal {
-					passed = false
-					msg = "Thiếu thông tin Temporal trong kết quả thực tế"
-				} else {
-					actualIntent, _ := temporal["intent"].(string)
-					if actualIntent != t.Expected.Temporal.Intent {
-						passed = false
-						msg = fmt.Sprintf("Sai Temporal Intent: Mong đợi '%s', Nhận '%s'", t.Expected.Temporal.Intent, actualIntent)
-					}
-				}
-			}
-		}
-		if passed {
-			if t.Expected.Temporal.ResolvedDate != "" {
-				if !hasTemporal {
-					passed = false
-					msg = "Thiếu thông tin Temporal trong kết quả thực tế"
-				} else {
-					actualResolvedDate, _ := temporal["resolved_date"].(string)
-					if actualResolvedDate != t.Expected.Temporal.ResolvedDate {
-						passed = false
-						msg = fmt.Sprintf("Sai Temporal ResolvedDate: Mong đợi '%s', Nhận '%s'", t.Expected.Temporal.ResolvedDate, actualResolvedDate)
-					}
-				}
-			}
-		}
-		if passed {
-			if t.Expected.Temporal.IsFuture {
-				if !hasTemporal {
-					passed = false
-					msg = "Thiếu thông tin Temporal trong kết quả thực tế"
-				} else {
-					actualIsFuture, _ := temporal["is_future"].(bool)
-					if !actualIsFuture {
-						passed = false
-						msg = "Sai Temporal IsFuture: Mong đợi true, Nhận false"
-					}
-				}
-			}
-		}
-
-		results = append(results, TestResult{ID: t.ID, Passed: passed, Actual: actual, Message: msg})
-		if passed {
-			fmt.Println("✅ PASS")
-		} else {
-			fmt.Println("🔴 FAIL:", msg)
+		result := runSingleTest(t)
+		results = append(results, result)
+		if !result.Passed {
 			allPassed = false
 		}
 	}
@@ -204,9 +66,152 @@ func runTests() ([]TestResult, bool) {
 	return results, allPassed
 }
 
+func loadTestCases() ([]TestCase, error) {
+	testCasesPath := resolvePath("Gemini/internal/evaluator/test_cases.json")
+	data, err := os.ReadFile(testCasesPath)
+	if err != nil {
+		return nil, fmt.Errorf("reading test cases from %s: %w", testCasesPath, err)
+	}
+
+	var tests []TestCase
+	if err := json.Unmarshal(data, &tests); err != nil {
+		return nil, fmt.Errorf("parsing test cases: %w", err)
+	}
+	return tests, nil
+}
+
+func runSingleTest(t TestCase) TestResult {
+	fmt.Printf("Testing Case #%d: %s... ", t.ID, t.UserQuery)
+
+	actual, err := executeTestCommand(t.UserQuery)
+	if err != nil {
+		fmt.Printf("ERROR: %v\n", err)
+		return TestResult{ID: t.ID, Passed: false, Message: err.Error()}
+	}
+
+	passed, msg := validateResult(t, actual)
+	if passed {
+		fmt.Println("✅ PASS")
+	} else {
+		fmt.Println("🔴 FAIL:", msg)
+	}
+
+	return TestResult{ID: t.ID, Passed: passed, Actual: actual, Message: msg}
+}
+
+func executeTestCommand(query string) (map[string]any, error) {
+	cmd := exec.Command("go", "run", "cmd/gemini-cli/test_router.go", query)
+	cmd.Env = append(os.Environ(), "SYSTEM_DATE_OVERRIDE=2026-05-21")
+
+	if _, err := os.Stat("go.mod"); err != nil {
+		cmd.Dir = "Gemini"
+	}
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("running test: %v. Output: %s", err, string(out))
+	}
+
+	jsonLine := extractJSONFromOutput(string(out))
+	if jsonLine == "" {
+		return nil, fmt.Errorf("missing RESULT_JSON in output: %s", string(out))
+	}
+
+	var actual map[string]any
+	if err := json.Unmarshal([]byte(jsonLine), &actual); err != nil {
+		return nil, fmt.Errorf("parsing RESULT_JSON: %v", err)
+	}
+	return actual, nil
+}
+
+func extractJSONFromOutput(output string) string {
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "RESULT_JSON: ") {
+			return strings.TrimPrefix(line, "RESULT_JSON: ")
+		}
+	}
+	return ""
+}
+
+func validateResult(t TestCase, actual map[string]any) (bool, string) {
+	if t.Expected.Agent != "" {
+		if msg := validateAgent(t, actual); msg != "" {
+			return false, msg
+		}
+	}
+
+	temporal, hasTemporal := actual["temporal"].(map[string]any)
+	if t.Expected.Temporal.Intent != "" || t.Expected.Temporal.ResolvedDate != "" || t.Expected.Temporal.IsFuture {
+		if msg := validateTemporal(t, temporal, hasTemporal); msg != "" {
+			return false, msg
+		}
+	}
+
+	return true, "OK"
+}
+
+func validateAgent(t TestCase, actual map[string]any) string {
+	actualAgent, _ := actual["agent"].(string)
+	if actualAgent != t.Expected.Agent {
+		return fmt.Sprintf("Sai Agent: Mong đợi '%s', Nhận '%s'", t.Expected.Agent, actualAgent)
+	}
+	return ""
+}
+
+func validateTemporal(t TestCase, temporal map[string]any, hasTemporal bool) string {
+	if !hasTemporal {
+		return "Thiếu thông tin Temporal trong kết quả thực tế"
+	}
+
+	if t.Expected.Temporal.Intent != "" {
+		actualIntent, _ := temporal["intent"].(string)
+		if actualIntent != t.Expected.Temporal.Intent {
+			return fmt.Sprintf("Sai Temporal Intent: Mong đợi '%s', Nhận '%s'", t.Expected.Temporal.Intent, actualIntent)
+		}
+	}
+	if t.Expected.Temporal.ResolvedDate != "" {
+		actualDate, _ := temporal["resolved_date"].(string)
+		if actualDate != t.Expected.Temporal.ResolvedDate {
+			return fmt.Sprintf("Sai Temporal ResolvedDate: Mong đợi '%s', Nhận '%s'", t.Expected.Temporal.ResolvedDate, actualDate)
+		}
+	}
+	if t.Expected.Temporal.IsFuture {
+		actualIsFuture, _ := temporal["is_future"].(bool)
+		if !actualIsFuture {
+			return "Sai Temporal IsFuture: Mong đợi true, Nhận false"
+		}
+	}
+	return ""
+}
+
 func refinePrompt(results []TestResult) {
-	data, _ := json.MarshalIndent(results, "", "  ")
+	data, err := json.MarshalIndent(results, "", "  ")
+	if err != nil {
+		fmt.Printf("❌ Lỗi marshal results: %v\n", err)
+		return
+	}
 	testResultsPath := resolvePath("Gemini/internal/evaluator/test_results.json")
-	os.WriteFile(testResultsPath, data, 0644)
+	if err := os.WriteFile(testResultsPath, data, 0644); err != nil {
+		fmt.Printf("❌ Lỗi ghi file: %v\n", err)
+		return
+	}
 	fmt.Printf("📝 Đã ghi kết quả vào %s. AI đang phân tích...\n", testResultsPath)
+}
+
+func resolvePath(relPath string) string {
+	if _, err := os.Stat(relPath); err == nil {
+		return relPath
+	}
+	if strings.HasPrefix(relPath, "Gemini/") {
+		noPrefix := strings.TrimPrefix(relPath, "Gemini/")
+		if _, err := os.Stat(noPrefix); err == nil {
+			return noPrefix
+		}
+	}
+	withPrefix := "Gemini/" + relPath
+	if _, err := os.Stat(withPrefix); err == nil {
+		return withPrefix
+	}
+	return relPath
 }

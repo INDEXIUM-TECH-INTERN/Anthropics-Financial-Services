@@ -200,7 +200,7 @@ func SearchGoogle(query string) string {
 
 func NeedsRealtimeData(query string) bool {
 	normalized := normalizeTextForMatching(query)
-	return containsAny(
+	return utils.ContainsAny(
 		normalized,
 		"hom nay", "hien tai", "moi nhat",
 		"latest", "real-time", "realtime", "giá cổ phiếu", "gia co phieu", "stock price",
@@ -243,24 +243,15 @@ func BuildMarketQueryPlan(query string) MarketQueryPlan {
 	}
 }
 
-func containsAny(text string, terms ...string) bool {
-	for _, term := range terms {
-		if strings.Contains(text, term) {
-			return true
-		}
-	}
-	return false
-}
-
 func resolveTemporalReference(query string, now time.Time) (time.Time, string, bool) {
 	normalized := normalizeTextForMatching(query)
 
 	switch {
-	case containsAny(normalized, "hom nay"):
+	case utils.ContainsAny(normalized, "hom nay"):
 		return now, "hôm nay", true
-	case containsAny(normalized, "hom qua"):
+	case utils.ContainsAny(normalized, "hom qua"):
 		return now.AddDate(0, 0, -1), "hôm qua", true
-	case containsAny(normalized, "hom kia"):
+	case utils.ContainsAny(normalized, "hom kia"):
 		return now.AddDate(0, 0, -2), "hôm kia", true
 	}
 
@@ -279,7 +270,7 @@ func resolveTemporalReference(query string, now time.Time) (time.Time, string, b
 	}
 
 	for _, pattern := range weekdayPatterns {
-		if containsAny(normalized, pattern.matches...) {
+		if utils.ContainsAny(normalized, pattern.matches...) {
 			delta := (int(now.Weekday()) - int(pattern.weekday) + 7) % 7
 			resolved := now.AddDate(0, 0, -delta)
 			return resolved, pattern.label, true

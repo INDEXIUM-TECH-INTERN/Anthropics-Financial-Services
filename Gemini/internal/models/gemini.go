@@ -18,10 +18,6 @@ type GeminiFunctionDeclaration struct {
 	Parameters  interface{} `json:"parameters,omitempty"`
 }
 
-// type GeminiContent struct {
-// 	Role  string       `json:"role"`
-// 	Parts []GeminiPart `json:"parts"`
-// }
 type GeminiContent struct {
 	Role  string       `json:"role"`
 	Parts []GeminiPart `json:"parts"`

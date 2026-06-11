@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -17,11 +18,12 @@ import (
 // Free-tier model fallback chain for OpenRouter
 // When primary model fails, we cycle through these alternatives.
 var openRouterFreeModels = []string{
-	"nvidia/nemotron-3-super-120b-a12b:free",
+	"google/gemini-2.0-flash:free",
 	"google/gemini-flash-1.5:free",
-	"meta-llama/llama-3.3-70b-instruct:free",
 	"mistralai/mistral-7b-instruct:free",
 	"qwen/qwen-2.5-72b-instruct:free",
+	"meta-llama/llama-3.3-70b-instruct:free",
+	"nvidia/nemotron-3-super-120b-a12b:free",
 }
 
 type OpenRouterProvider struct {
@@ -54,17 +56,28 @@ func (p *OpenRouterProvider) Generate(ctx context.Context, req messaging.Request
 		}
 		lastErr = err
 		errStr := err.Error()
-		// Only try next model on specific transient / model-unavailable errors
+		// Try next model on transient errors, rate limits, and quota exhaustion
 		if strings.Contains(errStr, "Provider returned error") ||
 			strings.Contains(errStr, "model not found") ||
 			strings.Contains(errStr, "overloaded") ||
 			strings.Contains(errStr, "503") ||
-			strings.Contains(errStr, "502") {
+			strings.Contains(errStr, "502") ||
+			strings.Contains(errStr, "429") ||
+			strings.Contains(errStr, "rate limit") ||
+			strings.Contains(errStr, "quota") ||
+			strings.Contains(errStr, "exceeded") {
 			fmt.Printf("⚠️ [OpenRouter] Model %s failed (%v), trying next...\n", m, err)
 			continue
 		}
-		// For other errors (auth, quota, bad request) stop immediately
-		break
+		// For auth errors, stop immediately
+		if strings.Contains(errStr, "401") ||
+			strings.Contains(errStr, "403") ||
+			strings.Contains(errStr, "invalid api key") {
+			break
+		}
+		// Unknown error — try next model anyway
+		fmt.Printf("⚠️ [OpenRouter] Model %s failed (%v), trying next...\n", m, err)
+		continue
 	}
 	return messaging.Message{}, lastErr
 }
@@ -162,7 +175,7 @@ func (p *OpenRouterProvider) generateWithModel(ctx context.Context, req messagin
 	httpReq.Header.Set("HTTP-Referer", "https://github.com/INDEXIUM-TECH-INTERN/Anthropics-Financial-Services")
 	httpReq.Header.Set("X-Title", "Indexium Financial AI Agent")
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{Timeout: 300 * time.Second}
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		return messaging.Message{}, fmt.Errorf("error performing http request: %w", err)
@@ -225,4 +238,175 @@ func (p *OpenRouterProvider) GenerateText(systemPrompt, userPrompt string) (stri
 		return "", err
 	}
 	return resp.Content, nil
+}
+
+func (p *OpenRouterProvider) GenerateStream(ctx context.Context, req messaging.Request, onChunk func(StreamChunk)) error {
+	model := strings.TrimSpace(p.Model)
+	if model == "" {
+		model = openRouterFreeModels[0]
+	}
+
+	modelsToTry := []string{model}
+	for _, m := range openRouterFreeModels {
+		if m != model {
+			modelsToTry = append(modelsToTry, m)
+		}
+	}
+
+	var lastErr error
+	for _, m := range modelsToTry {
+		err := p.streamWithModel(ctx, req, m, onChunk)
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+		errStr := err.Error()
+		if strings.Contains(errStr, "Provider returned error") ||
+			strings.Contains(errStr, "model not found") ||
+			strings.Contains(errStr, "overloaded") ||
+			strings.Contains(errStr, "503") ||
+			strings.Contains(errStr, "502") ||
+			strings.Contains(errStr, "429") ||
+			strings.Contains(errStr, "rate limit") ||
+			strings.Contains(errStr, "quota") ||
+			strings.Contains(errStr, "exceeded") {
+			fmt.Printf("⚠️ [OpenRouter] Stream model %s failed (%v), trying next...\n", m, err)
+			continue
+		}
+		if strings.Contains(errStr, "401") ||
+			strings.Contains(errStr, "403") ||
+			strings.Contains(errStr, "invalid api key") {
+			break
+		}
+		fmt.Printf("⚠️ [OpenRouter] Stream model %s failed (%v), trying next...\n", m, err)
+		continue
+	}
+	return lastErr
+}
+
+func (p *OpenRouterProvider) streamWithModel(ctx context.Context, req messaging.Request, model string, onChunk func(StreamChunk)) error {
+	url := "https://openrouter.ai/api/v1/chat/completions"
+
+	var orTools []models.OpenRouterTool
+	for _, t := range req.Tools {
+		var params models.Parameters
+		paramBytes, _ := json.Marshal(t.Parameters)
+		json.Unmarshal(paramBytes, &params)
+		orTools = append(orTools, models.OpenRouterTool{
+			Type: "function",
+			Function: models.OpenRouterFunctionDeclare{
+				Name:        t.Name,
+				Description: t.Description,
+				Parameters:  params,
+			},
+		})
+	}
+
+	var messages []models.OpenRouterMessage
+	for _, h := range req.History {
+		msg := models.OpenRouterMessage{Role: string(h.Role), Content: h.Content}
+		if h.Role == messaging.RoleAssistant {
+			msg.Role = "assistant"
+			if len(h.ToolCalls) > 0 {
+				msg.Content = ""
+				for _, tc := range h.ToolCalls {
+					argsJSON, _ := json.Marshal(tc.Args)
+					msg.ToolCalls = append(msg.ToolCalls, models.OpenRouterToolCall{
+						ID:   tc.ID,
+						Type: "function",
+						Function: models.OpenRouterFunction{
+							Name:      tc.Name,
+							Arguments: string(argsJSON),
+						},
+					})
+				}
+			}
+		}
+		if h.Role == messaging.RoleTool {
+			msg.Role = "tool"
+			if len(h.ToolResponses) > 0 {
+				msg.ToolCallID = h.ToolResponses[0].CallID
+				msg.Content = h.ToolResponses[0].Content
+			}
+		}
+		messages = append(messages, msg)
+	}
+
+	reqBody := models.OpenRouterRequest{
+		Model:       model,
+		Messages:    messages,
+		Tools:       orTools,
+		MaxTokens:   4000,
+		Temperature: 0.7,
+		Stream:      true,
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return fmt.Errorf("error marshalling openrouter stream request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("error creating stream request: %w", err)
+	}
+	httpReq.Header.Set("Authorization", "Bearer "+p.APIKey)
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("HTTP-Referer", "https://github.com/INDEXIUM-TECH-INTERN/Anthropics-Financial-Services")
+	httpReq.Header.Set("X-Title", "Indexium Financial AI Agent")
+	httpReq.Header.Set("Accept", "text/event-stream")
+
+	client := &http.Client{Timeout: 0} // no timeout for streaming
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return fmt.Errorf("error performing stream request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("openrouter stream HTTP %d: %s", resp.StatusCode, string(body))
+	}
+
+	reader := bufio.NewReader(resp.Body)
+	var fullText strings.Builder
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return fmt.Errorf("error reading stream: %w", err)
+		}
+
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+		data := strings.TrimPrefix(line, "data: ")
+		if data == "[DONE]" {
+			break
+		}
+
+		var chunk models.OpenRouterStreamChunk
+		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
+			// Silently skip malformed SSE frames
+			continue
+		}
+		if len(chunk.Choices) == 0 {
+			continue
+		}
+		delta := chunk.Choices[0].Delta.Content
+		if delta == "" || delta == "null" {
+			delta = chunk.Choices[0].Delta.Reasoning
+		}
+		if delta != "" {
+			fullText.WriteString(delta)
+			onChunk(StreamChunk{Text: delta})
+		}
+	}
+
+	onChunk(StreamChunk{Done: true, Text: fullText.String()})
+	return nil
 }

@@ -36,73 +36,6 @@ var allowedAgents = map[string]bool{
 	"kyc-screener":       true,
 }
 
-var allowedSkillsByAgent = map[string]map[string]bool{
-	"pitch-agent": {
-		"pitch-deck":             true,
-		"datapack-builder":       true,
-		"cim-builder":            true,
-		"teaser":                 true,
-		"buyer-list":             true,
-		"comps-analysis":         true,
-		"precedent-transactions": true,
-		"lbo-model":              true,
-		"merger-model":           true,
-	},
-	"meeting-prep-agent": {
-		"briefing-pack":       true,
-		"biography-generator": true,
-		"company-profile":     true,
-		"news-digest":         true,
-	},
-	"market-researcher": {
-		"sector-overview":      true,
-		"competitive-analysis": true,
-		"comps-analysis":       true,
-		"idea-generation":      true,
-		"thesis-tracker":       true,
-		"catalyst-calendar":    true,
-	},
-	"earnings-reviewer": {
-		"earnings-analysis":   true,
-		"earnings-preview":    true,
-		"initiating-coverage": true,
-		"model-update":        true,
-		"morning-note":        true,
-		"xlsx-author":         true,
-	},
-	"model-builder": {
-		"dcf-model":         true,
-		"lbo-model":         true,
-		"3-statement-model": true,
-		"merger-model":      true,
-		"xlsx-author":       true,
-		"audit-xls":         true,
-	},
-	"valuation-reviewer": {
-		"valuation-review": true,
-		"gp-reporting":     true,
-		"lp-reporting":     true,
-	},
-	"gl-reconciler": {
-		"break-detection":     true,
-		"root-cause-analysis": true,
-		"sign-off-routing":    true,
-	},
-	"month-end-closer": {
-		"accruals":            true,
-		"roll-forwards":       true,
-		"variance-commentary": true,
-	},
-	"statement-auditor": {
-		"lp-statement-audit":        true,
-		"distribution-verification": true,
-	},
-	"kyc-screener": {
-		"onboarding-doc-parsing": true,
-		"gap-flagging":           true,
-	},
-}
-
 // SelectRoutePlan routes a query to the best agent using a lightweight heuristic only.
 // It does NOT create a full Agent (no provider initialization) — safe for testing.
 func SelectRoutePlan(query string) RoutePlan {
@@ -152,16 +85,7 @@ func (a *Agent) selectRoutePlan() RoutePlan {
 			"skills": route.Skills,
 		},
 	)
-	return sanitizeRoutePlan(route, a.userInput)
-}
-
-func containsAny(s string, keywords ...string) bool {
-	for _, kw := range keywords {
-		if strings.Contains(s, kw) {
-			return true
-		}
-	}
-	return false
+	return sanitizeRoutePlan(route)
 }
 
 func heuristicRoutePlan(userInput string, now time.Time) RoutePlan {
@@ -170,17 +94,17 @@ func heuristicRoutePlan(userInput string, now time.Time) RoutePlan {
 	route.Agent = "market-researcher"
 	
 	// Determine Agent
-	if containsAny(q, "ban lãnh đạo", "lãnh đạo", "ban lanh dao", "board of directors", "leadership", "executive", "ban điều hành", "ban dieu hanh", "hội đồng quản trị", "hoi dong quan tri") {
+	if utils.ContainsAny(q, "ban lãnh đạo", "lãnh đạo", "ban lanh dao", "board of directors", "leadership", "executive", "ban điều hành", "ban dieu hanh", "hội đồng quản trị", "hoi dong quan tri") {
 		route.Agent = "meeting-prep-agent"
-	} else if containsAny(q, "nằm ở trang nào", "nam o trang nao", "trang mấy", "trang may", "audit", "kiểm toán", "kiem toan") {
+	} else if utils.ContainsAny(q, "nằm ở trang nào", "nam o trang nao", "trang mấy", "trang may", "audit", "kiểm toán", "kiem toan") {
 		route.Agent = "statement-auditor"
-	} else if containsAny(q, "báo cáo thu nhập", "bao cao thu nhap", "trích dẫn báo cáo", "trich dan bao cao", "6 tháng đầu năm", "6 thang dau nam", "quý", "quy", "doanh thu", "lợi nhuận") {
+	} else if utils.ContainsAny(q, "báo cáo thu nhập", "bao cao thu nhap", "trích dẫn báo cáo", "trich dan bao cao", "6 tháng đầu năm", "6 thang dau nam", "quý", "quy", "doanh thu", "lợi nhuận") {
 		route.Agent = "earnings-reviewer"
-	} else if containsAny(q, "10 năm qua", "10 nam qua", "dự phóng", "du phong", "dcf-model", "định giá", "valuation", "lbo-model") {
+	} else if utils.ContainsAny(q, "10 năm qua", "10 nam qua", "dự phóng", "du phong", "dcf-model", "định giá", "valuation", "lbo-model") {
 		route.Agent = "model-builder"
-	} else if containsAny(q, "so sánh", "so sanh", "phân tích kỹ thuật", "phan tich ky thuat", "giá cổ phiếu", "gia co phieu", "lợi thế gì", "loi the gi", "ngành ngân hàng", "nganh ngan hang") {
+	} else if utils.ContainsAny(q, "so sánh", "so sanh", "phân tích kỹ thuật", "phan tich ky thuat", "giá cổ phiếu", "gia co phieu", "lợi thế gì", "loi the gi", "ngành ngân hàng", "nganh ngan hang") {
 		route.Agent = "market-researcher"
-	} else if containsAny(q, "báo cáo tài chính năm 2024", "báo cáo tài chính năm 2023", "báo cáo năm") {
+	} else if utils.ContainsAny(q, "báo cáo tài chính năm 2024", "báo cáo tài chính năm 2023", "báo cáo năm") {
 		route.Agent = "earnings-reviewer"
 	}
 
@@ -190,8 +114,8 @@ func heuristicRoutePlan(userInput string, now time.Time) RoutePlan {
 	route.Temporal.IsFuture = false
 
 	// Future checks
-	if containsAny(q, "ngày mai", "ngay mai", "sắp tới", "sap toi", "tương lai", "tuong lai", "dự báo", "du bao") {
-		if containsAny(q, "gần đây", "gan day") {
+	if utils.ContainsAny(q, "ngày mai", "ngay mai", "sắp tới", "sap toi", "tương lai", "tuong lai", "dự báo", "du bao") {
+		if utils.ContainsAny(q, "gần đây", "gan day") {
 			route.Temporal.Intent = "latest"
 		} else {
 			route.Temporal.IsFuture = true
@@ -199,14 +123,14 @@ func heuristicRoutePlan(userInput string, now time.Time) RoutePlan {
 	}
 
 	// Date checks
-	if containsAny(q, "hôm nay", "hom nay", "hiện tại", "hien tai") {
+	if utils.ContainsAny(q, "hôm nay", "hom nay", "hiện tại", "hien tai") {
 		route.Temporal.Intent = "realtime"
 		route.Temporal.ResolvedDate = now.Format("2006-01-02")
-	} else if containsAny(q, "hôm qua", "hom qua") {
+	} else if utils.ContainsAny(q, "hôm qua", "hom qua") {
 		route.Temporal.Intent = "latest"
 		yesterday := now.AddDate(0, 0, -1)
 		route.Temporal.ResolvedDate = yesterday.Format("2006-01-02")
-	} else if containsAny(q, "thứ hai vừa rồi", "thu hai vua roi", "thứ hai tuần này", "thu hai tuan nay") {
+	} else if utils.ContainsAny(q, "thứ hai vừa rồi", "thu hai vua roi", "thứ hai tuần này", "thu hai tuan nay") {
 		route.Temporal.Intent = "historical"
 		daysToSubtract := int(now.Weekday()) - 1
 		if daysToSubtract < 0 {
@@ -216,24 +140,24 @@ func heuristicRoutePlan(userInput string, now time.Time) RoutePlan {
 		route.Temporal.ResolvedDate = lastMonday.Format("2006-01-02")
 	}
 
-	if containsAny(q, "6 tháng đầu năm 2025", "6 thang dau nam 2025") {
+	if utils.ContainsAny(q, "6 tháng đầu năm 2025", "6 thang dau nam 2025") {
 		route.Temporal.Intent = "historical"
 		route.Temporal.ResolvedDate = "2025-06-30"
-	} else if containsAny(q, "năm 2023", "nam 2023") {
+	} else if utils.ContainsAny(q, "năm 2023", "nam 2023") {
 		route.Temporal.Intent = "historical"
 		route.Temporal.ResolvedDate = "2023-12-31"
-	} else if containsAny(q, "năm 2024", "nam 2024") {
+	} else if utils.ContainsAny(q, "năm 2024", "nam 2024") {
 		route.Temporal.Intent = "historical"
 		route.Temporal.ResolvedDate = "2024-12-31"
-	} else if containsAny(q, "năm 2025", "nam 2025") {
+	} else if utils.ContainsAny(q, "năm 2025", "nam 2025") {
 		route.Temporal.Intent = "historical"
 	}
 
-	if containsAny(q, "10 năm qua", "10 nam qua") {
+	if utils.ContainsAny(q, "10 năm qua", "10 nam qua") {
 		route.Temporal.Intent = "historical"
-	} else if containsAny(q, "3 năm gần đây", "3 nam gan day") {
+	} else if utils.ContainsAny(q, "3 năm gần đây", "3 nam gan day") {
 		route.Temporal.Intent = "historical"
-	} else if containsAny(q, "những năm gần đây", "nhung nam gan day") {
+	} else if utils.ContainsAny(q, "những năm gần đây", "nhung nam gan day") {
 		route.Temporal.Intent = "latest"
 	}
 
@@ -292,7 +216,7 @@ func fallbackRoutePlan() RoutePlan {
 	}
 }
 
-func sanitizeRoutePlan(route RoutePlan, userInput string) RoutePlan {
+func sanitizeRoutePlan(route RoutePlan) RoutePlan {
 	// Bắt buộc phải nằm trong danh sách cho phép (tránh hallucination như "administrative-researcher")
 	if !allowedAgents[route.Agent] {
 		fmt.Printf("⚠️ [Router] Agent '%s' không nằm trong danh sách allowedAgents. Fallback an toàn.\n", route.Agent)

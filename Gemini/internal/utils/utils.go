@@ -12,6 +12,16 @@ import (
 
 // --- Các hàm tiện ích ---
 
+// ContainsAny returns true if s contains any of the given keywords.
+func ContainsAny(s string, keywords ...string) bool {
+	for _, kw := range keywords {
+		if strings.Contains(s, kw) {
+			return true
+		}
+	}
+	return false
+}
+
 func LoadEnv() {
 	envPath := ".env"
 	file, err := os.Open(envPath)

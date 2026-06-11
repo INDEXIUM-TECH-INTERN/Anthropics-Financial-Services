@@ -914,6 +914,67 @@ html[data-theme="light"] .theme-toggle .moon-icon { display: none; }
     color: var(--border-default);
 }
 
+/* ── Message action buttons (copy, regenerate) ── */
+.msg-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 0 0;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.message.bot:hover .msg-actions,
+.message.bot:focus-within .msg-actions {
+    opacity: 1;
+}
+
+.msg-action-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-quaternary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+}
+
+.msg-action-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--border-subtle);
+}
+
+.msg-action-btn svg {
+    width: 13px;
+    height: 13px;
+}
+
+.msg-timer.streaming {
+    color: var(--accent);
+    animation: timerPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes timerPulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+.send-btn.stop-mode {
+    background: var(--danger);
+    opacity: 1;
+}
+
+.send-btn.stop-mode:hover {
+    background: var(--danger);
+    opacity: 0.85;
+    box-shadow: 0 4px 16px var(--danger-muted);
+}
+
 /* ── Markdown ── */
 .msg-content p { margin-bottom: 10px; }
 .msg-content p:last-child { margin-bottom: 0; }

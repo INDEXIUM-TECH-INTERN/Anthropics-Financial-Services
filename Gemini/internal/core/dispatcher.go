@@ -180,8 +180,6 @@ func (d *Dispatcher) handleHandoffTool(args map[string]interface{}) string {
 }
 
 func (d *Dispatcher) appendFunctionResponse(toolCall *messaging.ToolCall, result string) {
-	d.agent.mu.Lock()
-	defer d.agent.mu.Unlock()
 	d.agent.conversation.ContextWindow.History = append(d.agent.conversation.ContextWindow.History, messaging.Message{
 		Role: messaging.RoleTool,
 		ToolResponses: []messaging.ToolResponse{{
