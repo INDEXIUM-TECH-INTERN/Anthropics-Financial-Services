@@ -92,7 +92,7 @@ func heuristicRoutePlan(userInput string, now time.Time) RoutePlan {
 	q := strings.ToLower(userInput)
 	var route RoutePlan
 	route.Agent = "market-researcher"
-	
+
 	// Determine Agent
 	if utils.ContainsAny(q, "ban lãnh đạo", "lãnh đạo", "ban lanh dao", "board of directors", "leadership", "executive", "ban điều hành", "ban dieu hanh", "hội đồng quản trị", "hoi dong quan tri") {
 		route.Agent = "meeting-prep-agent"
@@ -171,7 +171,7 @@ func guessSkillsForAgent(agent string) []string {
 	case "pitch-agent":
 		return []string{"pitch-deck"}
 	case "meeting-prep-agent":
-		return []string{"briefing-pack"}
+		return []string{}
 	case "market-researcher":
 		return []string{"sector-overview"}
 	case "earnings-reviewer":
@@ -179,20 +179,19 @@ func guessSkillsForAgent(agent string) []string {
 	case "model-builder":
 		return []string{"dcf-model"}
 	case "valuation-reviewer":
-		return []string{"valuation-review"}
+		return []string{}
 	case "gl-reconciler":
-		return []string{"break-detection"}
+		return []string{}
 	case "month-end-closer":
-		return []string{"accruals"}
+		return []string{"variance-commentary"}
 	case "statement-auditor":
-		return []string{"lp-statement-audit"}
+		return []string{}
 	case "kyc-screener":
-		return []string{"onboarding-doc-parsing"}
+		return []string{}
 	default:
-		return []string{"sector-overview"}
+		return []string{}
 	}
 }
-
 
 func buildRouterUserPrompt(userInput, routingGuide string, now time.Time) string {
 	return utils.RenderPromptTemplate("router_user_prompt.txt", map[string]string{

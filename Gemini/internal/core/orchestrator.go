@@ -99,17 +99,137 @@ func removeAccents(s string) string {
 
 func (o *Orchestrator) handleSlashCommandInternal(input string) bool {
 	parts := strings.Fields(input)
+	if len(parts) == 0 {
+		return false
+	}
 	cmd := strings.ToLower(parts[0])
 	args := strings.Join(parts[1:], " ")
 
 	var route RoutePlan
+	var agent string
+	var skills []string
+
 	switch cmd {
-	case "/earnings":
-		api.BroadcastLog("Kích hoạt lệnh /earnings...", "routing")
-		route = RoutePlan{Agent: "earnings-reviewer", Skills: []string{"earnings-analysis"}, Reason: "Slash command /earnings"}
+	case "/pitch-deck", "/pitch":
+		agent = "pitch-agent"
+		skills = []string{"pitch-deck"}
+	case "/datapack":
+		agent = "pitch-agent"
+		skills = []string{"datapack-builder"}
+	case "/cim":
+		agent = "pitch-agent"
+		skills = []string{"cim-builder"}
+	case "/teaser":
+		agent = "pitch-agent"
+		skills = []string{"teaser"}
+	case "/buyer-list":
+		agent = "pitch-agent"
+		skills = []string{"buyer-list"}
+	case "/precedents":
+		agent = "pitch-agent"
+		skills = []string{"precedent-transactions"}
+	case "/briefing":
+		agent = "meeting-prep-agent"
+		skills = []string{"briefing-pack"}
+	case "/bio":
+		agent = "meeting-prep-agent"
+		skills = []string{"biography-generator"}
+	case "/profile":
+		agent = "meeting-prep-agent"
+		skills = []string{"company-profile"}
+	case "/news":
+		agent = "meeting-prep-agent"
+		skills = []string{"news-digest"}
+	case "/sector":
+		agent = "market-researcher"
+		skills = []string{"sector-overview"}
 	case "/market":
-		api.BroadcastLog("Kích hoạt lệnh /market...", "routing")
-		route = RoutePlan{Agent: "market-researcher", Skills: []string{"sector-overview"}, Reason: "Slash command /market"}
+		agent = "market-researcher"
+		skills = []string{"sector-overview"}
+	case "/competitors":
+		agent = "market-researcher"
+		skills = []string{"competitive-analysis"}
+	case "/comps":
+		agent = "market-researcher"
+		skills = []string{"comps-analysis"}
+	case "/ideas":
+		agent = "market-researcher"
+		skills = []string{"idea-generation"}
+	case "/thesis":
+		agent = "market-researcher"
+		skills = []string{"thesis-tracker"}
+	case "/catalyst":
+		agent = "market-researcher"
+		skills = []string{"catalyst-calendar"}
+	case "/earnings":
+		agent = "earnings-reviewer"
+		skills = []string{"earnings-analysis"}
+	case "/preview":
+		agent = "earnings-reviewer"
+		skills = []string{"earnings-preview"}
+	case "/ic-memo":
+		agent = "earnings-reviewer"
+		skills = []string{"initiating-coverage"}
+	case "/update-model":
+		agent = "earnings-reviewer"
+		skills = []string{"model-update"}
+	case "/morning-note":
+		agent = "earnings-reviewer"
+		skills = []string{"morning-note"}
+	case "/earnings-xlsx":
+		agent = "earnings-reviewer"
+		skills = []string{"xlsx-author"}
+	case "/dcf":
+		agent = "model-builder"
+		skills = []string{"dcf-model"}
+	case "/dcf-model":
+		agent = "model-builder"
+		skills = []string{"dcf-model"}
+	case "/lbo":
+		agent = "model-builder"
+		skills = []string{"lbo-model"}
+	case "/model-3s":
+		agent = "model-builder"
+		skills = []string{"3-statement-model"}
+	case "/merger":
+		agent = "model-builder"
+		skills = []string{"merger-model"}
+	case "/model-xlsx":
+		agent = "model-builder"
+		skills = []string{"xlsx-author"}
+	case "/audit-xls":
+		agent = "model-builder"
+		skills = []string{"audit-xls"}
+	case "/valuation-review":
+		agent = "valuation-reviewer"
+		skills = []string{"valuation-review"}
+	case "/gp-reporting":
+		agent = "valuation-reviewer"
+		skills = []string{"gp-reporting"}
+	case "/portfolio":
+		agent = "valuation-reviewer"
+		skills = []string{"lp-reporting"}
+	case "/lp-reporting":
+		agent = "valuation-reviewer"
+		skills = []string{"lp-reporting"}
+	case "/breaks":
+		agent = "gl-reconciler"
+		skills = []string{"break-detection"}
+	case "/root-cause":
+		agent = "gl-reconciler"
+		skills = []string{"root-cause-analysis"}
+	case "/sign-off":
+		agent = "gl-reconciler"
+		skills = []string{"sign-off-routing"}
+	case "/accruals":
+		agent = "month-end-closer"
+		skills = []string{"accruals"}
+	case "/roll-forwards":
+		agent = "month-end-closer"
+		skills = []string{"roll-forwards"}
+	case "/variance":
+		agent = "month-end-closer"
+		skills = []string{"variance-commentary"}
 	case "/help":
 		fmt.Println("\n-- ANTHROPIC CLI SIMULATOR COMMANDS --")
 		fmt.Println("/earnings <ticker> : Run Earnings Reviewer workflow")
@@ -117,6 +237,92 @@ func (o *Orchestrator) handleSlashCommandInternal(input string) bool {
 		return false
 	default:
 		return false
+	}
+
+	if args == "" {
+		switch cmd {
+		case "/pitch-deck", "/pitch":
+			args = "Tạo tài liệu Pitch Deck giới thiệu cơ hội đầu tư chuyên nghiệp."
+		case "/datapack":
+			args = "Xây dựng gói dữ liệu tài chính phục vụ phân tích đầu tư."
+		case "/cim":
+			args = "Thực hiện soạn thảo Bản thông tin ghi nhớ chi tiết (CIM - Confidential Information Memorandum)."
+		case "/teaser":
+			args = "Tạo bản tóm tắt cơ hội đầu tư dự án (Teaser)."
+		case "/buyer-list":
+			args = "Lập danh sách người mua hoặc đối tác tiềm năng phù hợp."
+		case "/precedents":
+			args = "Phân tích các giao dịch tiền lệ tương tự trong ngành."
+		case "/briefing":
+			args = "Tóm tắt tài liệu họp chi tiết cho ban lãnh đạo."
+		case "/bio":
+			args = "Tạo hồ sơ tiểu sử chi tiết của thành viên ban lãnh đạo."
+		case "/profile":
+			args = "Lập hồ sơ giới thiệu thông tin doanh nghiệp chi tiết."
+		case "/news":
+			args = "Tóm tắt tin tức thị trường và sự kiện quan trọng gần đây."
+		case "/sector", "/market":
+			args = "Thực hiện phân tích tổng quan ngành và xu hướng thị trường."
+		case "/competitors":
+			args = "Phân tích đối thủ cạnh tranh và vị thế của doanh nghiệp trong ngành."
+		case "/comps":
+			args = "Phân tích so sánh ngang hàng (peer comps) định giá các doanh nghiệp tương đồng."
+		case "/ideas":
+			args = "Đề xuất và đánh giá các ý tưởng đầu tư tiềm năng."
+		case "/thesis":
+			args = "Cập nhật và theo dõi các giả định/luận điểm đầu tư chính."
+		case "/catalyst":
+			args = "Cập nhật lịch sự kiện và các yếu tố xúc tác thị trường quan trọng."
+		case "/earnings":
+			args = "Đánh giá kết quả kinh doanh và báo cáo tài chính gần nhất."
+		case "/preview":
+			args = "Phân tích dự báo kết quả kinh doanh quý/năm sắp tới."
+		case "/ic-memo":
+			args = "Thực hiện báo cáo phân tích khởi đầu (Initiating Coverage Memo) cho doanh nghiệp."
+		case "/update-model":
+			args = "Thực hiện cập nhật mô hình tài chính với số liệu mới nhất."
+		case "/morning-note":
+			args = "Tạo bản tin phân tích buổi sáng (Morning Note) tóm tắt các điểm đáng chú ý."
+		case "/earnings-xlsx":
+			args = "Tạo báo cáo tài chính định dạng Excel (.xlsx) chuyên nghiệp."
+		case "/dcf", "/dcf-model":
+			args = "Thực hiện định giá theo phương pháp chiết khấu dòng tiền (DCF valuation)."
+		case "/lbo":
+			args = "Xây dựng mô hình mua lại có tài trợ nợ (LBO valuation model)."
+		case "/model-3s":
+			args = "Xây dựng mô hình tài chính 3 báo cáo (3-statement financial model) liên kết."
+		case "/merger":
+			args = "Phân tích và mô phỏng tác động của giao dịch sáp nhập (M&A Merger model)."
+		case "/model-xlsx":
+			args = "Xuất mô hình tài chính sang file Excel (.xlsx) với các công thức chuẩn xác."
+		case "/audit-xls":
+			args = "Kiểm tra lỗi, kiểm toán công thức và tính nhất quán của file Excel tài chính."
+		case "/valuation-review":
+			args = "Thực hiện kiểm tra và soát xét gói định giá doanh nghiệp."
+		case "/gp-reporting":
+			args = "Soạn thảo báo cáo định kỳ cho Quỹ đầu tư (GP reporting)."
+		case "/portfolio", "/lp-reporting":
+			args = "Soạn thảo báo cáo kết quả danh mục đầu tư gửi cho LP (LP reporting)."
+		case "/breaks":
+			args = "Thực hiện đối soát sổ cái và phát hiện các điểm sai lệch/bất thường."
+		case "/root-cause":
+			args = "Phân tích nguyên nhân gốc rễ của các sai lệch số liệu kế toán."
+		case "/sign-off":
+			args = "Thực hiện quy trình duyệt và luân chuyển ký duyệt báo cáo tài chính."
+		case "/accruals":
+			args = "Tính toán và ghi nhận các khoản chi phí dồn tích cuối kỳ."
+		case "/roll-forwards":
+			args = "Thực hiện đối chiếu số dư lũy kế đầu kỳ và cuối kỳ."
+		case "/variance":
+			args = "Phân tích và giải trình các biến động lớn giữa số thực tế và dự toán."
+		}
+	}
+
+	api.BroadcastLog(fmt.Sprintf("Kích hoạt lệnh %s...", cmd), "routing")
+	route = RoutePlan{
+		Agent:  agent,
+		Skills: skills,
+		Reason: fmt.Sprintf("Slash command %s", cmd),
 	}
 
 	o.agent.userInput = args

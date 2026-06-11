@@ -15,6 +15,9 @@ import (
 	"gemini-cli/internal/utils"
 )
 
+var yahooBaseURL = "https://query1.finance.yahoo.com/v8/finance/chart"
+var ddgBaseURL = "https://html.duckduckgo.com/html"
+
 type MarketQueryPlan struct {
 	SearchQuery string
 	TimeNote    string
@@ -23,7 +26,7 @@ type MarketQueryPlan struct {
 func SearchTavily(query string) string {
 	apiKey := os.Getenv("TAVILY_API_KEY")
 	if apiKey == "" {
-		return "Lỗi: Chưa cấu hình TAVILY_API_KEY."
+		return ExecuteFreeSearchFallback(query)
 	}
 	fmt.Printf("🌐 [Tool] Đang tìm kiếm (Tavily): %s...\n", query)
 	
@@ -40,20 +43,23 @@ func SearchTavily(query string) string {
 	client := &http.Client{Timeout: 30 * time.Second}
 	req, err := http.NewRequest("POST", "https://api.tavily.com/search", bytes.NewBuffer(reqBody))
 	if err != nil {
-		return "Lỗi khởi tạo request tìm kiếm."
+		return ExecuteFreeSearchFallback(query)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "Lỗi kết nối tìm kiếm."
+		return ExecuteFreeSearchFallback(query)
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ExecuteFreeSearchFallback(query)
+	}
 
 	var data map[string]interface{}
 	if err := json.Unmarshal(body, &data); err != nil {
-		return "Lỗi giải mã kết quả tìm kiếm."
+		return ExecuteFreeSearchFallback(query)
 	}
 
 	var sections []string
@@ -91,7 +97,7 @@ func SearchTavily(query string) string {
 	}
 
 	if len(sections) == 0 {
-		return "Không tìm thấy thông tin hữu ích từ Tavily."
+		return ExecuteFreeSearchFallback(query)
 	}
 
 	return strings.Join(sections, "\n\n")
@@ -100,7 +106,7 @@ func SearchTavily(query string) string {
 func SearchGoogle(query string) string {
 	apiKey := os.Getenv("SERPAPI_KEY")
 	if apiKey == "" {
-		return "Lỗi: Chưa cấu hình SERPAPI_KEY."
+		return ExecuteFreeSearchFallback(query)
 	}
 	fmt.Printf("🌐 [Tool] Đang tìm kiếm: %s...\n", query)
 	searchURL := fmt.Sprintf(
@@ -111,15 +117,18 @@ func SearchGoogle(query string) string {
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Get(searchURL)
 	if err != nil {
-		return "Lỗi kết nối tìm kiếm."
+		return ExecuteFreeSearchFallback(query)
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ExecuteFreeSearchFallback(query)
+	}
 
 	// Giải mã JSON để lọc thông tin quan trọng
 	var data map[string]interface{}
 	if err := json.Unmarshal(body, &data); err != nil {
-		return "Lỗi giải mã kết quả tìm kiếm."
+		return ExecuteFreeSearchFallback(query)
 	}
 
 	var sections []string
@@ -192,7 +201,7 @@ func SearchGoogle(query string) string {
 	}
 
 	if len(sections) == 0 {
-		return "Không tìm thấy thông tin hữu ích."
+		return ExecuteFreeSearchFallback(query)
 	}
 
 	return strings.Join(sections, "\n\n")
@@ -321,4 +330,287 @@ func normalizeTextForMatching(text string) string {
 
 	normalized := strings.ToLower(strings.TrimSpace(replacer.Replace(text)))
 	return strings.Join(strings.Fields(normalized), " ")
+}
+
+type YahooFinanceResponse struct {
+	Chart struct {
+		Result []struct {
+			Meta struct {
+				Symbol             string  `json:"symbol"`
+				ExchangeName       string  `json:"exchangeName"`
+				RegularMarketPrice float64 `json:"regularMarketPrice"`
+				ChartPreviousClose float64 `json:"chartPreviousClose"`
+				PreviousClose      float64 `json:"previousClose"`
+				Currency           string  `json:"currency"`
+			} `json:"meta"`
+		} `json:"result"`
+		Error interface{} `json:"error"`
+	} `json:"chart"`
+}
+
+func extractTicker(query string) (string, bool) {
+	re := regexp.MustCompile(`(?i)\b(FPT|VNM|HPG|HDB|ACB|VIC|VHM|VRE|MSN|MWG|TCB|VPB|MBB|STB|CTG|BID|VCB|GAS|PLX|POW|SAB|EIB|LPB|VIB|SHB|HAG|DXG|DIG|NLG|KDH|PVD|PVS|SSI|VND)(?:\.VN)?\b`)
+	match := re.FindStringSubmatch(query)
+	if len(match) > 1 {
+		return strings.ToUpper(match[1]), true
+	}
+	return "", false
+}
+
+func FetchYahooFinanceDataFallback(ticker string) string {
+	ticker = strings.ToUpper(ticker)
+	urlVN := fmt.Sprintf("%s/%s.VN", yahooBaseURL, ticker)
+	
+	result, err := queryYahooAPI(urlVN, ticker)
+	if err == nil && result != "" {
+		return result
+	}
+	
+	urlPlain := fmt.Sprintf("%s/%s", yahooBaseURL, ticker)
+	result, err = queryYahooAPI(urlPlain, ticker)
+	if err == nil && result != "" {
+		return result
+	}
+	
+	return "Lỗi: Không thể lấy dữ liệu từ Yahoo Finance cho mã " + ticker + "."
+}
+
+func queryYahooAPI(apiURL, ticker string) (string, error) {
+	client := &http.Client{Timeout: 15 * time.Second}
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
+	
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("HTTP status %d", resp.StatusCode)
+	}
+	
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	
+	var data YahooFinanceResponse
+	if err := json.Unmarshal(body, &data); err != nil {
+		return "", err
+	}
+	
+	if len(data.Chart.Result) == 0 {
+		return "", fmt.Errorf("empty chart result")
+	}
+	
+	meta := data.Chart.Result[0].Meta
+	
+	previousClose := meta.ChartPreviousClose
+	if previousClose == 0 {
+		previousClose = meta.PreviousClose
+	}
+	
+	priceDiff := meta.RegularMarketPrice - previousClose
+	var priceMovement string
+	if previousClose > 0 {
+		percent := (priceDiff / previousClose) * 100
+		if priceDiff > 0 {
+			priceMovement = fmt.Sprintf("+%.2f (+%.2f%%)", priceDiff, percent)
+		} else if priceDiff < 0 {
+			priceMovement = fmt.Sprintf("%.2f (%.2f%%)", priceDiff, percent)
+		} else {
+			priceMovement = "0.00 (0.00%)"
+		}
+	} else {
+		priceMovement = "0.00 (0.00%)"
+	}
+	
+	var lines []string
+	symbol := meta.Symbol
+	if symbol == "" {
+		symbol = ticker
+	}
+	lines = append(lines, fmt.Sprintf("stock: %s", symbol))
+	
+	exchange := meta.ExchangeName
+	if exchange == "" {
+		exchange = "HOSE"
+	}
+	lines = append(lines, fmt.Sprintf("exchange: %s", exchange))
+	lines = append(lines, fmt.Sprintf("price: %.2f", meta.RegularMarketPrice))
+	
+	currency := meta.Currency
+	if currency == "" {
+		currency = "VND"
+	}
+	lines = append(lines, fmt.Sprintf("currency: %s", currency))
+	lines = append(lines, fmt.Sprintf("price_movement: %s", priceMovement))
+	
+	return "Stock Information:\n" + strings.Join(lines, "\n"), nil
+}
+
+func stripHTML(input string) string {
+	re := regexp.MustCompile(`<[^>]*>`)
+	result := re.ReplaceAllString(input, "")
+	result = strings.ReplaceAll(result, "&amp;", "&")
+	result = strings.ReplaceAll(result, "&lt;", "<")
+	result = strings.ReplaceAll(result, "&gt;", ">")
+	result = strings.ReplaceAll(result, "&quot;", "\"")
+	result = strings.ReplaceAll(result, "&#x27;", "'")
+	result = strings.ReplaceAll(result, "&#39;", "'")
+	result = strings.ReplaceAll(result, "&nbsp;", " ")
+	return strings.TrimSpace(result)
+}
+
+func cleanDDGURL(rawURL string) string {
+	if strings.Contains(rawURL, "uddg=") {
+		u, err := url.Parse(rawURL)
+		if err == nil {
+			realURL := u.Query().Get("uddg")
+			if realURL != "" {
+				return realURL
+			}
+		}
+	}
+	if strings.HasPrefix(rawURL, "//") {
+		return "https:" + rawURL
+	}
+	if strings.HasPrefix(rawURL, "/") {
+		return "https://duckduckgo.com" + rawURL
+	}
+	return rawURL
+}
+
+func SearchDuckDuckGoFree(query string) string {
+	fmt.Printf("🌐 [Tool] Đang tìm kiếm (DuckDuckGo Free): %s...\n", query)
+	ddgURL := fmt.Sprintf("%s/?q=%s", ddgBaseURL, url.QueryEscape(query))
+	
+	client := &http.Client{Timeout: 30 * time.Second}
+	req, err := http.NewRequest("GET", ddgURL, nil)
+	if err != nil {
+		return "Lỗi khởi tạo request tìm kiếm."
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
+	
+	resp, err := client.Do(req)
+	if err != nil {
+		return "Lỗi kết nối tìm kiếm."
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Sprintf("Lỗi kết nối tìm kiếm (HTTP %d).", resp.StatusCode)
+	}
+	
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "Lỗi đọc kết quả tìm kiếm."
+	}
+	
+	htmlContent := string(bodyBytes)
+	
+	blocks := strings.Split(htmlContent, `<div class="result`)
+	if len(blocks) <= 1 {
+		blocks = strings.Split(htmlContent, `class="result`)
+	}
+	
+	var lines []string
+	count := 0
+	
+	reTitle := regexp.MustCompile(`<a\s+class="result__a"\s+href="([^"]+)"[^>]*>([\s\S]*?)</a>`)
+	reSnippet := regexp.MustCompile(`class="[^"]*result__snippet[^"]*"[^>]*>([\s\S]*?)</`)
+	
+	for i := 1; i < len(blocks); i++ {
+		block := blocks[i]
+		
+		titleMatches := reTitle.FindStringSubmatch(block)
+		if len(titleMatches) < 3 {
+			continue
+		}
+		rawURL := titleMatches[1]
+		title := stripHTML(titleMatches[2])
+		if title == "" {
+			continue
+		}
+		
+		snippet := ""
+		snippetMatches := reSnippet.FindStringSubmatch(block)
+		if len(snippetMatches) >= 2 {
+			snippet = stripHTML(snippetMatches[1])
+		}
+		
+		link := cleanDDGURL(rawURL)
+		
+		if len(snippet) > 300 {
+			snippet = snippet[:300] + "..."
+		}
+		
+		line := fmt.Sprintf("- %s [URL: %s]", title, link)
+		if snippet != "" {
+			line += fmt.Sprintf(": %s", snippet)
+		}
+		lines = append(lines, line)
+		
+		count++
+		if count >= 5 {
+			break
+		}
+	}
+	
+	if len(lines) == 0 {
+		allTitles := reTitle.FindAllStringSubmatch(htmlContent, -1)
+		allSnippets := reSnippet.FindAllStringSubmatch(htmlContent, -1)
+		for idx, tMatch := range allTitles {
+			if idx >= 5 {
+				break
+			}
+			rawURL := tMatch[1]
+			title := stripHTML(tMatch[2])
+			if title == "" {
+				continue
+			}
+			snippet := ""
+			if idx < len(allSnippets) {
+				snippet = stripHTML(allSnippets[idx][1])
+			}
+			link := cleanDDGURL(rawURL)
+			if len(snippet) > 300 {
+				snippet = snippet[:300] + "..."
+			}
+			line := fmt.Sprintf("- %s [URL: %s]", title, link)
+			if snippet != "" {
+				line += fmt.Sprintf(": %s", snippet)
+			}
+			lines = append(lines, line)
+		}
+	}
+	
+	if len(lines) == 0 {
+		return "Không tìm thấy kết quả tìm kiếm nào từ DuckDuckGo."
+	}
+	
+	return "Search Results:\n" + strings.Join(lines, "\n")
+}
+
+func ExecuteFreeSearchFallback(query string) string {
+	var results []string
+	if ticker, ok := extractTicker(query); ok {
+		yahooData := FetchYahooFinanceDataFallback(ticker)
+		if yahooData != "" && !strings.HasPrefix(yahooData, "Lỗi:") {
+			results = append(results, yahooData)
+		}
+	}
+	ddgData := SearchDuckDuckGoFree(query)
+	if ddgData != "" && !strings.HasPrefix(ddgData, "Không tìm thấy") && !strings.HasPrefix(ddgData, "Lỗi") {
+		results = append(results, ddgData)
+	}
+	
+	if len(results) == 0 {
+		return "Không tìm thấy kết quả tìm kiếm hoặc dữ liệu tài chính nào."
+	}
+	return strings.Join(results, "\n\n")
 }

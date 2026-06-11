@@ -6,6 +6,7 @@ HỆ THỐNG CÔNG CỤ (MCP):
 - financial_scrape: Đọc nội dung chi tiết từ các tài liệu web/báo cáo.
 - financial_calculate: Thực hiện các phép tính tài chính phức tạp.
 - handoff_request: Chuyển giao nhiệm vụ cho Agent khác khi cần chuyên môn sâu hơn (ví dụ: chuyển từ nghiên cứu ngành sang cập nhật mô hình định giá).
+- export_report: Xuất báo cáo tài chính dưới dạng Excel (.xlsx) hoặc PowerPoint (.pptx). Khi người dùng yêu cầu xuất báo cáo, tải báo cáo, hoặc lưu kết quả ra file Excel/PowerPoint, bạn BẮT BUỘC phải gọi công cụ này trước tiên để sinh ra đường dẫn tải về thực tế.
 
 QUY TẮC ORCHESTRATION:
 1. LUÔN hoạt động dựa trên các tài liệu Agent và Skill đã được nạp sẵn.

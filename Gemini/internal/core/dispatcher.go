@@ -2,8 +2,12 @@ package core
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"gemini-cli/internal/api"
 	"gemini-cli/internal/models/messaging"
@@ -45,6 +49,7 @@ func (d *Dispatcher) GetTools() []messaging.ToolSchema {
 		d.newFinancialCalculateTool(),
 		d.newHandoffRequestTool(),
 		d.newLoadContextTool(),
+		d.newExportReportTool(),
 	}
 }
 
@@ -93,6 +98,9 @@ func (d *Dispatcher) resolveToolCallResult(toolCall *messaging.ToolCall) string 
 		docName, _ := toolCall.Args["name"].(string)
 		api.BroadcastLog(fmt.Sprintf("Nạp tài liệu: %s/%s", docType, docName), "process")
 		return tools.LoadDocument(docType, docName)
+	case "export_report":
+		api.BroadcastLog("Đang tạo và xuất báo cáo...", "tool")
+		return d.handleExportReportTool(toolCall.Args)
 	default:
 		return fmt.Sprintf("Error: Unknown tool %s", toolCall.Name)
 	}
@@ -303,3 +311,117 @@ func (d *Dispatcher) handleFinancialScrapeTool(args map[string]interface{}) stri
 	}
 	return result
 }
+
+func (d *Dispatcher) newExportReportTool() messaging.ToolSchema {
+	return messaging.ToolSchema{
+		Name:        "export_report",
+		Description: "Xuất báo cáo tài chính chuyên nghiệp dưới dạng Excel (.xlsx) hoặc PowerPoint (.pptx).",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"format": map[string]interface{}{
+					"type":        "string",
+					"description": "Định dạng báo cáo: 'xlsx' hoặc 'pptx'",
+					"enum":        []string{"xlsx", "pptx"},
+				},
+				"title": map[string]interface{}{
+					"type":        "string",
+					"description": "Tiêu đề của báo cáo",
+				},
+				"data": map[string]interface{}{
+					"type":        "string",
+					"description": "Dữ liệu JSON thô để đưa vào báo cáo (optional). Đối với Excel có thể là danh sách các hàng hoặc dictionary chứa các sheet. Đối với PowerPoint có thể chứa bảng dữ liệu.",
+				},
+			},
+			"required": []string{"format", "title"},
+		},
+	}
+}
+
+func (d *Dispatcher) handleExportReportTool(args map[string]interface{}) string {
+	format, _ := args["format"].(string)
+	if format == "" {
+		format, _ = args["type"].(string) // check both format and type
+	}
+	format = strings.ToLower(format)
+	if format != "xlsx" && format != "pptx" {
+		format = "xlsx" // default
+	}
+
+	title, _ := args["title"].(string)
+	if title == "" {
+		title = "Báo cáo Tài chính"
+	}
+
+	dataStr, _ := args["data"].(string)
+
+	// Resolve the absolute path of report_generator.py
+	scriptPath := "report_generator.py"
+	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
+		scriptPath = "../report_generator.py"
+		if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
+			scriptPath = "c:\\Users\\Rabuno\\Documents\\AHihi\\TestAIFinance\\report_generator.py"
+		}
+	}
+	absScriptPath, err := filepath.Abs(scriptPath)
+	if err != nil {
+		absScriptPath = scriptPath
+	}
+
+	// Resolve exports directory
+	exportsDir := "frontend/exports"
+	for _, dir := range []string{"frontend", "../../frontend", "../frontend"} {
+		if _, err := os.Stat(dir); err == nil {
+			exportsDir = filepath.Join(dir, "exports")
+			break
+		}
+	}
+
+	if err := os.MkdirAll(exportsDir, 0755); err != nil {
+		return fmt.Sprintf("Error creating exports directory: %v", err)
+	}
+
+	// Generate filename
+	filename := fmt.Sprintf("report_%d.%s", time.Now().UnixNano(), format)
+	outputPath := filepath.Join(exportsDir, filename)
+	absOutputPath, err := filepath.Abs(outputPath)
+	if err != nil {
+		absOutputPath = outputPath
+	}
+
+	// Write data string to a temporary file to avoid shell escaping on Windows
+	var dataFilePath string
+	if dataStr != "" {
+		tmpFile, err := os.CreateTemp("", "report_data_*.json")
+		if err != nil {
+			return fmt.Sprintf("Error creating temp file for data: %v", err)
+		}
+		defer os.Remove(tmpFile.Name()) // clean up
+		if _, err := tmpFile.Write([]byte(dataStr)); err != nil {
+			tmpFile.Close()
+			return fmt.Sprintf("Error writing temp file data: %v", err)
+		}
+		tmpFile.Close()
+		dataFilePath = tmpFile.Name()
+	}
+
+	// Prepare exec command
+	cmdArgs := []string{absScriptPath, "--type", format, "--output", absOutputPath, "--title", title}
+	if dataFilePath != "" {
+		cmdArgs = append(cmdArgs, "--data-file", dataFilePath)
+	}
+
+	cmd := exec.Command("python", cmdArgs...)
+	var stdout, stderr strings.Builder
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
+	if err != nil {
+		return fmt.Sprintf("Error running report generator: %v. Stderr: %s. Stdout: %s", err, stderr.String(), stdout.String())
+	}
+
+	displayFormat := strings.ToUpper(format)
+	return fmt.Sprintf("[Tải về Báo cáo (%s)](/exports/%s)", displayFormat, filename)
+}
+
