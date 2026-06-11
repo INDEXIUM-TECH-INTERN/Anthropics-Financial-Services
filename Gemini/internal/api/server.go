@@ -11,6 +11,7 @@ import (
 	"gemini-cli/internal/models/messaging"
 	"gemini-cli/internal/redis"
 	"gemini-cli/internal/store"
+	"gemini-cli/internal/utils"
 )
 
 type AgentInterface interface {
@@ -232,8 +233,8 @@ func StartServer(agent AgentInterface) {
 			History: updatedHistory,
 			Metrics: Metrics{
 				LatencyMs: latency,
-				TokenIn:   len(req.Message) / 4, // Ước tính tạm
-				TokenOut:  len(reply) / 4,       // Ước tính tạm
+				TokenIn:   utils.EstimateTokens(req.Message),
+				TokenOut:  utils.EstimateTokens(reply),
 				RamMB:     ram,
 				CpuLoad:   cpu,
 			},

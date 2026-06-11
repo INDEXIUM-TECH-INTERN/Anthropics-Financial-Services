@@ -389,6 +389,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // ── Thinking card (shown while waiting for response) ──
+    function createThinkingCard() {
+        const el = document.createElement('div');
+        el.className = 'thinking-card';
+        el.innerHTML = `
+            <div class="thinking-dots">
+                <span></span><span></span><span></span>
+            </div>
+            <span class="thinking-text">Đang suy nghĩ…</span>
+        `;
+        return el;
+    }
+
     // ── Send message ──
     async function sendMessage(textOverride = null) {
         const text = textOverride !== null ? textOverride : chatInput.value.trim();
@@ -405,8 +418,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Create thinking card inline in chat
         const thinkingEl = createThinkingCard();
-        chatContent.appendChild(thinkingEl);
-        scrollToBottom();
+        if (thinkingEl) {
+            chatContent.appendChild(thinkingEl);
+            scrollToBottom();
+        }
 
         const startTime = Date.now();
         const TIMEOUT_MS = 300000;
@@ -427,7 +442,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
             clearTimeout(timeoutId);
-            typingEl.remove();
+            thinkingEl.remove();
 
             if (data.error) {
                 const diag = diagnoseError('BackendError', data.error);
@@ -458,7 +473,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (error) {
             clearTimeout(timeoutId);
-            typingEl.remove();
+            thinkingEl.remove();
 
             const diag = diagnoseError(error.name || 'Error', error.message || String(error), error.stack || '');
             const { el: msgEl } = appendMessageBubble('', 'bot');

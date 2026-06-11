@@ -9,10 +9,9 @@ import (
 )
 
 type ContextWindow struct {
-	History       []messaging.Message
-	MemorySummary string
-	// lastSummarizedIdx giúp biết đã tóm tắt đến đâu (để tối ưu sau này)
-	lastSummarizedIdx int
+	History           []messaging.Message
+	MemorySummary     string
+	lastSummarizedIdx int // tracks how many messages have been summarized (for future incremental summarization)
 }
 
 func NewContextWindow() *ContextWindow {

@@ -128,7 +128,7 @@ func (a *Agent) selectRoutePlan() RoutePlan {
 		fmt.Printf("⚠️ [Router] Provider error: %v. Falling back to heuristic router.\n", err)
 		route = heuristicRoutePlan(a.userInput, now)
 	} else {
-		fmt.Printf("\n[DEBUG] Raw AI Response: %s\n", raw)
+		fmt.Printf("\n[Router] Raw AI Response (first 200 chars): %.200s\n", raw)
 		var parseErr error
 		route, parseErr = parseRoutePlan(raw)
 		if parseErr != nil {
