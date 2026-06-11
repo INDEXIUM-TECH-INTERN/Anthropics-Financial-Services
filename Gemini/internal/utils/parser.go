@@ -4,9 +4,10 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
+
+	scripts_parser "gemini-cli/internal/scripts/parser"
 )
 
 // ParseAttachment cố gắng chuyển đổi file đính kèm thành văn bản để LLM có thể đọc trực tiếp.
@@ -39,10 +40,11 @@ func ParseAttachment(name, mimeType, dataBase64 string) (string, bool) {
 	return ParseWithMarkItDown(name, data)
 }
 
-// ParseWithMarkItDown ghi dữ liệu ra file tạm và gọi python script markitdown.
+// ParseWithMarkItDown ghi dữ liệu ra file tạm và parse bằng Go parser.
+// Thay thế cho Python markitdown script — không cần Python runtime.
 func ParseWithMarkItDown(filename string, data []byte) (string, bool) {
 	// Tạo file tạm
-	tmpFile, err := os.CreateTemp("", "markitdown_*"+filepath.Ext(filename))
+	tmpFile, err := os.CreateTemp("", "parser_*"+filepath.Ext(filename))
 	if err != nil {
 		return fmt.Sprintf("[Lỗi tạo file tạm: %v]", err), false
 	}
@@ -53,26 +55,18 @@ func ParseWithMarkItDown(filename string, data []byte) (string, bool) {
 	}
 	tmpFile.Close()
 
-	// Đường dẫn tới script python
-	scriptPath := filepath.Join("internal", "utils", "markitdown_parser.py")
-	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
-		// Fallback for different working directories
-		scriptPath = filepath.Join("Gemini", "internal", "utils", "markitdown_parser.py")
-	}
-	
-	cmd := exec.Command("python", scriptPath, tmpFile.Name())
-	out, err := cmd.CombinedOutput()
-	
+	// Dùng Go parser thay vì Python script
+	content, err := scripts_parser.ParseFile(tmpFile.Name())
 	if err != nil {
-		return fmt.Sprintf("[Lỗi phân tích file bằng markitdown: %v\nOutput: %s]", err, string(out)), false
+		return fmt.Sprintf("[Lỗi phân tích file: %v]", err), false
 	}
 
-	result := strings.TrimSpace(string(out))
-	if result == "" {
+	content = strings.TrimSpace(content)
+	if content == "" {
 		return "[File không có nội dung văn bản nào được trích xuất]", true
 	}
-	
-	return result, true
+
+	return content, true
 }
 
 // GetFileContentWrapper bọc nội dung file vào một block Markdown rõ ràng cho LLM

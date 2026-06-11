@@ -241,12 +241,6 @@ func (a *Agent) appendUserTextInternal(text string, atts []messaging.Attachment)
 	a.conversation.ContextWindow.History = append(a.conversation.ContextWindow.History, msg)
 }
 
-func (a *Agent) AddUserText(text string) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.appendUserTextInternal(text, nil)
-}
-
 func (a *Agent) GetHistory() []messaging.Message {
 	a.mu.Lock()
 	defer a.mu.Unlock()

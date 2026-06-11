@@ -15,7 +15,10 @@ type LoadedDocument struct {
 	SourceURL   string
 	Content     string
 	ContentSize int
+	CachedAt    time.Time
 }
+
+const cacheTTL = 30 * time.Minute // TTL để tránh cache cũ quá lâu
 
 // documentCache caches loaded documents to avoid repeated GitHub HTTP calls.
 // Key format: "<docType>:<name>" (e.g., "agent:market-researcher").
@@ -34,8 +37,11 @@ func LoadDocumentWithMetadata(docType, name string) LoadedDocument {
 	// Check cache first (fast path, no network)
 	documentCacheMu.RLock()
 	if cached, ok := documentCache[cacheKey]; ok {
-		documentCacheMu.RUnlock()
-		return cached
+		if time.Since(cached.CachedAt) < cacheTTL {
+			documentCacheMu.RUnlock()
+			return cached
+		}
+		// Cache expired — sẽ fetch lại
 	}
 	documentCacheMu.RUnlock()
 
@@ -43,6 +49,7 @@ func LoadDocumentWithMetadata(docType, name string) LoadedDocument {
 	doc := fetchDocument(docType, name)
 
 	// Store in cache
+	doc.CachedAt = time.Now()
 	documentCacheMu.Lock()
 	documentCache[cacheKey] = doc
 	documentCacheMu.Unlock()

@@ -12,6 +12,7 @@ import (
 
 	"gemini-cli/internal/models/messaging"
 	"gemini-cli/internal/pubsub"
+	"gemini-cli/internal/scripts/report_gen"
 	"gemini-cli/internal/tools"
 	"gemini-cli/internal/utils"
 )
@@ -195,6 +196,8 @@ func (d *Dispatcher) handleHandoffTool(args map[string]interface{}) string {
 }
 
 func (d *Dispatcher) appendFunctionResponse(toolCall *messaging.ToolCall, result string) {
+	d.agent.mu.Lock()
+	defer d.agent.mu.Unlock()
 	d.agent.conversation.ContextWindow.History = append(d.agent.conversation.ContextWindow.History, messaging.Message{
 		Role: messaging.RoleTool,
 		ToolResponses: []messaging.ToolResponse{{
@@ -348,11 +351,11 @@ func (d *Dispatcher) newExportReportTool() messaging.ToolSchema {
 func (d *Dispatcher) handleExportReportTool(args map[string]interface{}) string {
 	format, _ := args["format"].(string)
 	if format == "" {
-		format, _ = args["type"].(string) // check both format and type
+		format, _ = args["type"].(string)
 	}
 	format = strings.ToLower(format)
 	if format != "xlsx" && format != "pptx" {
-		format = "xlsx" // default
+		format = "xlsx"
 	}
 
 	title, _ := args["title"].(string)
@@ -362,28 +365,8 @@ func (d *Dispatcher) handleExportReportTool(args map[string]interface{}) string 
 
 	dataStr, _ := args["data"].(string)
 
-	// Resolve the absolute path of report_generator.py
-	scriptPath := "report_generator.py"
-	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
-		scriptPath = "../report_generator.py"
-		if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
-			scriptPath = "c:\\Users\\Rabuno\\Documents\\AHihi\\TestAIFinance\\report_generator.py"
-		}
-	}
-	absScriptPath, err := filepath.Abs(scriptPath)
-	if err != nil {
-		absScriptPath = scriptPath
-	}
-
 	// Resolve exports directory
-	exportsDir := "frontend/exports"
-	for _, dir := range []string{"frontend", "../../frontend", "../frontend"} {
-		if _, err := os.Stat(dir); err == nil {
-			exportsDir = filepath.Join(dir, "exports")
-			break
-		}
-	}
-
+	exportsDir := resolveExportsDir()
 	if err := os.MkdirAll(exportsDir, 0755); err != nil {
 		return fmt.Sprintf("Error creating exports directory: %v", err)
 	}
@@ -391,31 +374,55 @@ func (d *Dispatcher) handleExportReportTool(args map[string]interface{}) string 
 	// Generate filename
 	filename := fmt.Sprintf("report_%d.%s", time.Now().UnixNano(), format)
 	outputPath := filepath.Join(exportsDir, filename)
-	absOutputPath, err := filepath.Abs(outputPath)
-	if err != nil {
-		absOutputPath = outputPath
+
+	// Tạo báo cáo bằng Go (Excel) hoặc Python script (PPTX)
+	if format == "xlsx" {
+		_, err := report_gen.Generate(report_gen.FormatXLSX, title, dataStr, outputPath)
+		if err != nil {
+			return fmt.Sprintf("Error generating Excel report: %v", err)
+		}
+	} else {
+		// PPTX: dùng Python script (report_generator.py trong scripts/)
+		outputPath = d.generatePPTXWithScript(title, dataStr, outputPath)
 	}
 
-	// Write data string to a temporary file to avoid shell escaping on Windows
-	var dataFilePath string
+	displayFormat := strings.ToUpper(format)
+	return fmt.Sprintf("[Tải về Báo cáo (%s)](/exports/%s)", displayFormat, filename)
+}
+
+// generatePPTXWithScript gọi Python script để tạo PPTX
+func (d *Dispatcher) generatePPTXWithScript(title, dataStr, outputPath string) string {
+	scriptPath := os.Getenv("REPORT_GENERATOR_PATH")
+	if scriptPath == "" {
+		candidates := []string{
+			"scripts/report_generator.py",
+			"../scripts/report_generator.py",
+			"../../scripts/report_generator.py",
+		}
+		for _, c := range candidates {
+			if _, err := os.Stat(c); err == nil {
+				scriptPath = c
+				break
+			}
+		}
+	}
+	if scriptPath == "" {
+		return ""
+	}
+
+	absScriptPath, _ := filepath.Abs(scriptPath)
+	absOutputPath, _ := filepath.Abs(outputPath)
+
+	cmdArgs := []string{absScriptPath, "--type", "pptx", "--output", absOutputPath, "--title", title}
 	if dataStr != "" {
 		tmpFile, err := os.CreateTemp("", "report_data_*.json")
 		if err != nil {
-			return fmt.Sprintf("Error creating temp file for data: %v", err)
+			return ""
 		}
-		defer os.Remove(tmpFile.Name()) // clean up
-		if _, err := tmpFile.Write([]byte(dataStr)); err != nil {
-			tmpFile.Close()
-			return fmt.Sprintf("Error writing temp file data: %v", err)
-		}
+		defer os.Remove(tmpFile.Name())
+		tmpFile.Write([]byte(dataStr))
 		tmpFile.Close()
-		dataFilePath = tmpFile.Name()
-	}
-
-	// Prepare exec command
-	cmdArgs := []string{absScriptPath, "--type", format, "--output", absOutputPath, "--title", title}
-	if dataFilePath != "" {
-		cmdArgs = append(cmdArgs, "--data-file", dataFilePath)
+		cmdArgs = append(cmdArgs, "--data-file", tmpFile.Name())
 	}
 
 	cmd := exec.Command("python", cmdArgs...)
@@ -423,13 +430,27 @@ func (d *Dispatcher) handleExportReportTool(args map[string]interface{}) string 
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	err = cmd.Run()
-	if err != nil {
-		return fmt.Sprintf("Error running report generator: %v. Stderr: %s. Stdout: %s", err, stderr.String(), stdout.String())
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("⚠️ [PPTX] Python script error: %v. Stderr: %s\n", err, stderr.String())
+		return ""
 	}
+	return outputPath
+}
 
-	displayFormat := strings.ToUpper(format)
-	return fmt.Sprintf("[Tải về Báo cáo (%s)](/exports/%s)", displayFormat, filename)
+// resolveExportsDir tìm thư mục exports phù hợp
+func resolveExportsDir() string {
+	candidates := []string{
+		"frontend/exports",
+		"../../frontend/exports",
+		"../frontend/exports",
+		"exports",
+	}
+	for _, dir := range candidates {
+		if _, err := os.Stat(filepath.Dir(dir)); err == nil {
+			return dir
+		}
+	}
+	return "exports"
 }
 
 
@@ -453,14 +474,35 @@ func (d *Dispatcher) handleReadLocalFileTool(args map[string]interface{}) string
 		return "Error: Missing path parameter"
 	}
 
+	// Security: chỉ cho phép đọc file trong thư mục exports, không cho phép path traversal
 	baseName := filepath.Base(path)
-	searchDirs := []string{"frontend/exports", "Gemini/frontend/exports", "../frontend/exports"}
+	if baseName == "" || baseName == "." || baseName == ".." {
+		return "Error: Tên tệp không hợp lệ"
+	}
+
+	// Whitelist extensions
+	allowedExts := map[string]bool{
+		".xlsx": true, ".xls": true, ".csv": true, ".txt": true,
+		".md": true, ".json": true, ".xml": true, ".pdf": true,
+		".docx": true, ".pptx": true, ".png": true, ".jpg": true,
+	}
+	ext := strings.ToLower(filepath.Ext(baseName))
+	if !allowedExts[ext] {
+		return fmt.Sprintf("Error: Định dạng file '%s' không được phép đọc", ext)
+	}
+
+	searchDirs := []string{"frontend/exports", "Gemini/frontend/exports", "../frontend/exports", "exports"}
 	var targetPath string
 	for _, dir := range searchDirs {
 		p := filepath.Join(dir, baseName)
 		if _, err := os.Stat(p); err == nil {
-			targetPath = p
-			break
+			// Verify resolved path is still inside exports directory (prevent traversal)
+			absPath, _ := filepath.Abs(p)
+			absDir, _ := filepath.Abs(dir)
+			if strings.HasPrefix(absPath, absDir) {
+				targetPath = absPath
+				break
+			}
 		}
 	}
 

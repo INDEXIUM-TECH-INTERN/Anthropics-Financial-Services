@@ -346,7 +346,7 @@ func (p *GeminiProvider) GenerateStream(ctx context.Context, req messaging.Reque
 	httpReq.Header.Set("x-goog-api-key", p.APIKey)
 	httpReq.Header.Set("Accept", "text/event-stream")
 
-	client := &http.Client{Timeout: 0}
+	client := &http.Client{Timeout: 10 * time.Minute}
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		return fmt.Errorf("error performing gemini stream request: %w", err)

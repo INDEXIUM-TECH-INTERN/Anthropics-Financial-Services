@@ -1,10 +1,13 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"runtime"
+	"syscall"
 	"time"
 
 	"gemini-cli/internal/models/messaging"
@@ -65,7 +68,6 @@ func StartServer(agent AgentInterface) {
 	mux.HandleFunc("/api/chats", handleChats)
 	mux.HandleFunc("/api/chat", handleChat(agent))
 	mux.HandleFunc("/api/chat/stream", handleChatStream(agent))
-	mux.HandleFunc("/api/config/keys", handleConfigKeys(agent))
 	mux.HandleFunc("/api/history", handleHistory(agent))
 
 	// Static files
@@ -88,9 +90,22 @@ func StartServer(agent AgentInterface) {
 	}
 
 	fmt.Printf("🚀 [Server] Backend Go is running on http://0.0.0.0:%s\n", port)
-	if err := server.ListenAndServe(); err != nil {
+	// Graceful shutdown on SIGINT/SIGTERM
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+		sig := <-sigChan
+		fmt.Printf("\n🛑 [Server] Received signal %v, shutting down gracefully...\n", sig)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := server.Shutdown(ctx); err != nil {
+			fmt.Printf("❌ [Server] Shutdown error: %v\n", err)
+		}
+	}()
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		fmt.Printf("❌ [Error] Server failed: %v\n", err)
 	}
+	fmt.Println("✅ [Server] Stopped.")
 }
 
 func resolveFrontendDir() string {
@@ -103,7 +118,11 @@ func resolveFrontendDir() string {
 }
 
 func enableCORS(w http.ResponseWriter) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	origin := os.Getenv("ALLOWED_ORIGIN")
+	if origin == "" {
+		origin = "*" // fallback for dev; set ALLOWED_ORIGIN in production
+	}
+	w.Header().Set("Access-Control-Allow-Origin", origin)
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 }

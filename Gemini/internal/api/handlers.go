@@ -20,7 +20,9 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("ok"))
+	if _, err := w.Write([]byte("ok")); err != nil {
+			fmt.Printf("⚠️ [Health] Write error: %v\n", err)
+		}
 }
 
 // ── SSE Events handler ──
@@ -98,7 +100,10 @@ func handleChats(w http.ResponseWriter, r *http.Request) {
 		var payload struct {
 			Title string `json:"title"`
 		}
-		_ = json.NewDecoder(r.Body).Decode(&payload)
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			http.Error(w, "Bad request: invalid JSON", http.StatusBadRequest)
+			return
+		}
 
 		title := payload.Title
 		if title == "" {
@@ -187,7 +192,9 @@ func handleChat(agent AgentInterface) http.HandlerFunc {
 		updatedHistory := agent.GetHistory()
 		sess.Messages = updatedHistory
 		sess.Title = generateTitleIfNeeded(sess.Title, req.Message)
-		_ = store.SaveSession(sess)
+		if err := store.SaveSession(sess); err != nil {
+				fmt.Printf("⚠️ [SaveSession] Error: %v\n", err)
+			}
 
 		resp := ChatResponse{
 			Reply:   reply,
@@ -289,31 +296,9 @@ func handleChatStream(agent AgentInterface) http.HandlerFunc {
 		updatedHistory := agent.GetHistory()
 		sess.Messages = updatedHistory
 		sess.Title = generateTitleIfNeeded(sess.Title, req.Message)
-		_ = store.SaveSession(sess)
-	}
-}
-
-// ── Config keys handler ──
-func handleConfigKeys(agent AgentInterface) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		enableCORS(w)
-		if r.Method == "OPTIONS" {
-			return
-		}
-		if r.Method != "POST" {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		var payload struct {
-			Keys []string `json:"keys"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			http.Error(w, "Bad request", http.StatusBadRequest)
-			return
-		}
-		agent.SetOpenRouterKeys(payload.Keys)
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"status": "success", "message": "OpenRouter keys updated"})
+		if err := store.SaveSession(sess); err != nil {
+				fmt.Printf("⚠️ [SaveSession] Error: %v\n", err)
+			}
 	}
 }
 

@@ -165,12 +165,3 @@ func DeleteSession(id string) error {
 	return err
 }
 
-// AppendMessage is a convenience to add a message and save.
-func AppendMessage(id string, msg messaging.Message) (*ChatSession, error) {
-	sess, err := GetSession(id)
-	if err != nil {
-		return nil, err
-	}
-	sess.Messages = append(sess.Messages, msg)
-	return sess, SaveSession(sess)
-}

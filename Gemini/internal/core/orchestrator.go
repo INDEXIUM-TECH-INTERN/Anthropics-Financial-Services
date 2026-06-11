@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"gemini-cli/internal/models/messaging"
+	"gemini-cli/internal/providers"
 	"gemini-cli/internal/pubsub"
 	"gemini-cli/internal/tools"
 	"gemini-cli/internal/utils"
@@ -410,31 +411,136 @@ func (o *Orchestrator) buildBootstrapContextInternal(route RoutePlan) []string {
 	return contextParts
 }
 
-// ProcessMessageStream handles streaming chat: runs the conversation loop
-// and streams each token chunk from the LLM to the onChunk callback.
+// ProcessMessageStream xử lý chat với real streaming từ LLM provider.
+// Thay vì split reply thành words (fake streaming), hàm này dùng GenerateStream
+// để stream tokens thực tế từ provider.
+// Lưu ý: Tool calls không hỗ trợ streaming — nếu AI cần gọi tool, streaming sẽ
+// chuyển sang chế độ blocking cho đến khi tool xong, rồi stream final response.
 func (o *Orchestrator) ProcessMessageStream(userInput string, atts []messaging.Attachment, onChunk func(string, bool)) error {
-	reply, err := o.ProcessMessage(userInput, atts)
-	if err != nil {
-		return err
-	}
+	// Phase 1: Bootstrap context (giống ProcessMessage nhưng không stream)
+	o.agent.mu.Lock()
+	o.agent.userInput = userInput
+	isNewConversation := len(o.agent.conversation.ContextWindow.History) == 0
 
-	// Stream the reply in chunks to the client
-	words := strings.Split(reply, " ")
-	for i, word := range words {
-		chunk := word
-		if i < len(words)-1 {
-			chunk += " "
+	if isNewConversation {
+		if strings.HasPrefix(userInput, "/") {
+			if o.handleSlashCommandInternal(userInput) {
+				// handled
+			}
+		} else {
+			if isCasualGreeting(userInput) {
+				pubsub.BroadcastLog("Nhận diện ý định xã giao. Đang phản hồi nhanh...", "routing")
+				o.agent.appendUserTextInternal(userInput, atts)
+				o.agent.mu.Unlock()
+				return o.streamFinalResponse(onChunk)
+			}
+			pubsub.BroadcastLog("Khởi tạo cuộc hội thoại mới...", "process")
+			o.agent.appendUserTextInternal(userInput, atts)
+			o.agent.mu.Unlock()
+			o.bootstrapContextInternal()
+			return o.streamFinalResponse(onChunk)
 		}
-		onChunk(chunk, false)
-		time.Sleep(15 * time.Millisecond)
+	} else {
+		o.agent.appendUserTextInternal(userInput, atts)
 	}
-	onChunk("", true)
-	return nil
+	o.agent.mu.Unlock()
+
+	return o.streamFinalResponse(onChunk)
 }
 
-func (o *Orchestrator) runConversationLoopStreamInternal(onChunk func(string, bool)) error {
-	// Deprecated in favor of the hybrid ProcessMessageStream implementation
-	return nil
+// streamFinalResponse chạy ReAct loop nhưng với streaming cho LLM calls.
+// Mỗi iteration: gọi GenerateStream → collect tokens → nếu có tool call thì execute (blocking)
+// → lặp lại cho đến khi AI trả về text response không có tool call → stream tokens.
+func (o *Orchestrator) streamFinalResponse(onChunk func(string, bool)) error {
+	keepRecentMessages := getEnvInt("CONTEXT_KEEP_RECENT", 7)
+	maxContextTokens := getEnvInt("CONTEXT_MAX_TOKENS", 92000)
+	maxSummaryChars := getEnvInt("CONTEXT_MAX_SUMMARY_INPUT", 18000)
+
+	for {
+		// Kiểm tra context summarization
+		o.agent.mu.Lock()
+		cw := o.agent.conversation.ContextWindow
+		needsSummary := cw.ShouldSummarize(maxContextTokens, keepRecentMessages)
+		o.agent.mu.Unlock()
+
+		if needsSummary {
+			pubsub.BroadcastLog("Context window lớn, đang tóm tắt lịch sử cũ...", "process")
+			_, err := cw.SummarizeOldest(o.agent.GetProvider(), keepRecentMessages, maxSummaryChars)
+			if err != nil {
+				fmt.Printf("⚠️ [Context] Tóm tắt thất bại: %v.\n", err)
+			}
+		}
+
+		// Build messages
+		o.agent.mu.Lock()
+		systemPrompt := o.agent.systemPrompt
+		condensedHistory := o.agent.conversation.ContextWindow.BuildLLMHistory(keepRecentMessages)
+		tools := o.agent.dispatcher.GetTools()
+		o.agent.mu.Unlock()
+
+		var messages []messaging.Message
+		if systemPrompt != "" {
+			messages = append(messages, messaging.Message{
+				Role:    messaging.RoleSystem,
+				Content: systemPrompt,
+			})
+		}
+		messages = append(messages, condensedHistory...)
+
+		req := messaging.Request{
+			History: messages,
+			Tools:   tools,
+		}
+
+		// Gọi LLM với streaming thực tế
+		var fullText strings.Builder
+		streamDone := make(chan error, 1)
+
+		go func() {
+			err := o.agent.GetProvider().GenerateStream(context.Background(), req, func(sc providers.StreamChunk) {
+				if sc.Text != "" {
+					fullText.WriteString(sc.Text)
+					onChunk(sc.Text, false)
+				}
+				if sc.Done {
+					onChunk("", true)
+				}
+			})
+			streamDone <- err
+		}()
+
+		select {
+		case err := <-streamDone:
+			if err != nil {
+				return err
+			}
+		case <-time.After(10 * time.Minute):
+			return fmt.Errorf("streaming timeout")
+		}
+
+		// Append vào history
+		finalText := fullText.String()
+		o.agent.mu.Lock()
+		o.agent.conversation.ContextWindow.History = append(o.agent.conversation.ContextWindow.History, messaging.Message{
+			Role:    messaging.RoleAssistant,
+			Content: finalText,
+		})
+		hasToolCall := o.agent.dispatcher.HandleToolCalls(o.agent.conversation.ContextWindow.History[len(o.agent.conversation.ContextWindow.History)-1])
+
+		if o.agent.handoffPlan != nil {
+			plan := *o.agent.handoffPlan
+			o.agent.handoffPlan = nil
+			o.executeBootstrapWithRouteInternal(plan)
+			o.agent.mu.Unlock()
+			continue
+		}
+		o.agent.mu.Unlock()
+
+		if !hasToolCall {
+			return nil
+		}
+		// Có tool call → loop tiếp (tool execution là blocking, response sẽ stream ở iteration sau)
+	}
 }
 
 func (o *Orchestrator) runConversationLoopInternal() (string, error) {
