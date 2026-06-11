@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"gemini-cli/internal/cache"
 	"gemini-cli/internal/models/messaging"
 	"gemini-cli/internal/pubsub"
 	"gemini-cli/internal/scripts/report_gen"
@@ -19,31 +20,23 @@ import (
 
 const maxCacheEntries = 200 // prevent unbounded memory growth
 
+// Dispatcher handles tool execution with LRU caching.
+// Each instance has its own cache (no shared mutex with Agent), eliminating
+// the previous deadlock risk from nested Agent.mu + Dispatcher.mu locking.
 type Dispatcher struct {
-	agent         *Agent
-	researchCache map[string]string // cache query -> result để giảm gọi tool lặp lại (giảm quota)
-	cacheOrder    []string          // LRU eviction order (oldest first)
-	mu            sync.RWMutex
+	agent *Agent
+	cache *cache.LRUCache
+	mu    sync.RWMutex // protects tool registration state only
 }
 
 func NewDispatcher(a *Agent) *Dispatcher {
 	return &Dispatcher{
-		agent:         a,
-		researchCache: make(map[string]string),
-		cacheOrder:    make([]string, 0, maxCacheEntries),
+		agent: a,
+		cache: cache.NewLRUCache(maxCacheEntries),
 	}
 }
 
-// evictCacheIfNeeded removes oldest entries when cache exceeds maxCacheEntries.
-// Must be called with d.mu held (write lock).
-func (d *Dispatcher) evictCacheIfNeeded() {
-	for len(d.cacheOrder) > maxCacheEntries {
-		oldest := d.cacheOrder[0]
-		d.cacheOrder = d.cacheOrder[1:]
-		delete(d.researchCache, oldest)
-	}
-}
-
+// GetTools returns the list of available tool schemas.
 func (d *Dispatcher) GetTools() []messaging.ToolSchema {
 	return []messaging.ToolSchema{
 		d.newFinancialResearchTool(),
@@ -57,6 +50,8 @@ func (d *Dispatcher) GetTools() []messaging.ToolSchema {
 	}
 }
 
+// HandleToolCalls processes tool calls from an AI response message.
+// Returns true if any tool was executed.
 func (d *Dispatcher) HandleToolCalls(aiMessage messaging.Message) bool {
 	if len(aiMessage.ToolCalls) == 0 {
 		return false
@@ -114,6 +109,16 @@ func (d *Dispatcher) resolveToolCallResult(toolCall *messaging.ToolCall) string 
 	}
 }
 
+// cacheGet retrieves a cached result for the given key.
+func (d *Dispatcher) cacheGet(prefix, key string) (string, bool) {
+	return d.cache.Get(prefix + "_" + strings.ToLower(strings.TrimSpace(key)))
+}
+
+// cachePut stores a result in the cache.
+func (d *Dispatcher) cachePut(prefix, key, value string) {
+	d.cache.Put(prefix+"_"+strings.ToLower(strings.TrimSpace(key)), value)
+}
+
 func (d *Dispatcher) handleFinancialResearchTool(args map[string]interface{}) string {
 	query, ok := args["query"].(string)
 	if !ok {
@@ -125,12 +130,7 @@ func (d *Dispatcher) handleFinancialResearchTool(args map[string]interface{}) st
 		searchQuery = tools.BuildMarketQueryPlan(d.agent.userInput).SearchQuery
 	}
 
-	// Simple cache để tránh gọi lại cùng query nhiều lần (rất hay xảy ra trong ReAct loop)
-	key := strings.ToLower(strings.TrimSpace(searchQuery))
-	d.mu.RLock()
-	cached, ok := d.researchCache["google_"+key]
-	d.mu.RUnlock()
-	if ok && cached != "" {
+	if cached, ok := d.cacheGet("google", searchQuery); ok && cached != "" {
 		fmt.Printf("💾 [Cache] Dùng kết quả research đã cache cho: %s\n", searchQuery)
 		pubsub.BroadcastLog("Dùng kết quả tìm kiếm từ cache (tiết kiệm quota)", "success")
 		return cached
@@ -138,11 +138,7 @@ func (d *Dispatcher) handleFinancialResearchTool(args map[string]interface{}) st
 
 	result := tools.SearchGoogle(searchQuery)
 	if result != "" && !strings.HasPrefix(result, "Lỗi") && !strings.HasPrefix(result, "Error") {
-		d.mu.Lock()
-		d.researchCache["google_"+key] = result
-		d.cacheOrder = append(d.cacheOrder, "google_"+key)
-		d.evictCacheIfNeeded()
-		d.mu.Unlock()
+		d.cachePut("google", searchQuery, result)
 	}
 	return result
 }
@@ -158,11 +154,7 @@ func (d *Dispatcher) handleTavilySearchTool(args map[string]interface{}) string 
 		searchQuery = tools.BuildMarketQueryPlan(d.agent.userInput).SearchQuery
 	}
 
-	key := strings.ToLower(strings.TrimSpace(searchQuery))
-	d.mu.RLock()
-	cached, ok := d.researchCache["tavily_"+key]
-	d.mu.RUnlock()
-	if ok && cached != "" {
+	if cached, ok := d.cacheGet("tavily", searchQuery); ok && cached != "" {
 		fmt.Printf("💾 [Cache] Dùng kết quả research đã cache (Tavily) cho: %s\n", searchQuery)
 		pubsub.BroadcastLog("Dùng kết quả tìm kiếm Tavily từ cache (tiết kiệm quota)", "success")
 		return cached
@@ -170,11 +162,7 @@ func (d *Dispatcher) handleTavilySearchTool(args map[string]interface{}) string 
 
 	result := tools.SearchTavily(searchQuery)
 	if result != "" && !strings.HasPrefix(result, "Lỗi") && !strings.HasPrefix(result, "Error") {
-		d.mu.Lock()
-		d.researchCache["tavily_"+key] = result
-		d.cacheOrder = append(d.cacheOrder, "tavily_"+key)
-		d.evictCacheIfNeeded()
-		d.mu.Unlock()
+		d.cachePut("tavily", searchQuery, result)
 	}
 	return result
 }
@@ -186,15 +174,19 @@ func (d *Dispatcher) handleHandoffTool(args map[string]interface{}) string {
 
 	fmt.Printf("🔀 [Orchestrator] Handoff requested to %s. Reason: %s\n", targetAgent, reason)
 
+	d.agent.mu.Lock()
 	d.agent.handoffPlan = &RoutePlan{
 		Agent:  targetAgent,
 		Skills: guessSkillsForAgent(targetAgent),
 		Reason: fmt.Sprintf("Handoff from previous agent: %s. Task: %s", reason, payload),
 	}
+	d.agent.mu.Unlock()
 
 	return fmt.Sprintf("Successfully initiated handoff to %s.", targetAgent)
 }
 
+// appendFunctionResponse appends a tool response to the conversation history.
+// Acquires Agent.mu write lock for the brief mutation.
 func (d *Dispatcher) appendFunctionResponse(toolCall *messaging.ToolCall, result string) {
 	d.agent.mu.Lock()
 	defer d.agent.mu.Unlock()
@@ -301,11 +293,7 @@ func (d *Dispatcher) handleFinancialScrapeTool(args map[string]interface{}) stri
 		return "Error: Missing url parameter"
 	}
 
-	key := strings.ToLower(strings.TrimSpace(url))
-	d.mu.RLock()
-	cached, ok := d.researchCache["scrape_"+key]
-	d.mu.RUnlock()
-	if ok && cached != "" {
+	if cached, ok := d.cacheGet("scrape", url); ok && cached != "" {
 		fmt.Printf("💾 [Cache] Dùng kết quả scrape đã cache cho: %s\n", url)
 		pubsub.BroadcastLog("Dùng kết quả đọc nội dung từ cache (tiết kiệm quota)", "success")
 		return cached
@@ -313,11 +301,7 @@ func (d *Dispatcher) handleFinancialScrapeTool(args map[string]interface{}) stri
 
 	result := tools.ScrapeWeb(url)
 	if result != "" && !strings.HasPrefix(result, "Lỗi") && !strings.HasPrefix(result, "Error") {
-		d.mu.Lock()
-		d.researchCache["scrape_"+key] = result
-		d.cacheOrder = append(d.cacheOrder, "scrape_"+key)
-		d.evictCacheIfNeeded()
-		d.mu.Unlock()
+		d.cachePut("scrape", url, result)
 	}
 	return result
 }
@@ -340,7 +324,7 @@ func (d *Dispatcher) newExportReportTool() messaging.ToolSchema {
 				},
 				"data": map[string]interface{}{
 					"type":        "string",
-					"description": "Dữ liệu JSON thô để đưa vào báo cáo (optional). Đối với Excel có thể là danh sách các hàng hoặc dictionary chứa các sheet. Đối với PowerPoint có thể chứa bảng dữ liệu.",
+					"description": "Dữ liệu JSON thô để đưa vào báo cáo (optional).",
 				},
 			},
 			"required": []string{"format", "title"},
@@ -365,24 +349,20 @@ func (d *Dispatcher) handleExportReportTool(args map[string]interface{}) string 
 
 	dataStr, _ := args["data"].(string)
 
-	// Resolve exports directory
 	exportsDir := resolveExportsDir()
 	if err := os.MkdirAll(exportsDir, 0755); err != nil {
 		return fmt.Sprintf("Error creating exports directory: %v", err)
 	}
 
-	// Generate filename
 	filename := fmt.Sprintf("report_%d.%s", time.Now().UnixNano(), format)
 	outputPath := filepath.Join(exportsDir, filename)
 
-	// Tạo báo cáo bằng Go (Excel) hoặc Python script (PPTX)
 	if format == "xlsx" {
 		_, err := report_gen.Generate(report_gen.FormatXLSX, title, dataStr, outputPath)
 		if err != nil {
 			return fmt.Sprintf("Error generating Excel report: %v", err)
 		}
 	} else {
-		// PPTX: dùng Python script (report_generator.py trong scripts/)
 		outputPath = d.generatePPTXWithScript(title, dataStr, outputPath)
 	}
 
@@ -390,7 +370,6 @@ func (d *Dispatcher) handleExportReportTool(args map[string]interface{}) string 
 	return fmt.Sprintf("[Tải về Báo cáo (%s)](/exports/%s)", displayFormat, filename)
 }
 
-// generatePPTXWithScript gọi Python script để tạo PPTX
 func (d *Dispatcher) generatePPTXWithScript(title, dataStr, outputPath string) string {
 	scriptPath := os.Getenv("REPORT_GENERATOR_PATH")
 	if scriptPath == "" {
@@ -437,7 +416,6 @@ func (d *Dispatcher) generatePPTXWithScript(title, dataStr, outputPath string) s
 	return outputPath
 }
 
-// resolveExportsDir tìm thư mục exports phù hợp
 func resolveExportsDir() string {
 	candidates := []string{
 		"frontend/exports",
@@ -452,7 +430,6 @@ func resolveExportsDir() string {
 	}
 	return "exports"
 }
-
 
 func (d *Dispatcher) newReadLocalFileTool() messaging.ToolSchema {
 	return messaging.ToolSchema{
@@ -474,13 +451,11 @@ func (d *Dispatcher) handleReadLocalFileTool(args map[string]interface{}) string
 		return "Error: Missing path parameter"
 	}
 
-	// Security: chỉ cho phép đọc file trong thư mục exports, không cho phép path traversal
 	baseName := filepath.Base(path)
 	if baseName == "" || baseName == "." || baseName == ".." {
 		return "Error: Tên tệp không hợp lệ"
 	}
 
-	// Whitelist extensions
 	allowedExts := map[string]bool{
 		".xlsx": true, ".xls": true, ".csv": true, ".txt": true,
 		".md": true, ".json": true, ".xml": true, ".pdf": true,
@@ -496,7 +471,6 @@ func (d *Dispatcher) handleReadLocalFileTool(args map[string]interface{}) string
 	for _, dir := range searchDirs {
 		p := filepath.Join(dir, baseName)
 		if _, err := os.Stat(p); err == nil {
-			// Verify resolved path is still inside exports directory (prevent traversal)
 			absPath, _ := filepath.Abs(p)
 			absDir, _ := filepath.Abs(dir)
 			if strings.HasPrefix(absPath, absDir) {
@@ -510,20 +484,17 @@ func (d *Dispatcher) handleReadLocalFileTool(args map[string]interface{}) string
 		return fmt.Sprintf("Lỗi: Không tìm thấy tệp %s trong thư mục exports.", baseName)
 	}
 
-	// Đọc file và parse (R6.2)
 	data, err := os.ReadFile(targetPath)
 	if err != nil {
 		return fmt.Sprintf("Lỗi khi đọc tệp: %v", err)
 	}
 
-	// Fake base64 để dùng chung bộ parser
 	dataB64 := base64.StdEncoding.EncodeToString(data)
-	mimeType := "" // Sẽ tự đoán theo ext trong ParseAttachment
+	mimeType := ""
 
 	if content, ok := utils.ParseAttachment(baseName, mimeType, dataB64); ok {
 		return utils.GetFileContentWrapper(baseName, content)
 	}
 
-	// Fallback nếu không parse được (ví dụ PDF, Image - gửi thông báo)
 	return fmt.Sprintf("Thông báo: Tệp '%s' là định dạng nhị phân (Ảnh/PDF). Hãy kiểm tra file đính kèm hoặc dùng công cụ xem file.", baseName)
 }

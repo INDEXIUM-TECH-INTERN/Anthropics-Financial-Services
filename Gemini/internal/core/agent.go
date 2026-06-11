@@ -13,8 +13,12 @@ import (
 	"gemini-cli/internal/utils"
 )
 
+// Agent is the central facade that wires all subsystems together.
+// It is safe for concurrent use: all shared state is protected by mu (sync.RWMutex).
+// The mutex serializes both HTTP request processing and internal state access,
+// eliminating the previous deadlock risk from nested mu + requestMu locking.
 type Agent struct {
-	mu           sync.Mutex
+	mu           sync.RWMutex
 	provider     providers.Provider
 	systemPrompt string
 	userInput    string
@@ -22,7 +26,6 @@ type Agent struct {
 	conversation *Conversation
 	orchestrator *Orchestrator
 	dispatcher   *Dispatcher
-	requestMu    sync.Mutex // serialises concurrent HTTP requests using the same agent
 }
 
 func NewAgent() *Agent {
@@ -31,7 +34,6 @@ func NewAgent() *Agent {
 	geminiProviders := newGeminiProviders()
 	orProviders := newOpenRouterProviders(openRouterKeysFromEnv())
 
-	// Hỗ trợ bypass Gemini khi free tier quota hết hoặc muốn ưu tiên OpenRouter
 	useOnlyOR := os.Getenv("USE_OPENROUTER_ONLY") == "1" || len(geminiProviders) == 0
 
 	a := &Agent{
@@ -41,7 +43,6 @@ func NewAgent() *Agent {
 
 	if useOnlyOR && len(orProviders) > 0 {
 		fmt.Println("🚀 [Config] Sử dụng OpenRouter làm primary (bypass Gemini để tránh quota)")
-		// Dùng OR đầu tiên làm primary, các key còn lại làm fallback
 		primaryOR := orProviders[0]
 		fallbackORs := orProviders[1:]
 		a.provider = providers.NewMultiProvider(primaryOR, fallbackORs)
@@ -127,6 +128,7 @@ func normalizeGeminiModel(model string) string {
 	return normalized
 }
 
+// SetOpenRouterKeys updates the provider chain at runtime with new OpenRouter keys.
 func (a *Agent) SetOpenRouterKeys(keys []string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -159,6 +161,7 @@ func buildGroundedSystemPrompt(now time.Time) string {
 	})
 }
 
+// Reset clears the conversation history and handoff state.
 func (a *Agent) Reset() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -167,6 +170,7 @@ func (a *Agent) Reset() {
 	fmt.Println("🔄 [Agent] Conversation history reset.")
 }
 
+// Start runs the interactive CLI loop.
 func (a *Agent) Start() {
 	for {
 		userInput, ok := readUserInput()
@@ -183,17 +187,18 @@ func (a *Agent) Start() {
 	}
 }
 
+// ProcessMessage processes a user message and returns the AI response.
+// The RWMutex serializes concurrent HTTP requests to prevent data races.
 func (a *Agent) ProcessMessage(userInput string, atts []messaging.Attachment) (string, error) {
-	a.requestMu.Lock()
-	defer a.requestMu.Unlock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	return a.orchestrator.ProcessMessage(userInput, atts)
 }
 
 // ProcessMessageStream processes a message and streams tokens via onChunk.
-// The final chunk has Done=true and the full text in Text.
 func (a *Agent) ProcessMessageStream(userInput string, atts []messaging.Attachment, onChunk func(string, bool)) error {
-	a.requestMu.Lock()
-	defer a.requestMu.Unlock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	return a.orchestrator.ProcessMessageStream(userInput, atts, onChunk)
 }
 
@@ -203,10 +208,11 @@ func readUserInput() (string, bool) {
 	if !scanner.Scan() {
 		return "", false
 	}
-
 	return scanner.Text(), true
 }
 
+// appendUserTextInternal appends a user message to the conversation history.
+// Must be called with a.mu held (write lock).
 func (a *Agent) appendUserTextInternal(text string, atts []messaging.Attachment) {
 	msg := messaging.Message{
 		Role:    messaging.RoleUser,
@@ -223,14 +229,11 @@ func (a *Agent) appendUserTextInternal(text string, atts []messaging.Attachment)
 				Data: at.Data,
 			}
 
-			// Tự động parse nội dung nếu là file text/excel (R6.2)
 			if content, ok := utils.ParseAttachment(at.Name, at.Type, at.Data); ok {
 				fmt.Printf("📄 [Parser] Tự động trích xuất nội dung từ file: %s\n", at.Name)
 				parsedContents = append(parsedContents, utils.GetFileContentWrapper(at.Name, content))
 			} else if content != "" {
 				fmt.Printf("⚠️ [Parser] Không thể trích xuất nội dung từ file %s: %s\n", at.Name, content)
-				// Nếu không parse được nhưng có thông báo lỗi, vẫn có thể cân nhắc append thông báo (tùy chọn)
-				// Ở đây ta giữ nguyên hành vi chỉ log.
 			}
 		}
 
@@ -241,19 +244,19 @@ func (a *Agent) appendUserTextInternal(text string, atts []messaging.Attachment)
 	a.conversation.ContextWindow.History = append(a.conversation.ContextWindow.History, msg)
 }
 
+// GetHistory returns a copy of the full conversation history.
 func (a *Agent) GetHistory() []messaging.Message {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	a.mu.RLock()
+	defer a.mu.RUnlock()
 	cp := make([]messaging.Message, len(a.conversation.ContextWindow.History))
 	copy(cp, a.conversation.ContextWindow.History)
 	return cp
 }
 
 // GetProvider returns the current provider safely under the mutex.
-// This prevents data races when SetOpenRouterKeys is called concurrently.
 func (a *Agent) GetProvider() providers.Provider {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	a.mu.RLock()
+	defer a.mu.RUnlock()
 	return a.provider
 }
 
