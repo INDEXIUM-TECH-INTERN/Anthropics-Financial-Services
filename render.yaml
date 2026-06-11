@@ -1,0 +1,88 @@
+services:
+  - type: web
+    name: indexium-gemini
+    runtime: go
+    plan: free
+    region: singapore
+    branch: main
+    autoDeployTrigger: commit
+    buildCommand: cd Gemini && go build -o gemini ./cmd/gemini-cli
+    startCommand: cd Gemini && ./gemini -server
+    healthCheckPath: /health
+    buildFilter:
+      paths:
+        - Gemini/**
+        - frontend/**
+        - render.yaml
+    envVars:
+      - key: USE_OPENROUTER_ONLY
+        value: "0"
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: indexium-redis
+          property: connectionString
+      - key: GEMINI_MODEL
+        value: gemini-flash-latest
+      - key: OPENROUTER_MODEL
+        value: meta-llama/llama-3.3-70b-instruct:free
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY_2
+        sync: false
+      - key: GEMINI_API_KEY_3
+        sync: false
+      - key: GEMINI_API_KEY_4
+        sync: false
+      - key: GEMINI_API_KEY_5
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY_2
+        sync: false
+      - key: OPENROUTER_API_KEY_3
+        sync: false
+      - key: OPENROUTER_API_KEY_4
+        sync: false
+      - key: OPENROUTER_API_KEY_5
+        sync: false
+      - key: SERPAPI_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+
+  # Future backend:
+  # - type: web
+  #   name: indexium-claude
+  #   runtime: go
+  #   plan: free
+  #   region: singapore
+  #   branch: main
+  #   autoDeployTrigger: commit
+  #   buildCommand: cd Claude && go build -o claude .
+  #   startCommand: cd Claude && ./claude -server
+  #   healthCheckPath: /health
+  #   envVars:
+  #     # If you create an Environment Group manually in Render, link it here.
+  #     # - fromGroup: indexium-ai-secrets
+  #     - key: REDIS_URL
+  #       fromService:
+  #         type: keyvalue
+  #         name: indexium-redis
+  #         property: connectionString
+
+  - type: keyvalue
+    name: indexium-redis
+    plan: free
+    region: singapore
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
+# Future PostgreSQL:
+# databases:
+#   - name: indexium-postgres
+#     databaseName: indexium_finance
+#     user: indexium
+#     plan: free
+#     postgresMajorVersion: "16"
+#     ipAllowList: []

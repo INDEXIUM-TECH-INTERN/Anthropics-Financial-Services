@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -54,12 +55,13 @@ func SaveSession(sess *ChatSession) error {
 		return err
 	}
 
+	ctx, cancel := context.WithTimeout(redis.Ctx, redis.OpTimeout)
+	defer cancel()
+
 	pipe := redis.Client.Pipeline()
-	pipe.Set(redis.Ctx, sessionKey(sess.ID), data, 0)
-
-	pipe.SAdd(redis.Ctx, listKey(), sess.ID)
-
-	_, err = pipe.Exec(redis.Ctx)
+	pipe.Set(ctx, sessionKey(sess.ID), data, 0)
+	pipe.SAdd(ctx, listKey(), sess.ID)
+	_, err = pipe.Exec(ctx)
 	return err
 }
 
@@ -79,7 +81,10 @@ func GetSession(id string) (*ChatSession, error) {
 		}, nil
 	}
 
-	data, err := redis.Client.Get(redis.Ctx, sessionKey(id)).Bytes()
+	ctx, cancel := context.WithTimeout(redis.Ctx, redis.OpTimeout)
+	defer cancel()
+
+	data, err := redis.Client.Get(ctx, sessionKey(id)).Bytes()
 	if err == goredis.Nil {
 		return &ChatSession{
 			ID:       id,
@@ -116,7 +121,10 @@ func ListSessions() ([]*ChatSession, error) {
 		return sessions, nil
 	}
 
-	ids, err := redis.Client.SMembers(redis.Ctx, listKey()).Result()
+	ctx, cancel := context.WithTimeout(redis.Ctx, redis.OpTimeout)
+	defer cancel()
+
+	ids, err := redis.Client.SMembers(ctx, listKey()).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -147,10 +155,13 @@ func DeleteSession(id string) error {
 		memMu.Unlock()
 		return nil
 	}
+	ctx, cancel := context.WithTimeout(redis.Ctx, redis.OpTimeout)
+	defer cancel()
+
 	pipe := redis.Client.Pipeline()
-	pipe.Del(redis.Ctx, sessionKey(id))
-	pipe.SRem(redis.Ctx, listKey(), id)
-	_, err := pipe.Exec(redis.Ctx)
+	pipe.Del(ctx, sessionKey(id))
+	pipe.SRem(ctx, listKey(), id)
+	_, err := pipe.Exec(ctx)
 	return err
 }
 

@@ -28,28 +28,11 @@ type Agent struct {
 func NewAgent() *Agent {
 	utils.LoadEnv()
 
-	gemini := newGeminiProvider()
-
-	model := os.Getenv("OPENROUTER_MODEL")
-	if model == "" {
-		model = "meta-llama/llama-3.3-70b-instruct:free"
-	}
-
-	var orProviders []providers.Provider
-	keyNames := []string{"OPENROUTER_API_KEY", "OPENROUTER_API_KEY_2", "OPENROUTER_API_KEY_3"}
-	for _, kn := range keyNames {
-		val := os.Getenv(kn)
-		if val != "" {
-			orProviders = append(orProviders, &providers.OpenRouterProvider{
-				APIKey: val,
-				Model:  model,
-			})
-			fmt.Printf("🔑 [Config] Loaded OpenRouter Key from %s\n", kn)
-		}
-	}
+	geminiProviders := newGeminiProviders()
+	orProviders := newOpenRouterProviders(openRouterKeysFromEnv())
 
 	// Hỗ trợ bypass Gemini khi free tier quota hết hoặc muốn ưu tiên OpenRouter
-	useOnlyOR := os.Getenv("USE_OPENROUTER_ONLY") == "1" || os.Getenv("GEMINI_API_KEY") == "" || os.Getenv("GEMINI_API_KEY") == "disabled"
+	useOnlyOR := os.Getenv("USE_OPENROUTER_ONLY") == "1" || len(geminiProviders) == 0
 
 	a := &Agent{
 		systemPrompt: buildGroundedSystemPrompt(time.Now()),
@@ -63,7 +46,11 @@ func NewAgent() *Agent {
 		fallbackORs := orProviders[1:]
 		a.provider = providers.NewMultiProvider(primaryOR, fallbackORs)
 	} else {
-		a.provider = providers.NewMultiProvider(gemini, orProviders)
+		allProviders := append(geminiProviders, orProviders...)
+		if len(allProviders) == 0 {
+			allProviders = append(allProviders, newGeminiProvider(""))
+		}
+		a.provider = providers.NewMultiProvider(allProviders[0], allProviders[1:])
 	}
 
 	a.orchestrator = NewOrchestrator(a)
@@ -72,11 +59,61 @@ func NewAgent() *Agent {
 	return a
 }
 
-func newGeminiProvider() *providers.GeminiProvider {
+func numberedEnvKeys(base string, max int) []string {
+	keys := []string{base}
+	for i := 2; i <= max; i++ {
+		keys = append(keys, fmt.Sprintf("%s_%d", base, i))
+	}
+	return keys
+}
+
+func envValues(keys []string) []string {
+	var values []string
+	for _, key := range keys {
+		value := strings.TrimSpace(os.Getenv(key))
+		if value == "" || value == "disabled" {
+			continue
+		}
+		values = append(values, value)
+		fmt.Printf("🔑 [Config] Loaded key from %s\n", key)
+	}
+	return values
+}
+
+func openRouterKeysFromEnv() []string {
+	return envValues(numberedEnvKeys("OPENROUTER_API_KEY", 5))
+}
+
+func newGeminiProvider(apiKey string) *providers.GeminiProvider {
 	return &providers.GeminiProvider{
-		APIKey: os.Getenv("GEMINI_API_KEY"),
+		APIKey: apiKey,
 		Model:  normalizeGeminiModel(os.Getenv("GEMINI_MODEL")),
 	}
+}
+
+func newGeminiProviders() []providers.Provider {
+	keys := envValues(numberedEnvKeys("GEMINI_API_KEY", 5))
+	geminis := make([]providers.Provider, 0, len(keys))
+	for _, key := range keys {
+		geminis = append(geminis, newGeminiProvider(key))
+	}
+	return geminis
+}
+
+func newOpenRouterProviders(keys []string) []providers.Provider {
+	model := os.Getenv("OPENROUTER_MODEL")
+	if model == "" {
+		model = "meta-llama/llama-3.3-70b-instruct:free"
+	}
+
+	openRouters := make([]providers.Provider, 0, len(keys))
+	for _, key := range keys {
+		openRouters = append(openRouters, &providers.OpenRouterProvider{
+			APIKey: key,
+			Model:  model,
+		})
+	}
+	return openRouters
 }
 
 func normalizeGeminiModel(model string) string {
@@ -94,24 +131,22 @@ func (a *Agent) SetOpenRouterKeys(keys []string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	model := os.Getenv("OPENROUTER_MODEL")
-	if model == "" {
-		model = "meta-llama/llama-3.3-70b-instruct:free"
-	}
-
-	var orProviders []providers.Provider
+	var cleanKeys []string
 	for _, key := range keys {
-		if strings.TrimSpace(key) == "" {
+		key = strings.TrimSpace(key)
+		if key == "" {
 			continue
 		}
-		orProviders = append(orProviders, &providers.OpenRouterProvider{
-			APIKey: key,
-			Model:  model,
-		})
+		cleanKeys = append(cleanKeys, key)
 	}
 
-	gemini := newGeminiProvider()
-	a.provider = providers.NewMultiProvider(gemini, orProviders)
+	geminiProviders := newGeminiProviders()
+	orProviders := newOpenRouterProviders(cleanKeys)
+	allProviders := append(geminiProviders, orProviders...)
+	if len(allProviders) == 0 {
+		allProviders = append(allProviders, newGeminiProvider(""))
+	}
+	a.provider = providers.NewMultiProvider(allProviders[0], allProviders[1:])
 
 	fmt.Printf("🔑 [Config] Updated OpenRouter keys. Count: %d\n", len(orProviders))
 }

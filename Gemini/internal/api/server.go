@@ -59,11 +59,12 @@ func StartServer(agent AgentInterface) {
 	mux := http.NewServeMux()
 
 	// API routes — each handler is in handlers.go
+	mux.HandleFunc("/health", handleHealth)
 	mux.HandleFunc("/api/events", handleSSE)
 	mux.HandleFunc("/api/reset", handleReset(agent))
 	mux.HandleFunc("/api/chats", handleChats)
 	mux.HandleFunc("/api/chat", handleChat(agent))
-		mux.HandleFunc("/api/chat/stream", handleChatStream(agent))
+	mux.HandleFunc("/api/chat/stream", handleChatStream(agent))
 	mux.HandleFunc("/api/config/keys", handleConfigKeys(agent))
 	mux.HandleFunc("/api/history", handleHistory(agent))
 
@@ -72,15 +73,21 @@ func StartServer(agent AgentInterface) {
 	fmt.Printf("📂 [Server] Serving static files from: %s\n", frontendDir)
 	mux.Handle("/", http.FileServer(http.Dir(frontendDir)))
 
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
 	server := &http.Server{
-		Addr:        ":8080",
-		Handler:     mux,
-		ReadTimeout: 300 * time.Second,
-		IdleTimeout: 600 * time.Second,
+		Addr:              ":" + port,
+		Handler:           mux,
+		ReadHeaderTimeout: 30 * time.Second,
+		ReadTimeout:       120 * time.Second,
+		IdleTimeout:       600 * time.Second,
 		// Gỡ bỏ WriteTimeout vì nó làm ngắt kết nối SSE dài hạn
 	}
 
-	fmt.Println("🚀 [Server] Backend Go is running on http://localhost:8080")
+	fmt.Printf("🚀 [Server] Backend Go is running on http://0.0.0.0:%s\n", port)
 	if err := server.ListenAndServe(); err != nil {
 		fmt.Printf("❌ [Error] Server failed: %v\n", err)
 	}
@@ -102,7 +109,7 @@ func enableCORS(w http.ResponseWriter) {
 }
 
 // generateTitleIfNeeded creates a nice title from the first user message if still default.
-func generateTitleIfNeeded(currentTitle, userMsg, reply string) string {
+func generateTitleIfNeeded(currentTitle, userMsg string) string {
 	if currentTitle != "" && currentTitle != "Cuộc trò chuyện mới" {
 		return currentTitle
 	}

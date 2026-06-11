@@ -13,6 +13,16 @@ import (
 	"gemini-cli/internal/utils"
 )
 
+// ── Health check handler ──
+func handleHealth(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte("ok"))
+}
+
 // ── SSE Events handler ──
 func handleSSE(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -176,7 +186,7 @@ func handleChat(agent AgentInterface) http.HandlerFunc {
 
 		updatedHistory := agent.GetHistory()
 		sess.Messages = updatedHistory
-		sess.Title = generateTitleIfNeeded(sess.Title, req.Message, reply)
+		sess.Title = generateTitleIfNeeded(sess.Title, req.Message)
 		_ = store.SaveSession(sess)
 
 		resp := ChatResponse{
@@ -267,6 +277,7 @@ func handleChatStream(agent AgentInterface) http.HandlerFunc {
 		})
 
 		if streamErr != nil {
+			fmt.Printf("❌ [Stream] Error: %v (chat_id=%s)\n", streamErr, chatID)
 			errChunk := map[string]interface{}{"type": "error", "error": streamErr.Error()}
 			data, _ := json.Marshal(errChunk)
 			fmt.Fprintf(w, "data: %s\n\n", data)
@@ -277,7 +288,7 @@ func handleChatStream(agent AgentInterface) http.HandlerFunc {
 		// Save conversation history
 		updatedHistory := agent.GetHistory()
 		sess.Messages = updatedHistory
-		sess.Title = generateTitleIfNeeded(sess.Title, req.Message, fullReply.String())
+		sess.Title = generateTitleIfNeeded(sess.Title, req.Message)
 		_ = store.SaveSession(sess)
 	}
 }
