@@ -13,16 +13,17 @@ import (
 
 type AgentInterface interface {
 	Reset()
-	ProcessMessage(string) (string, error)
-	ProcessMessageStream(string, func(string, bool)) error
+	ProcessMessage(string, []messaging.Attachment) (string, error)
+	ProcessMessageStream(string, []messaging.Attachment, func(string, bool)) error
 	GetHistory() []messaging.Message
 	LoadHistory([]messaging.Message)
 	SetOpenRouterKeys([]string)
 }
 
 type ChatRequest struct {
-	Message string `json:"message"`
-	ChatID  string `json:"chat_id,omitempty"`
+	Message     string                 `json:"message"`
+	ChatID      string                 `json:"chat_id,omitempty"`
+	Attachments []messaging.Attachment `json:"attachments,omitempty"`
 }
 
 type Metrics struct {

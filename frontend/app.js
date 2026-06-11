@@ -26,6 +26,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ── DOM refs ──
     const $ = id => document.getElementById(id);
+
+    function readFileAsBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const base64 = reader.result.split(',')[1];
+                resolve(base64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
     const chatInput = $('chat-input');
     const sendBtn = $('send-btn');
     const chatContent = $('chat-content');
@@ -68,6 +80,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     let allChats = [];
     let currentChatId = null;
 
+    // Attachments state (R6.1)
+    let pendingAttachments = [];
+    const attachmentsPreview = $('attachments-preview');
+
     // Streaming / abort state
     let activeAbortController = null;
     let isGenerating = false;
@@ -88,6 +104,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ── Sidebar toggles ──
     $('toggle-conversations').addEventListener('click', () => {
         conversationsSidebar.classList.toggle('collapsed');
+        // Mobile backdrop (R4.3)
+        const sidebarBackdrop = $('sidebar-backdrop');
+        if (sidebarBackdrop && window.innerWidth <= 768) {
+            if (!conversationsSidebar.classList.contains('collapsed')) {
+                sidebarBackdrop.classList.remove('hidden');
+                sidebarBackdrop.classList.add('visible');
+            } else {
+                sidebarBackdrop.classList.remove('visible');
+                sidebarBackdrop.classList.add('hidden');
+            }
+        }
     });
     $('toggle-pipeline').addEventListener('click', () => {
         pipelineSidebar.classList.toggle('collapsed');
@@ -100,8 +127,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // ── Settings modal ──
-    const openSettings = () => { settingsModal.style.display = 'flex'; };
-    const hideSettings = () => { settingsModal.style.display = 'none'; };
+    function trapFocus(e) {
+        if (e.key !== 'Tab') return;
+        const focusable = settingsModal.querySelectorAll('input, textarea, button, select');
+        if (!focusable.length) return;
+        const first = focusable[0], last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault(); last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault(); first.focus();
+        }
+    }
+    const openSettings = () => {
+        settingsModal.style.display = 'flex';
+        const focusable = settingsModal.querySelectorAll('input, textarea, button, select');
+        if (focusable.length) focusable[0].focus();
+        settingsModal.addEventListener('keydown', trapFocus);
+    };
+    const hideSettings = () => {
+        settingsModal.style.display = 'none';
+        settingsModal.removeEventListener('keydown', trapFocus);
+        settingsTrigger.focus();
+    };
     settingsTrigger.addEventListener('click', openSettings);
     closeSettings.addEventListener('click', hideSettings);
     closeSettingsBtn.addEventListener('click', hideSettings);
@@ -184,23 +231,112 @@ document.addEventListener('DOMContentLoaded', async () => {
             conversationsList.innerHTML = '<div style="padding:16px;font-size:13px;color:var(--text-quaternary);text-align:center;">Chưa có cuộc trò chuyện nào.</div>';
             return;
         }
+
+        // Group conversations by time (R4.1)
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const yesterdayStart = new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+        const week7Start = new Date(todayStart); week7Start.setDate(week7Start.getDate() - 7);
+        const month30Start = new Date(todayStart); month30Start.setDate(month30Start.getDate() - 30);
+
+        const groups = {
+            'Hôm nay': [],
+            'Hôm qua': [],
+            '7 ngày trước': [],
+            '30 ngày trước': [],
+            'Cũ hơn': []
+        };
+
         allChats.forEach(chat => {
-            const isActive = chat.id === currentChatId;
-            const el = document.createElement('div');
-            el.className = `conv-item ${isActive ? 'active' : ''}`;
-            el.innerHTML = `
-                <span class="conv-item-title">${escHtml(chat.title || 'Cuộc trò chuyện mới')}</span>
-                <span class="conv-item-meta">${formatTime(chat.updated_at)}</span>
-                <button class="conv-item-delete" title="Xóa"><i data-lucide="trash-2"></i></button>
-            `;
-            el.querySelector('.conv-item-title').addEventListener('click', () => switchChat(chat.id));
-            el.querySelector('.conv-item-delete').addEventListener('click', async e => {
-                e.stopPropagation();
-                if (confirm('Xóa cuộc trò chuyện này?')) {
-                    await deleteChat(chat.id);
-                }
+            const dateStr = chat.updated_at || chat.created_at;
+            const chatDate = dateStr ? new Date(dateStr) : new Date(0);
+            if (chatDate >= todayStart) {
+                groups['Hôm nay'].push(chat);
+            } else if (chatDate >= yesterdayStart) {
+                groups['Hôm qua'].push(chat);
+            } else if (chatDate >= week7Start) {
+                groups['7 ngày trước'].push(chat);
+            } else if (chatDate >= month30Start) {
+                groups['30 ngày trước'].push(chat);
+            } else {
+                groups['Cũ hơn'].push(chat);
+            }
+        });
+
+        Object.entries(groups).forEach(([label, chats]) => {
+            if (chats.length === 0) return;
+            const sectionLabel = document.createElement('div');
+            sectionLabel.className = 'sidebar-section-label dynamic';
+            sectionLabel.textContent = label;
+            conversationsList.appendChild(sectionLabel);
+
+            chats.forEach(chat => {
+                const isActive = chat.id === currentChatId;
+                const el = document.createElement('div');
+                el.className = `conv-item ${isActive ? 'active' : ''}`;
+                el.innerHTML = `
+                    <span class="conv-item-title">${escHtml(chat.title || 'Cuộc trò chuyện mới')}</span>
+                    <span class="conv-item-meta">${formatTime(chat.updated_at)}</span>
+                    <button class="conv-item-delete" title="Xóa"><i data-lucide="trash-2"></i></button>
+                `;
+                el.querySelector('.conv-item-title').addEventListener('click', () => switchChat(chat.id));
+                el.querySelector('.conv-item-delete').addEventListener('click', async e => {
+                    e.stopPropagation();
+                    if (confirm('Xóa cuộc trò chuyện này?')) {
+                        await deleteChat(chat.id);
+                    }
+                });
+
+                // Inline rename on double-click (R4.2)
+                const titleSpan = el.querySelector('.conv-item-title');
+                titleSpan.addEventListener('dblclick', (e) => {
+                    e.stopPropagation();
+                    const currentTitle = chat.title || 'Cuộc trò chuyện mới';
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'conv-rename-input';
+                    input.value = currentTitle;
+                    titleSpan.style.display = 'none';
+                    titleSpan.parentNode.insertBefore(input, titleSpan);
+                    input.focus();
+                    input.select();
+
+                    const finishRename = async (save) => {
+                        const newTitle = input.value.trim();
+                        input.remove();
+                        titleSpan.style.display = '';
+                        if (save && newTitle && newTitle !== currentTitle) {
+                            chat.title = newTitle;
+                            titleSpan.textContent = escHtml(newTitle);
+                            if (chat.id === currentChatId) {
+                                currentChatTitle.textContent = newTitle;
+                            }
+                            try {
+                                await fetch(`${currentBaseUrl}/api/chats/${encodeURIComponent(chat.id)}`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ title: newTitle })
+                                });
+                            } catch (err) {
+                                addLogEntry('Không thể đổi tên: ' + err.message, 'error');
+                            }
+                        }
+                    };
+
+                    input.addEventListener('blur', () => finishRename(true));
+                    input.addEventListener('keydown', (ke) => {
+                        if (ke.key === 'Enter') {
+                            ke.preventDefault();
+                            input.blur();
+                        } else if (ke.key === 'Escape') {
+                            ke.preventDefault();
+                            finishRename(false);
+                        }
+                    });
+                });
+
+                conversationsList.appendChild(el);
             });
-            conversationsList.appendChild(el);
         });
         if (window.lucide) lucide.createIcons();
     }
@@ -261,12 +397,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         clearChatUI();
         renderConversations();
 
+        // Show skeleton placeholder (R3.3)
+        const skeleton = document.createElement('div');
+        skeleton.className = 'skeleton-loading';
+        skeleton.innerHTML = `
+            <div class="skeleton-message">
+                <div class="skeleton-avatar"></div>
+                <div class="skeleton-body">
+                    <div class="skeleton-line short"></div>
+                    <div class="skeleton-line"></div>
+                    <div class="skeleton-line medium"></div>
+                </div>
+            </div>
+            <div class="skeleton-message right">
+                <div class="skeleton-body">
+                    <div class="skeleton-line short"></div>
+                </div>
+                <div class="skeleton-avatar"></div>
+            </div>
+        `;
+        chatContent.appendChild(skeleton);
+
         try {
             const res = await fetch(`${currentBaseUrl}/api/history?chat_id=${encodeURIComponent(chatId)}`);
+            // Remove skeleton
+            const existingSkeleton = chatContent.querySelector('.skeleton-loading');
+            if (existingSkeleton) existingSkeleton.remove();
+
             if (res.ok) {
                 const data = await res.json();
                 const hist = data.history || [];
                 let hasContent = false;
+                let msgIndex = 0;
                 hist.forEach(h => {
                     const role = String(h.role || h.Role || '').toLowerCase();
                     if (role === 'tool') return;
@@ -275,7 +437,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         text.includes('ANTHROPIC AGENT CONFIG') ||
                         text.includes('SKILL MARKDOWN') ||
                         text.includes('=== TÓM TẮT NGỮ CẢNH')) return;
-                    appendMessageBubble(text, role === 'user' ? 'user' : 'bot');
+                    const bubble = appendMessageBubble(text, role === 'user' ? 'user' : 'bot');
+                    bubble.el.style.animationDelay = `${msgIndex * 0.06}s`;
+                    msgIndex++;
                     hasContent = true;
                 });
                 if (hasContent) {
@@ -286,13 +450,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 scrollToBottom();
             }
         } catch {
+            // Remove skeleton on error
+            const existingSkeleton = chatContent.querySelector('.skeleton-loading');
+            if (existingSkeleton) existingSkeleton.remove();
             welcomeState.style.display = 'flex';
         }
         addLogEntry(`Đã chuyển sang: ${chat ? chat.title : chatId}`, 'info');
     }
 
     function clearChatUI() {
-        const msgs = chatContent.querySelectorAll('.message');
+        const msgs = chatContent.querySelectorAll('.message, .skeleton-loading');
         msgs.forEach(m => m.remove());
         logStream.innerHTML = '<div class="log-stream-empty">Sẵn sàng phân tích yêu cầu khi có câu hỏi.</div>';
         sourcesPanel.style.display = 'none';
@@ -301,13 +468,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ── Chat ──
-    function appendMessageBubble(text, sender, isStreaming = false) {
+    function appendMessageBubble(text, sender, isStreaming = false, attachments = []) {
         welcomeState.style.display = 'none';
         const el = document.createElement('div');
         el.className = `message ${sender}`;
 
         const avatar = document.createElement('div');
         avatar.className = 'msg-avatar';
+        if (sender === 'bot') {
+            avatar.innerHTML = `
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L14.85 8.65L22 9.82L16.92 14.96L18.18 22L12 18.65L5.82 22L7.08 14.96L2 9.82L9.15 8.65L12 2Z" fill="url(#logo-grad)" stroke="white" stroke-width="1"/>
+                </svg>
+            `;
+        }
 
         const body = document.createElement('div');
         body.className = 'msg-body';
@@ -319,16 +493,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         const content = document.createElement('div');
         content.className = 'msg-content';
 
+        // Add attachments if any
+        if (attachments && attachments.length > 0) {
+            const attContainer = document.createElement('div');
+            attContainer.className = 'message-attachments';
+            attContainer.style.display = 'flex';
+            attContainer.style.flexWrap = 'wrap';
+            attContainer.style.gap = '8px';
+            attContainer.style.marginBottom = '8px';
+
+            attachments.forEach(file => {
+                const chip = document.createElement('div');
+                chip.className = 'attachment-chip';
+                chip.style.margin = '0'; // Reset margin for bubble
+                
+                let iconName = 'file-text';
+                if (file.type && file.type.startsWith('image/')) iconName = 'image';
+                
+                chip.innerHTML = `
+                    <span class="attachment-chip-icon"><i data-lucide="${iconName}" style="width:14px;height:14px;"></i></span>
+                    <span class="attachment-chip-name">${file.name}</span>
+                `;
+                attContainer.appendChild(chip);
+            });
+            content.appendChild(attContainer);
+        }
+
+        const textContent = document.createElement('div');
         if (sender === 'bot') {
             if (isStreaming) {
-                content.innerHTML = '';
+                textContent.innerHTML = '';
             } else {
-                content.innerHTML = marked.parse(text);
-                renderSourcesInline(text, content);
+                textContent.innerHTML = marked.parse(text);
+                renderSourcesInline(text, textContent);
             }
         } else {
-            content.textContent = text;
+            textContent.textContent = text;
         }
+        content.appendChild(textContent);
 
         body.appendChild(senderLabel);
         body.appendChild(content);
@@ -388,7 +590,94 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             actions.appendChild(regenBtn);
 
+            // Feedback buttons
+            const thumbUpBtn = document.createElement('button');
+            thumbUpBtn.className = 'msg-action-btn';
+            thumbUpBtn.title = 'Hữu ích';
+            thumbUpBtn.setAttribute('aria-label', 'Đánh giá hữu ích');
+            thumbUpBtn.innerHTML = '<i data-lucide="thumbs-up" style="width:13px;height:13px;"></i>';
+            thumbUpBtn.addEventListener('click', () => {
+                thumbUpBtn.classList.toggle('active');
+                thumbDownBtn.classList.remove('active');
+                addLogEntry('Đã đánh giá: hữu ích', 'success');
+            });
+            actions.appendChild(thumbUpBtn);
+
+            const thumbDownBtn = document.createElement('button');
+            thumbDownBtn.className = 'msg-action-btn';
+            thumbDownBtn.title = 'Chưa hữu ích';
+            thumbDownBtn.setAttribute('aria-label', 'Đánh giá chưa hữu ích');
+            thumbDownBtn.innerHTML = '<i data-lucide="thumbs-down" style="width:13px;height:13px;"></i>';
+            thumbDownBtn.addEventListener('click', () => {
+                thumbDownBtn.classList.toggle('active');
+                thumbUpBtn.classList.remove('active');
+                addLogEntry('Đã đánh giá: chưa hữu ích', 'info');
+            });
+            actions.appendChild(thumbDownBtn);
+
             body.appendChild(actions);
+        }
+
+        // Edit user message on click
+        if (sender === 'user' && !isStreaming) {
+            el.setAttribute('title', 'Nhấn để chỉnh sửa');
+            el.addEventListener('click', function handleEditClick(evt) {
+                if (evt.target.closest('.edit-message-container')) return;
+                el.removeEventListener('click', handleEditClick);
+                const originalText = content.textContent;
+
+                const editContainer = document.createElement('div');
+                editContainer.className = 'edit-message-container';
+
+                const editTextarea = document.createElement('textarea');
+                editTextarea.className = 'edit-message-textarea';
+                editTextarea.value = originalText;
+                editTextarea.rows = 3;
+
+                const editActions = document.createElement('div');
+                editActions.className = 'edit-message-actions';
+
+                const saveBtn = document.createElement('button');
+                saveBtn.className = 'btn btn-primary btn-sm';
+                saveBtn.textContent = 'Gửi lại';
+                saveBtn.setAttribute('aria-label', 'Gửi tin nhắn đã chỉnh sửa');
+
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = 'btn btn-ghost btn-sm';
+                cancelBtn.textContent = 'Hủy';
+                cancelBtn.setAttribute('aria-label', 'Hủy chỉnh sửa');
+
+                editActions.appendChild(cancelBtn);
+                editActions.appendChild(saveBtn);
+                editContainer.appendChild(editTextarea);
+                editContainer.appendChild(editActions);
+
+                content.style.display = 'none';
+                body.insertBefore(editContainer, content.nextSibling);
+                editTextarea.focus();
+
+                cancelBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    editContainer.remove();
+                    content.style.display = '';
+                    el.addEventListener('click', handleEditClick);
+                });
+
+                saveBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const newText = editTextarea.value.trim();
+                    if (!newText) return;
+
+                    let sibling = el.nextElementSibling;
+                    while (sibling) {
+                        const next = sibling.nextElementSibling;
+                        if (sibling.classList.contains('message') || sibling.classList.contains('followup-chips')) sibling.remove();
+                        sibling = next;
+                    }
+                    el.remove();
+                    sendMessage(newText);
+                });
+            });
         }
 
         el.appendChild(avatar);
@@ -408,13 +697,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ── Sources ──
     function renderSourcesInline(markdownText, targetEl) {
+        // Prevent double rendering if already exists
+        if (targetEl.querySelector('.message-sources')) return;
+
         const urlRegex = /(https?:\/\/[^\s\)\]]+)/g;
         const urls = [...new Set(markdownText.match(urlRegex) || [])];
         if (!urls.length) return;
 
         const container = document.createElement('div');
         container.className = 'message-sources';
-        container.innerHTML = '<div class="sources-label">Nguồn tham khảo</div>';
+        
+        // Only add label if the markdown doesn't already have a sources section
+        if (!markdownText.includes('Nguồn tham khảo') && !markdownText.includes('Sources:')) {
+            container.innerHTML = '<div class="sources-label">Nguồn tham khảo</div>';
+        }
 
         const grid = document.createElement('div');
         grid.className = 'sources-grid';
@@ -491,13 +787,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ── Send message (STREAMING) ──
     async function sendMessage(textOverride = null, isRegenerate = false) {
         const text = textOverride !== null ? textOverride : chatInput.value.trim();
-        if (!text) return false;
+        if (!text && pendingAttachments.length === 0) return false;
 
         if (!isRegenerate) {
             if (!currentChatId) await createNewChat();
             welcomeState.style.display = 'none';
-            appendMessageBubble(text, 'user');
+            appendMessageBubble(text, 'user', false, [...pendingAttachments]);
         }
+
+        // Clear attachments after sending
+        const currentFiles = [...pendingAttachments];
+        pendingAttachments = [];
+        renderAttachments();
 
         chatInput.value = '';
         chatInput.style.height = '24px';
@@ -515,8 +816,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         activeAbortController = new AbortController();
 
         try {
+            const attachmentsData = [];
+            for (const file of currentFiles) {
+                const base64 = await readFileAsBase64(file);
+                attachmentsData.push({
+                    name: file.name,
+                    type: file.type,
+                    data: base64
+                });
+            }
+
             const payload = { message: text };
             if (currentChatId) payload.chat_id = currentChatId;
+            if (attachmentsData.length > 0) payload.attachments = attachmentsData;
 
             const response = await fetch(`${currentBaseUrl}/api/chat/stream`, {
                 method: 'POST',
@@ -612,7 +924,57 @@ document.addEventListener('DOMContentLoaded', async () => {
                             });
                             actions.appendChild(regenBtn);
 
+                            // Feedback buttons
+                            const thumbUpBtn2 = document.createElement('button');
+                            thumbUpBtn2.className = 'msg-action-btn';
+                            thumbUpBtn2.title = 'Hữu ích';
+                            thumbUpBtn2.setAttribute('aria-label', 'Đánh giá hữu ích');
+                            thumbUpBtn2.innerHTML = '<i data-lucide="thumbs-up" style="width:13px;height:13px;"></i>';
+                            thumbUpBtn2.addEventListener('click', () => {
+                                thumbUpBtn2.classList.toggle('active');
+                                thumbDownBtn2.classList.remove('active');
+                                addLogEntry('Đã đánh giá: hữu ích', 'success');
+                            });
+                            actions.appendChild(thumbUpBtn2);
+
+                            const thumbDownBtn2 = document.createElement('button');
+                            thumbDownBtn2.className = 'msg-action-btn';
+                            thumbDownBtn2.title = 'Chưa hữu ích';
+                            thumbDownBtn2.setAttribute('aria-label', 'Đánh giá chưa hữu ích');
+                            thumbDownBtn2.innerHTML = '<i data-lucide="thumbs-down" style="width:13px;height:13px;"></i>';
+                            thumbDownBtn2.addEventListener('click', () => {
+                                thumbDownBtn2.classList.toggle('active');
+                                thumbUpBtn2.classList.remove('active');
+                                addLogEntry('Đã đánh giá: chưa hữu ích', 'info');
+                            });
+                            actions.appendChild(thumbDownBtn2);
+
                             msgEl.querySelector('.msg-body').appendChild(actions);
+
+                            // Follow-up suggestion chips
+                            const followUpChips = document.createElement('div');
+                            followUpChips.className = 'followup-chips';
+                            followUpChips.innerHTML = `
+                                <button class="followup-chip" data-followup="Giải thích thêm chi tiết">
+                                    <i data-lucide="message-circle" style="width:12px;height:12px;"></i> Giải thích thêm
+                                </button>
+                                <button class="followup-chip" data-followup="So sánh với chỉ số khác">
+                                    <i data-lucide="git-compare" style="width:12px;height:12px;"></i> So sánh thêm
+                                </button>
+                                <button class="followup-chip" data-followup="Tóm tắt ngắn gọn">
+                                    <i data-lucide="list" style="width:12px;height:12px;"></i> Tóm tắt
+                                </button>
+                            `;
+                            followUpChips.querySelectorAll('.followup-chip').forEach(chip => {
+                                chip.addEventListener('click', () => {
+                                    const fText = chip.getAttribute('data-followup');
+                                    chatInput.value = fText;
+                                    sendMessage();
+                                    followUpChips.remove();
+                                });
+                            });
+                            msgEl.querySelector('.msg-body').appendChild(followUpChips);
+
                             if (window.lucide) lucide.createIcons();
                         }
                         if (data.type === 'error') {
@@ -858,6 +1220,135 @@ document.addEventListener('DOMContentLoaded', async () => {
             chatInput.value = chip.getAttribute('data-quick');
             sendMessage();
         });
+    });
+
+    // Attach button (R2.1 / R6.1)
+    const attachBtn = $('attach-btn');
+    const fileInput = $('file-input');
+    if (attachBtn && fileInput) {
+        attachBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                const newFiles = Array.from(fileInput.files);
+                pendingAttachments = [...pendingAttachments, ...newFiles];
+                renderAttachments();
+                fileInput.value = ''; // Reset for next selection
+            }
+        });
+    }
+
+    function renderAttachments() {
+        if (!attachmentsPreview) return;
+        attachmentsPreview.innerHTML = '';
+        
+        pendingAttachments.forEach((file, index) => {
+            const chip = document.createElement('div');
+            chip.className = 'attachment-chip';
+            
+            // Icon based on type
+            let iconName = 'file-text';
+            if (file.type.startsWith('image/')) iconName = 'image';
+            if (file.type.includes('pdf')) iconName = 'file-type-2';
+            
+            chip.innerHTML = `
+                <span class="attachment-chip-icon"><i data-lucide="${iconName}" style="width:14px;height:14px;"></i></span>
+                <span class="attachment-chip-name" title="${file.name}">${file.name}</span>
+                <button class="attachment-remove-btn" title="Gỡ bỏ">
+                    <i data-lucide="x" style="width:14px;height:14px;"></i>
+                </button>
+            `;
+            
+            const removeBtn = chip.querySelector('.attachment-remove-btn');
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                pendingAttachments.splice(index, 1);
+                renderAttachments();
+            });
+            
+            attachmentsPreview.appendChild(chip);
+        });
+        
+        if (window.lucide) lucide.createIcons();
+    }
+
+    // Scroll-to-bottom button (R3.4)
+    const scrollToBottomBtn = $('scroll-to-bottom');
+    if (scrollToBottomBtn) {
+        chatViewport.addEventListener('scroll', () => {
+            const distanceFromBottom = chatViewport.scrollHeight - chatViewport.scrollTop - chatViewport.clientHeight;
+            if (distanceFromBottom > 200) {
+                scrollToBottomBtn.classList.remove('hidden');
+            } else {
+                scrollToBottomBtn.classList.add('hidden');
+            }
+        });
+        scrollToBottomBtn.addEventListener('click', () => {
+            scrollToBottom();
+            scrollToBottomBtn.classList.add('hidden');
+        });
+    }
+
+    // Sidebar backdrop click handler (R4.3)
+    const sidebarBackdrop = $('sidebar-backdrop');
+    if (sidebarBackdrop) {
+        sidebarBackdrop.addEventListener('click', () => {
+            conversationsSidebar.classList.add('collapsed');
+            sidebarBackdrop.classList.remove('visible');
+            sidebarBackdrop.classList.add('hidden');
+        });
+    }
+
+    // Keyboard shortcuts (R5.2)
+    document.addEventListener('keydown', e => {
+        // Ctrl+N — new chat
+        if (e.ctrlKey && !e.shiftKey && e.key === 'n') {
+            e.preventDefault();
+            createNewChat();
+            clearChatUI();
+            welcomeState.style.display = 'flex';
+        }
+        // Ctrl+Shift+S — toggle sidebar
+        if (e.ctrlKey && e.shiftKey && e.key === 'S') {
+            e.preventDefault();
+            conversationsSidebar.classList.toggle('collapsed');
+            
+            // Handle mobile backdrop
+            const sidebarBackdrop = $('sidebar-backdrop');
+            if (sidebarBackdrop && window.innerWidth <= 768) {
+                if (!conversationsSidebar.classList.contains('collapsed')) {
+                    sidebarBackdrop.classList.remove('hidden');
+                    sidebarBackdrop.classList.add('visible');
+                } else {
+                    sidebarBackdrop.classList.remove('visible');
+                    sidebarBackdrop.classList.add('hidden');
+                }
+            }
+        }
+        // Escape — close modals/panels
+        if (e.key === 'Escape') {
+            if (settingsModal.style.display !== 'none' && settingsModal.style.display !== '') {
+                hideSettings();
+            } else {
+                let closedSomething = false;
+                if (!pipelineSidebar.classList.contains('collapsed')) {
+                    pipelineSidebar.classList.add('collapsed');
+                    closedSomething = true;
+                }
+                if (!conversationsSidebar.classList.contains('collapsed')) {
+                    conversationsSidebar.classList.add('collapsed');
+                    closedSomething = true;
+                }
+                
+                // Always ensure backdrop is hidden on Escape
+                const sidebarBackdrop = $('sidebar-backdrop');
+                if (sidebarBackdrop) {
+                    sidebarBackdrop.classList.remove('visible');
+                    sidebarBackdrop.classList.add('hidden');
+                }
+            }
+        }
     });
 
     // New chat button

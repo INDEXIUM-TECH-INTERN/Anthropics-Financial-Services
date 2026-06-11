@@ -56,6 +56,24 @@ func (p *GeminiProvider) Generate(ctx context.Context, req messaging.Request) (m
 				parts = append(parts, models.GeminiPart{Text: msg.Content})
 			}
 		}
+
+		// Handle attachments (R6.1)
+		for _, att := range msg.Attachments {
+			if isGeminiSupportedMime(att.Type) {
+				parts = append(parts, models.GeminiPart{
+					InlineData: &models.GeminiInlineData{
+						MimeType: att.Type,
+						Data:     att.Data,
+					},
+				})
+			} else {
+				// For unsupported types, add a text note so the Agent knows
+				parts = append(parts, models.GeminiPart{
+					Text: fmt.Sprintf("\n[Hệ thống: Đã đính kèm tệp tin '%s' (loại: %s). Hiện tại tôi chưa thể đọc trực tiếp nội dung loại tệp này qua InlineData. Nếu đây là tệp văn bản hoặc Excel, hãy thử dùng công cụ tìm kiếm/đọc tệp hoặc yêu cầu người dùng copy nội dung.]", att.Name, att.Type),
+				})
+			}
+		}
+
 		for _, tc := range msg.ToolCalls {
 			parts = append(parts, models.GeminiPart{
 				FunctionCall: &models.GeminiFunctionCall{
@@ -249,6 +267,21 @@ func (p *GeminiProvider) GenerateStream(ctx context.Context, req messaging.Reque
 		if msg.Content != "" {
 			parts = append(parts, models.GeminiPart{Text: msg.Content})
 		}
+		// Handle attachments (R6.1)
+		for _, att := range msg.Attachments {
+			if isGeminiSupportedMime(att.Type) {
+				parts = append(parts, models.GeminiPart{
+					InlineData: &models.GeminiInlineData{
+						MimeType: att.Type,
+						Data:     att.Data,
+					},
+				})
+			} else {
+				parts = append(parts, models.GeminiPart{
+					Text: fmt.Sprintf("\n[Hệ thống: Đã đính kèm tệp tin '%s' (loại: %s). Hiện tại tôi chưa thể đọc trực tiếp nội dung loại tệp này qua InlineData.]", att.Name, att.Type),
+				})
+			}
+		}
 		for _, tc := range msg.ToolCalls {
 			parts = append(parts, models.GeminiPart{
 				FunctionCall: &models.GeminiFunctionCall{Name: tc.Name, Args: tc.Args},
@@ -353,4 +386,36 @@ func (p *GeminiProvider) GenerateStream(ctx context.Context, req messaging.Reque
 
 	onChunk(StreamChunk{Done: true, Text: fullText.String()})
 	return nil
+}
+
+func isGeminiSupportedMime(mime string) bool {
+	m := strings.ToLower(mime)
+	// Images
+	if strings.HasPrefix(m, "image/") {
+		return true
+	}
+	// Video
+	if strings.HasPrefix(m, "video/") {
+		return true
+	}
+	// Audio
+	if strings.HasPrefix(m, "audio/") {
+		return true
+	}
+	// Document: PDF
+	if m == "application/pdf" {
+		return true
+	}
+	// Text formats
+	textMimes := []string{
+		"text/plain", "text/html", "text/css", "text/javascript",
+		"text/x-typescript", "text/csv", "text/markdown", "text/x-python",
+		"text/x-go", "application/json", "application/xml",
+	}
+	for _, tm := range textMimes {
+		if m == tm {
+			return true
+		}
+	}
+	return false
 }

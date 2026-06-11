@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"gemini-cli/internal/api"
 	"gemini-cli/internal/models/messaging"
+	"gemini-cli/internal/pubsub"
 	"gemini-cli/internal/tools"
 	"gemini-cli/internal/utils"
 )
@@ -23,7 +23,7 @@ func NewOrchestrator(a *Agent) *Orchestrator {
 	return &Orchestrator{agent: a}
 }
 
-func (o *Orchestrator) ProcessMessage(userInput string) (string, error) {
+func (o *Orchestrator) ProcessMessage(userInput string, atts []messaging.Attachment) (string, error) {
 	o.agent.mu.Lock()
 	o.agent.userInput = userInput
 
@@ -37,20 +37,20 @@ func (o *Orchestrator) ProcessMessage(userInput string) (string, error) {
 		} else {
 			// KIỂM TRA NHANH: Nếu là câu chào hỏi hoặc câu ngắn xã giao -> Bỏ qua Routing nặng nề
 			if isCasualGreeting(userInput) {
-				api.BroadcastLog("Nhận diện ý định xã giao. Đang phản hồi nhanh...", "routing")
-				o.agent.appendUserTextInternal(userInput)
+				pubsub.BroadcastLog("Nhận diện ý định xã giao. Đang phản hồi nhanh...", "routing")
+				o.agent.appendUserTextInternal(userInput, atts)
 				o.agent.mu.Unlock()
 				return o.runConversationLoopInternal()
 			}
 
-			api.BroadcastLog("Khởi tạo cuộc hội thoại mới...", "process")
-			o.agent.appendUserTextInternal(userInput)
+			pubsub.BroadcastLog("Khởi tạo cuộc hội thoại mới...", "process")
+			o.agent.appendUserTextInternal(userInput, atts)
 			o.agent.mu.Unlock() // Unlock before calling bootstrapContextInternal to avoid deadlock
 			o.bootstrapContextInternal()
 			return o.runConversationLoopInternal()
 		}
 	} else {
-		o.agent.appendUserTextInternal(userInput)
+		o.agent.appendUserTextInternal(userInput, atts)
 	}
 	o.agent.mu.Unlock()
 
@@ -318,7 +318,7 @@ func (o *Orchestrator) handleSlashCommandInternal(input string) bool {
 		}
 	}
 
-	api.BroadcastLog(fmt.Sprintf("Kích hoạt lệnh %s...", cmd), "routing")
+	pubsub.BroadcastLog(fmt.Sprintf("Kích hoạt lệnh %s...", cmd), "routing")
 	route = RoutePlan{
 		Agent:  agent,
 		Skills: skills,
@@ -326,7 +326,7 @@ func (o *Orchestrator) handleSlashCommandInternal(input string) bool {
 	}
 
 	o.agent.userInput = args
-	o.agent.appendUserTextInternal(args)
+	o.agent.appendUserTextInternal(args, nil)
 	o.executeBootstrapWithRouteInternal(route)
 	return true
 }
@@ -338,11 +338,11 @@ func (o *Orchestrator) bootstrapContextInternal() {
 }
 
 func (o *Orchestrator) executeBootstrapWithRouteInternal(route RoutePlan) {
-	api.BroadcastLog(fmt.Sprintf("Nạp cấu hình cho Agent: %s...", route.Agent), "routing")
+	pubsub.BroadcastLog(fmt.Sprintf("Nạp cấu hình cho Agent: %s...", route.Agent), "routing")
 	fmt.Printf("🧭 [Context] Orchestrator: Loading %s configuration...\n", route.Agent)
 	contextParts := o.buildBootstrapContextInternal(route)
 	bootstrapPayload := strings.Join(contextParts, "\n\n")
-	o.agent.appendUserTextInternal(bootstrapPayload)
+	o.agent.appendUserTextInternal(bootstrapPayload, nil)
 }
 
 func (o *Orchestrator) buildBootstrapContextInternal(route RoutePlan) []string {
@@ -356,7 +356,7 @@ func (o *Orchestrator) buildBootstrapContextInternal(route RoutePlan) []string {
 
 	// Nạp tất cả các skills hợp lệ từ route plan
 	for _, skill := range route.Skills {
-		api.BroadcastEvent(fmt.Sprintf("Đang nạp skill chuyên biệt: %s", skill), "skill_loaded", map[string]interface{}{
+		pubsub.BroadcastEvent(fmt.Sprintf("Đang nạp skill chuyên biệt: %s", skill), "skill_loaded", map[string]interface{}{
 			"skill": skill,
 		})
 		skillDoc := tools.LoadDocumentWithMetadata("skill", route.Agent+"/"+skill)
@@ -377,7 +377,7 @@ func (o *Orchestrator) buildBootstrapContextInternal(route RoutePlan) []string {
 	}
 
 	if tools.NeedsRealtimeData(o.agent.userInput) {
-		api.BroadcastLog("Phát hiện nhu cầu dữ liệu Real-time. Đang tìm kiếm...", "process")
+		pubsub.BroadcastLog("Phát hiện nhu cầu dữ liệu Real-time. Đang tìm kiếm...", "process")
 		queryPlan := tools.BuildMarketQueryPlan(o.agent.userInput)
 		
 		var googleResult, tavilyResult string
@@ -412,8 +412,8 @@ func (o *Orchestrator) buildBootstrapContextInternal(route RoutePlan) []string {
 
 // ProcessMessageStream handles streaming chat: runs the conversation loop
 // and streams each token chunk from the LLM to the onChunk callback.
-func (o *Orchestrator) ProcessMessageStream(userInput string, onChunk func(string, bool)) error {
-	reply, err := o.ProcessMessage(userInput)
+func (o *Orchestrator) ProcessMessageStream(userInput string, atts []messaging.Attachment, onChunk func(string, bool)) error {
+	reply, err := o.ProcessMessage(userInput, atts)
 	if err != nil {
 		return err
 	}
@@ -453,16 +453,16 @@ func (o *Orchestrator) runConversationLoopInternal() (string, error) {
 		o.agent.mu.Unlock()
 
 		if needsSummary {
-			api.BroadcastLog("Context window lớn, đang tóm tắt lịch sử cũ...", "process")
+			pubsub.BroadcastLog("Context window lớn, đang tóm tắt lịch sử cũ...", "process")
 			fmt.Printf("🧠 [Context] Đang tóm tắt %d tin nhắn cũ để tiết kiệm context...\n", len(cw.History)-keepRecentMessages)
 
 			// Gọi tóm tắt (dùng provider hiện tại)
 			_, err := cw.SummarizeOldest(o.agent.GetProvider(), keepRecentMessages, maxSummaryChars)
 			if err != nil {
 				fmt.Printf("⚠️ [Context] Tóm tắt thất bại: %v. Tiếp tục với context đầy đủ.\n", err)
-				api.BroadcastLog("Tóm tắt context thất bại, tiếp tục với lịch sử gốc.", "error")
+				pubsub.BroadcastLog("Tóm tắt context thất bại, tiếp tục với lịch sử gốc.", "error")
 			} else {
-				api.BroadcastLog("Đã tóm tắt thành công. Context đã được nén.", "success")
+				pubsub.BroadcastLog("Đã tóm tắt thành công. Context đã được nén.", "success")
 				fmt.Printf("✅ [Context] Đã cập nhật MemorySummary và nén lịch sử.\n")
 			}
 		}

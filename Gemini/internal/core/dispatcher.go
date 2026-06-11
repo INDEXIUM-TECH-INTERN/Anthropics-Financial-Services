@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,9 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"gemini-cli/internal/api"
 	"gemini-cli/internal/models/messaging"
+	"gemini-cli/internal/pubsub"
 	"gemini-cli/internal/tools"
+	"gemini-cli/internal/utils"
 )
 
 const maxCacheEntries = 200 // prevent unbounded memory growth
@@ -50,6 +52,7 @@ func (d *Dispatcher) GetTools() []messaging.ToolSchema {
 		d.newHandoffRequestTool(),
 		d.newLoadContextTool(),
 		d.newExportReportTool(),
+		d.newReadLocalFileTool(),
 	}
 }
 
@@ -60,7 +63,7 @@ func (d *Dispatcher) HandleToolCalls(aiMessage messaging.Message) bool {
 
 	for _, toolCall := range aiMessage.ToolCalls {
 		fmt.Printf("🎯 [Action] AI invokes MCP tool: %s\n", toolCall.Name)
-		api.BroadcastEvent(fmt.Sprintf("Thực thi Tool: %s...", toolCall.Name), "tool_executed", map[string]interface{}{
+		pubsub.BroadcastEvent(fmt.Sprintf("Thực thi Tool: %s...", toolCall.Name), "tool_executed", map[string]interface{}{
 			"tool": toolCall.Name,
 			"args": toolCall.Args,
 		})
@@ -75,32 +78,36 @@ func (d *Dispatcher) resolveToolCallResult(toolCall *messaging.ToolCall) string 
 	switch toolCall.Name {
 	case "financial_research":
 		query, _ := toolCall.Args["query"].(string)
-		api.BroadcastLog(fmt.Sprintf("Tra cứu dữ liệu (Google): %s", query), "tool")
+		pubsub.BroadcastLog(fmt.Sprintf("Tra cứu dữ liệu (Google): %s", query), "tool")
 		return d.handleFinancialResearchTool(toolCall.Args)
 	case "tavily_search":
 		query, _ := toolCall.Args["query"].(string)
-		api.BroadcastLog(fmt.Sprintf("Tra cứu dữ liệu (Tavily): %s", query), "tool")
+		pubsub.BroadcastLog(fmt.Sprintf("Tra cứu dữ liệu (Tavily): %s", query), "tool")
 		return d.handleTavilySearchTool(toolCall.Args)
 	case "financial_scrape":
 		url, _ := toolCall.Args["url"].(string)
-		api.BroadcastLog(fmt.Sprintf("Đang đọc nội dung từ: %s", url), "tool")
+		pubsub.BroadcastLog(fmt.Sprintf("Đang đọc nội dung từ: %s", url), "tool")
 		return d.handleFinancialScrapeTool(toolCall.Args)
 	case "financial_calculate":
 		expr, _ := toolCall.Args["expression"].(string)
-		api.BroadcastLog(fmt.Sprintf("Thực hiện tính toán: %s", expr), "tool")
+		pubsub.BroadcastLog(fmt.Sprintf("Thực hiện tính toán: %s", expr), "tool")
 		return tools.Calculate(expr)
 	case "handoff_request":
 		target, _ := toolCall.Args["target_agent"].(string)
-		api.BroadcastLog(fmt.Sprintf("Yêu cầu chuyển giao sang: %s", target), "routing")
+		pubsub.BroadcastLog(fmt.Sprintf("Yêu cầu chuyển giao sang: %s", target), "routing")
 		return d.handleHandoffTool(toolCall.Args)
 	case "load_financial_context":
 		docType, _ := toolCall.Args["type"].(string)
 		docName, _ := toolCall.Args["name"].(string)
-		api.BroadcastLog(fmt.Sprintf("Nạp tài liệu: %s/%s", docType, docName), "process")
+		pubsub.BroadcastLog(fmt.Sprintf("Nạp tài liệu: %s/%s", docType, docName), "process")
 		return tools.LoadDocument(docType, docName)
 	case "export_report":
-		api.BroadcastLog("Đang tạo và xuất báo cáo...", "tool")
+		pubsub.BroadcastLog("Đang tạo và xuất báo cáo...", "tool")
 		return d.handleExportReportTool(toolCall.Args)
+	case "read_local_file":
+		path, _ := toolCall.Args["path"].(string)
+		pubsub.BroadcastLog(fmt.Sprintf("Đang đọc tệp nội bộ: %s", path), "tool")
+		return d.handleReadLocalFileTool(toolCall.Args)
 	default:
 		return fmt.Sprintf("Error: Unknown tool %s", toolCall.Name)
 	}
@@ -124,7 +131,7 @@ func (d *Dispatcher) handleFinancialResearchTool(args map[string]interface{}) st
 	d.mu.RUnlock()
 	if ok && cached != "" {
 		fmt.Printf("💾 [Cache] Dùng kết quả research đã cache cho: %s\n", searchQuery)
-		api.BroadcastLog("Dùng kết quả tìm kiếm từ cache (tiết kiệm quota)", "success")
+		pubsub.BroadcastLog("Dùng kết quả tìm kiếm từ cache (tiết kiệm quota)", "success")
 		return cached
 	}
 
@@ -156,7 +163,7 @@ func (d *Dispatcher) handleTavilySearchTool(args map[string]interface{}) string 
 	d.mu.RUnlock()
 	if ok && cached != "" {
 		fmt.Printf("💾 [Cache] Dùng kết quả research đã cache (Tavily) cho: %s\n", searchQuery)
-		api.BroadcastLog("Dùng kết quả tìm kiếm Tavily từ cache (tiết kiệm quota)", "success")
+		pubsub.BroadcastLog("Dùng kết quả tìm kiếm Tavily từ cache (tiết kiệm quota)", "success")
 		return cached
 	}
 
@@ -297,7 +304,7 @@ func (d *Dispatcher) handleFinancialScrapeTool(args map[string]interface{}) stri
 	d.mu.RUnlock()
 	if ok && cached != "" {
 		fmt.Printf("💾 [Cache] Dùng kết quả scrape đã cache cho: %s\n", url)
-		api.BroadcastLog("Dùng kết quả đọc nội dung từ cache (tiết kiệm quota)", "success")
+		pubsub.BroadcastLog("Dùng kết quả đọc nội dung từ cache (tiết kiệm quota)", "success")
 		return cached
 	}
 
@@ -425,3 +432,56 @@ func (d *Dispatcher) handleExportReportTool(args map[string]interface{}) string 
 	return fmt.Sprintf("[Tải về Báo cáo (%s)](/exports/%s)", displayFormat, filename)
 }
 
+
+func (d *Dispatcher) newReadLocalFileTool() messaging.ToolSchema {
+	return messaging.ToolSchema{
+		Name:        "read_local_file",
+		Description: "Đọc nội dung tệp tin cục bộ trên server (ví dụ: các tệp báo cáo đã xuất trong thư mục exports).",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"path": map[string]interface{}{"type": "string", "description": "Tên tệp hoặc đường dẫn tệp (ví dụ: report_123.xlsx)"},
+			},
+			"required": []string{"path"},
+		},
+	}
+}
+
+func (d *Dispatcher) handleReadLocalFileTool(args map[string]interface{}) string {
+	path, ok := args["path"].(string)
+	if !ok {
+		return "Error: Missing path parameter"
+	}
+
+	baseName := filepath.Base(path)
+	searchDirs := []string{"frontend/exports", "Gemini/frontend/exports", "../frontend/exports"}
+	var targetPath string
+	for _, dir := range searchDirs {
+		p := filepath.Join(dir, baseName)
+		if _, err := os.Stat(p); err == nil {
+			targetPath = p
+			break
+		}
+	}
+
+	if targetPath == "" {
+		return fmt.Sprintf("Lỗi: Không tìm thấy tệp %s trong thư mục exports.", baseName)
+	}
+
+	// Đọc file và parse (R6.2)
+	data, err := os.ReadFile(targetPath)
+	if err != nil {
+		return fmt.Sprintf("Lỗi khi đọc tệp: %v", err)
+	}
+
+	// Fake base64 để dùng chung bộ parser
+	dataB64 := base64.StdEncoding.EncodeToString(data)
+	mimeType := "" // Sẽ tự đoán theo ext trong ParseAttachment
+
+	if content, ok := utils.ParseAttachment(baseName, mimeType, dataB64); ok {
+		return utils.GetFileContentWrapper(baseName, content)
+	}
+
+	// Fallback nếu không parse được (ví dụ PDF, Image - gửi thông báo)
+	return fmt.Sprintf("Thông báo: Tệp '%s' là định dạng nhị phân (Ảnh/PDF). Hãy kiểm tra file đính kèm hoặc dùng công cụ xem file.", baseName)
+}

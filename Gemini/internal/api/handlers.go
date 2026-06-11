@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"gemini-cli/internal/models/messaging"
+	"gemini-cli/internal/pubsub"
 	"gemini-cli/internal/store"
 	"gemini-cli/internal/utils"
 )
@@ -20,8 +21,8 @@ func handleSSE(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Accel-Buffering", "no")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	ch := GlobalHub.Register()
-	defer GlobalHub.Unregister(ch)
+	ch := pubsub.GlobalHub.Register()
+	defer pubsub.GlobalHub.Unregister(ch)
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -140,13 +141,13 @@ func handleChat(agent AgentInterface) http.HandlerFunc {
 			return
 		}
 
-		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+		r.Body = http.MaxBytesReader(w, r.Body, 10<<20) // 10MB limit for attachments
 		var req ChatRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
 		}
-		fmt.Printf("📩 [Server] Received message: %s (chat_id=%s)\n", req.Message, req.ChatID)
+		fmt.Printf("📩 [Server] Received message: %s (chat_id=%s, attachments=%d)\n", req.Message, req.ChatID, len(req.Attachments))
 
 		chatID := req.ChatID
 		if chatID == "" {
@@ -161,7 +162,7 @@ func handleChat(agent AgentInterface) http.HandlerFunc {
 		agent.LoadHistory(sess.Messages)
 
 		startTime := time.Now()
-		reply, err := agent.ProcessMessage(req.Message)
+		reply, err := agent.ProcessMessage(req.Message, req.Attachments)
 		latency := time.Since(startTime).Milliseconds()
 
 		ram, cpu := getSystemMetrics()
@@ -207,12 +208,14 @@ func handleChatStream(agent AgentInterface) http.HandlerFunc {
 			return
 		}
 
-		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+		r.Body = http.MaxBytesReader(w, r.Body, 10<<20) // 10MB limit for attachments
 		var req ChatRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
 		}
+
+		fmt.Printf("📩 [Server-Stream] Received message: %s (chat_id=%s, attachments=%d)\n", req.Message, req.ChatID, len(req.Attachments))
 
 		chatID := req.ChatID
 		if chatID == "" {
@@ -241,7 +244,7 @@ func handleChatStream(agent AgentInterface) http.HandlerFunc {
 		}
 
 		var fullReply strings.Builder
-		streamErr := agent.ProcessMessageStream(req.Message, func(text string, done bool) {
+		streamErr := agent.ProcessMessageStream(req.Message, req.Attachments, func(text string, done bool) {
 			if !done && text != "" {
 				chunk := map[string]interface{}{"type": "token", "text": text}
 				data, _ := json.Marshal(chunk)

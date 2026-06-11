@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"gemini-cli/internal/api"
 	"gemini-cli/internal/models/messaging"
+	"gemini-cli/internal/pubsub"
 )
 
 // retryDelay sleeps for base * 2^attempt + jitter milliseconds (capped at 5s).
@@ -52,7 +52,7 @@ func (m *MultiProvider) GenerateText(systemPrompt, userPrompt string) (string, e
 		if err == nil {
 			return raw, nil
 		}
-		api.BroadcastLog("Fallback failed. Trying primary anyway (GenerateText)...", "routing")
+		pubsub.BroadcastLog("Fallback failed. Trying primary anyway (GenerateText)...", "routing")
 		fmt.Println("🔄 [Fallback] Fallback failed. Trying primary anyway (GenerateText)...")
 	}
 
@@ -98,7 +98,7 @@ func (m *MultiProvider) tryFallbacksOnlyText(systemPrompt, userPrompt string) (s
 		m.mu.Unlock()
 
 		p := m.fallbacks[activeIdx]
-		api.BroadcastLog(fmt.Sprintf("Primary error. Trying fallback #%d (GenerateText)...", activeIdx+1), "routing")
+		pubsub.BroadcastLog(fmt.Sprintf("Primary error. Trying fallback #%d (GenerateText)...", activeIdx+1), "routing")
 		fmt.Printf("🔄 [Fallback] Trying fallback #%d (GenerateText)...\n", activeIdx+1)
 
 		var raw string
@@ -111,7 +111,7 @@ func (m *MultiProvider) tryFallbacksOnlyText(systemPrompt, userPrompt string) (s
 			m.mu.Unlock()
 			return raw, nil
 		}
-		api.BroadcastLog(fmt.Sprintf("Fallback #%d error: %v", activeIdx+1, lastErr), "error")
+		pubsub.BroadcastLog(fmt.Sprintf("Fallback #%d error: %v", activeIdx+1, lastErr), "error")
 		fmt.Printf("⚠️ [Fallback] Fallback #%d error: %v\n", activeIdx+1, lastErr)
 	}
 
@@ -128,17 +128,17 @@ func (m *MultiProvider) Generate(ctx context.Context, req messaging.Request) (me
 
 	// Nếu đang skip primary do quota gần đây → dùng fallback ngay
 	if skipPrimary && len(m.fallbacks) > 0 {
-		api.BroadcastLog("Primary đang bị rate limit gần đây, ưu tiên fallback...", "routing")
+		pubsub.BroadcastLog("Primary đang bị rate limit gần đây, ưu tiên fallback...", "routing")
 		aiMessage, err := m.tryFallbacksOnly(ctx, req)
 		if err == nil {
 			return aiMessage, nil
 		}
-		api.BroadcastLog("Fallback failed. Trying primary anyway...", "routing")
+		pubsub.BroadcastLog("Fallback failed. Trying primary anyway...", "routing")
 		fmt.Println("🔄 [Fallback] Fallback failed. Trying primary anyway...")
 	}
 
 	// Try primary first
-	api.BroadcastLog("Calling primary provider...", "process")
+	pubsub.BroadcastLog("Calling primary provider...", "process")
 	aiMessage, err := m.primary.Generate(ctx, req)
 	if err == nil {
 		// Thành công → reset failure counter
@@ -151,7 +151,7 @@ func (m *MultiProvider) Generate(ctx context.Context, req messaging.Request) (me
 
 	isQuotaError := isQuotaOrRateLimitError(err)
 
-	api.BroadcastLog(fmt.Sprintf("Primary error: %v", err), "error")
+	pubsub.BroadcastLog(fmt.Sprintf("Primary error: %v", err), "error")
 	fmt.Printf("⚠️ [Fallback] Primary error (Generate): %v\n", err)
 
 	if isQuotaError {
@@ -188,7 +188,7 @@ func (m *MultiProvider) tryFallbacksOnly(ctx context.Context, req messaging.Requ
 		m.mu.Unlock()
 
 		p := m.fallbacks[activeIdx]
-		api.BroadcastLog(fmt.Sprintf("Using fallback provider #%d...", activeIdx+1), "process")
+		pubsub.BroadcastLog(fmt.Sprintf("Using fallback provider #%d...", activeIdx+1), "process")
 		fmt.Printf("🔄 [Fallback] Trying fallback #%d (Generate)...\n", activeIdx+1)
 
 		aiMessage, err := p.Generate(ctx, req)
@@ -203,7 +203,7 @@ func (m *MultiProvider) tryFallbacksOnly(ctx context.Context, req messaging.Requ
 		}
 
 		lastErr = err
-		api.BroadcastLog(fmt.Sprintf("Fallback #%d error: %v", activeIdx+1, err), "error")
+		pubsub.BroadcastLog(fmt.Sprintf("Fallback #%d error: %v", activeIdx+1, err), "error")
 		fmt.Printf("⚠️ [Fallback] Fallback #%d error: %v\n", activeIdx+1, err)
 	}
 
@@ -223,7 +223,7 @@ func (m *MultiProvider) GenerateStream(ctx context.Context, req messaging.Reques
 		if err == nil {
 			return nil
 		}
-		api.BroadcastLog("Fallback stream failed. Trying primary anyway...", "routing")
+		pubsub.BroadcastLog("Fallback stream failed. Trying primary anyway...", "routing")
 	}
 
 	err := m.primary.GenerateStream(ctx, req, onChunk)
@@ -268,7 +268,7 @@ func (m *MultiProvider) tryFallbacksStream(ctx context.Context, req messaging.Re
 		m.mu.Unlock()
 
 		p := m.fallbacks[activeIdx]
-		api.BroadcastLog(fmt.Sprintf("Using fallback stream provider #%d...", activeIdx+1), "process")
+		pubsub.BroadcastLog(fmt.Sprintf("Using fallback stream provider #%d...", activeIdx+1), "process")
 
 		err := p.GenerateStream(ctx, req, onChunk)
 		if err == nil {
@@ -281,7 +281,7 @@ func (m *MultiProvider) tryFallbacksStream(ctx context.Context, req messaging.Re
 		}
 
 		lastErr = err
-		api.BroadcastLog(fmt.Sprintf("Fallback stream #%d error: %v", activeIdx+1, err), "error")
+		pubsub.BroadcastLog(fmt.Sprintf("Fallback stream #%d error: %v", activeIdx+1, err), "error")
 	}
 
 	return fmt.Errorf("Tất cả các dịch vụ AI streaming (%d dự phòng) đều thất bại. Vui lòng thử lại sau vài phút. Lỗi cuối cùng: %v", numFallbacks, lastErr)

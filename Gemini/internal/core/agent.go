@@ -139,7 +139,7 @@ func (a *Agent) Start() {
 			return
 		}
 
-		reply, err := a.ProcessMessage(userInput)
+		reply, err := a.ProcessMessage(userInput, nil)
 		if err != nil {
 			fmt.Printf("❌ [Lỗi] %v\n", err)
 			continue
@@ -148,18 +148,18 @@ func (a *Agent) Start() {
 	}
 }
 
-func (a *Agent) ProcessMessage(userInput string) (string, error) {
+func (a *Agent) ProcessMessage(userInput string, atts []messaging.Attachment) (string, error) {
 	a.requestMu.Lock()
 	defer a.requestMu.Unlock()
-	return a.orchestrator.ProcessMessage(userInput)
+	return a.orchestrator.ProcessMessage(userInput, atts)
 }
 
 // ProcessMessageStream processes a message and streams tokens via onChunk.
 // The final chunk has Done=true and the full text in Text.
-func (a *Agent) ProcessMessageStream(userInput string, onChunk func(string, bool)) error {
+func (a *Agent) ProcessMessageStream(userInput string, atts []messaging.Attachment, onChunk func(string, bool)) error {
 	a.requestMu.Lock()
 	defer a.requestMu.Unlock()
-	return a.orchestrator.ProcessMessageStream(userInput, onChunk)
+	return a.orchestrator.ProcessMessageStream(userInput, atts, onChunk)
 }
 
 func readUserInput() (string, bool) {
@@ -172,17 +172,44 @@ func readUserInput() (string, bool) {
 	return scanner.Text(), true
 }
 
-func (a *Agent) appendUserTextInternal(text string) {
-	a.conversation.ContextWindow.History = append(a.conversation.ContextWindow.History, messaging.Message{
+func (a *Agent) appendUserTextInternal(text string, atts []messaging.Attachment) {
+	msg := messaging.Message{
 		Role:    messaging.RoleUser,
 		Content: text,
-	})
+	}
+	if len(atts) > 0 {
+		msg.Attachments = make([]messaging.Attachment, len(atts))
+		var parsedContents []string
+
+		for i, at := range atts {
+			msg.Attachments[i] = messaging.Attachment{
+				Name: at.Name,
+				Type: at.Type,
+				Data: at.Data,
+			}
+
+			// Tự động parse nội dung nếu là file text/excel (R6.2)
+			if content, ok := utils.ParseAttachment(at.Name, at.Type, at.Data); ok {
+				fmt.Printf("📄 [Parser] Tự động trích xuất nội dung từ file: %s\n", at.Name)
+				parsedContents = append(parsedContents, utils.GetFileContentWrapper(at.Name, content))
+			} else if content != "" {
+				fmt.Printf("⚠️ [Parser] Không thể trích xuất nội dung từ file %s: %s\n", at.Name, content)
+				// Nếu không parse được nhưng có thông báo lỗi, vẫn có thể cân nhắc append thông báo (tùy chọn)
+				// Ở đây ta giữ nguyên hành vi chỉ log.
+			}
+		}
+
+		if len(parsedContents) > 0 {
+			msg.Content += "\n\n" + strings.Join(parsedContents, "\n\n")
+		}
+	}
+	a.conversation.ContextWindow.History = append(a.conversation.ContextWindow.History, msg)
 }
 
 func (a *Agent) AddUserText(text string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.appendUserTextInternal(text)
+	a.appendUserTextInternal(text, nil)
 }
 
 func (a *Agent) GetHistory() []messaging.Message {

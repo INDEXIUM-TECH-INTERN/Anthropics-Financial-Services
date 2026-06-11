@@ -110,9 +110,20 @@ func (p *OpenRouterProvider) generateWithModel(ctx context.Context, req messagin
 	// 2. Translate history from []messaging.Message to []models.OpenRouterMessage
 	var messages []models.OpenRouterMessage
 	for _, h := range req.History {
+		content := h.Content
+
+		// Handle attachments by appending to content (as many OR models are text-only or have varied multi-modal APIs)
+		if len(h.Attachments) > 0 {
+			var attNotes []string
+			for _, att := range h.Attachments {
+				attNotes = append(attNotes, fmt.Sprintf("[Đính kèm: %s (%s)]", att.Name, att.Type))
+			}
+			content += "\n" + strings.Join(attNotes, "\n")
+		}
+
 		msg := models.OpenRouterMessage{
 			Role:    string(h.Role),
-			Content: h.Content,
+			Content: content,
 		}
 
 		// OpenRouter uses "assistant" for model responses
@@ -304,7 +315,15 @@ func (p *OpenRouterProvider) streamWithModel(ctx context.Context, req messaging.
 
 	var messages []models.OpenRouterMessage
 	for _, h := range req.History {
-		msg := models.OpenRouterMessage{Role: string(h.Role), Content: h.Content}
+		content := h.Content
+		if len(h.Attachments) > 0 {
+			var attNotes []string
+			for _, att := range h.Attachments {
+				attNotes = append(attNotes, fmt.Sprintf("[Đính kèm: %s (%s)]", att.Name, att.Type))
+			}
+			content += "\n" + strings.Join(attNotes, "\n")
+		}
+		msg := models.OpenRouterMessage{Role: string(h.Role), Content: content}
 		if h.Role == messaging.RoleAssistant {
 			msg.Role = "assistant"
 			if len(h.ToolCalls) > 0 {

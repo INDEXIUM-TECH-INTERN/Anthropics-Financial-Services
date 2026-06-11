@@ -21,12 +21,19 @@ type ToolResponse struct {
 	Content string
 }
 
+type Attachment struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+	Data string `json:"data"` // Base64 encoded
+}
+
 type Message struct {
 	Role             Role
 	Content          string
 	ToolCalls        []ToolCall
 	ToolResponses    []ToolResponse
 	ThoughtSignature string
+	Attachments      []Attachment
 }
 
 type ToolSchema struct {

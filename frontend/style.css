@@ -34,14 +34,19 @@
     --shadow-elevated: 0 1px 3px rgba(0,0,0,0.04), 0 6px 24px rgba(0,0,0,0.06);
     --shadow-float: 0 2px 8px rgba(0,0,0,0.06), 0 12px 40px rgba(0,0,0,0.08);
     --grain-opacity: 0.015;
+    /* Light theme gradient overrides */
+    --gradient-accent: linear-gradient(135deg, #2563eb, #7c3aed, #0891b2);
+    --gradient-accent-subtle: linear-gradient(135deg, rgba(37,99,235,0.08), rgba(124,58,237,0.08), rgba(8,145,178,0.08));
+    --user-avatar-gradient: linear-gradient(135deg, #4f46e5, #7c3aed);
 }
 
 :root[data-theme="dark"] {
-    --bg-void: #09090b;
-    --bg-canvas: #0c0c0f;
-    --bg-elevated: #131316;
-    --bg-hover: #1a1a1e;
-    --bg-active: #222228;
+    /* Layered dark mode - widened contrast (R1.5 AC#2) */
+    --bg-void: #08080a;
+    --bg-canvas: #0f0f12;
+    --bg-elevated: #16161a;
+    --bg-hover: #1e1e24;
+    --bg-active: #27272f;
     --border-subtle: rgba(255, 255, 255, 0.06);
     --border-default: rgba(255, 255, 255, 0.09);
     --border-strong: rgba(255, 255, 255, 0.14);
@@ -82,6 +87,24 @@
     --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-slow: 400ms cubic-bezier(0.16, 1, 0.3, 1);
     --transition-spring: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    /* ── Shared UI/UX upgrade variables ── */
+    --gradient-accent: linear-gradient(135deg, #3b82f6, #8b5cf6, #06b6d4);
+    --gradient-accent-subtle: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.15), rgba(6,182,212,0.15));
+    --gradient-border: conic-gradient(from 180deg, #3b82f6, #8b5cf6, #06b6d4, #3b82f6);
+    --user-avatar-gradient: linear-gradient(135deg, #6366f1, #8b5cf6);
+    --bg-surface-1: var(--bg-canvas);
+    --bg-surface-2: var(--bg-elevated);
+    --bg-surface-3: var(--bg-hover);
+    --chip-bg: var(--bg-elevated);
+    --chip-border: var(--border-default);
+    --chip-hover-bg: var(--accent-muted);
+    --chip-hover-border: var(--accent);
+    --fab-bg: var(--bg-canvas);
+    --fab-shadow: var(--shadow-float);
+    --skeleton-base: var(--bg-elevated);
+    --skeleton-shine: var(--bg-hover);
+    --backdrop-bg: rgba(0, 0, 0, 0.5);
 }
 
 /* ── Reset ── */
@@ -538,29 +561,44 @@ html[data-theme="light"] .theme-toggle .moon-icon { display: none; }
 }
 
 .welcome-logo {
-    width: 64px;
-    height: 64px;
-    border-radius: var(--radius-lg);
-    background: var(--accent);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 24px;
-    font-weight: 700;
-    font-family: var(--font-display);
+    width: 72px;
+    height: 72px;
     margin-bottom: 28px;
     position: relative;
-    box-shadow: 0 8px 32px var(--accent-glow);
+    animation: logoEntrance 0.8s var(--transition-slow) both;
 }
 
-.welcome-logo::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%);
+.welcome-logo-svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 8px 32px var(--accent-glow));
 }
+
+.welcome-logo-svg .logo-bg {
+    animation: logoPulse 3s ease-in-out infinite;
+}
+
+.welcome-logo-svg .logo-shimmer {
+    animation: logoShimmer 3s ease-in-out infinite 1.5s;
+}
+
+@keyframes logoEntrance {
+    from { opacity: 0; transform: scale(0.8) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes logoPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
+}
+
+@keyframes logoShimmer {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 0.3; }
+}
+
+/* Override old ::after */
+.welcome-logo::after { display: none; }
 
 .welcome-title {
     font-family: var(--font-display);
@@ -603,6 +641,16 @@ html[data-theme="light"] .theme-toggle .moon-icon { display: none; }
     gap: 8px;
     transition: all var(--transition-fast);
     box-shadow: var(--shadow-elevated);
+    animation: chipIn 0.5s var(--transition-slow) both;
+}
+
+.welcome-chip:nth-child(1) { animation-delay: 0.3s; }
+.welcome-chip:nth-child(2) { animation-delay: 0.45s; }
+.welcome-chip:nth-child(3) { animation-delay: 0.6s; }
+
+@keyframes chipIn {
+    from { opacity: 0; transform: translateY(12px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .welcome-chip:hover {
@@ -648,17 +696,14 @@ html[data-theme="light"] .theme-toggle .moon-icon { display: none; }
 }
 
 .message.bot .msg-avatar {
-    background: var(--accent);
+    background: var(--gradient-accent);
     color: white;
-}
-
-.message.bot .msg-avatar::after {
-    content: 'IX';
+    overflow: hidden;
 }
 
 .message.user .msg-avatar {
-    background: var(--bg-active);
-    color: var(--text-secondary);
+    background: var(--user-avatar-gradient);
+    color: white;
 }
 
 .message.user .msg-avatar::after {
@@ -949,6 +994,12 @@ html[data-theme="light"] .theme-toggle .moon-icon { display: none; }
     border-color: var(--border-subtle);
 }
 
+.msg-action-btn.active {
+    background: var(--accent-muted);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
 .msg-action-btn svg {
     width: 13px;
     height: 13px;
@@ -1157,8 +1208,23 @@ html[data-theme="light"] .theme-toggle .moon-icon { display: none; }
 }
 
 .input-wrapper:focus-within {
-    border-color: var(--accent);
-    box-shadow: var(--shadow-float), 0 0 0 3px var(--accent-glow);
+    border-color: transparent;
+    box-shadow: var(--shadow-float);
+}
+
+.input-wrapper::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: calc(var(--radius-xl) + 2px);
+    background: var(--gradient-border);
+    z-index: -1;
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.input-wrapper:focus-within::after {
+    opacity: 1;
 }
 
 #chat-input {
@@ -1219,6 +1285,115 @@ html[data-theme="light"] .theme-toggle .moon-icon { display: none; }
     margin-top: 10px;
     font-family: var(--font-mono);
     letter-spacing: 0.02em;
+}
+
+/* ── Input Toolbar Button (attach) ── */
+.input-toolbar-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.input-toolbar-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.input-toolbar-btn svg { width: 16px; height: 16px; }
+
+/* ── Input Toolbar Row ── */
+.input-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 4px 0;
+}
+
+.input-model-select {
+    appearance: none;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    outline: none;
+    transition: all var(--transition-fast);
+}
+
+.input-model-select:hover {
+    border-color: var(--border-default);
+    color: var(--text-primary);
+}
+
+.shortcut-hint {
+    font-size: 11px;
+    color: var(--text-quaternary);
+    font-family: var(--font-mono);
+}
+
+.shortcut-hint kbd {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-elevated);
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--text-tertiary);
+}
+
+/* ── Follow-up Chips ── */
+.followup-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 8px 0 0;
+    animation: chipIn 0.4s var(--transition-slow) both;
+}
+
+.followup-chip {
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--chip-border);
+    background: var(--chip-bg);
+    color: var(--text-secondary);
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all var(--transition-fast);
+}
+
+.followup-chip:hover {
+    border-color: var(--chip-hover-border);
+    color: var(--accent);
+    background: var(--chip-hover-bg);
+    transform: translateY(-1px);
+}
+
+/* ── Smooth Theme Transition (R5.4) ── */
+.chat-topbar,
+.input-wrapper,
+.modal-content,
+.pipeline-card,
+.conv-item {
+    transition: background-color var(--transition-base), border-color var(--transition-base), color var(--transition-base);
 }
 
 /* ── Right Panel (Execution Pipeline) ── */
@@ -1832,9 +2007,13 @@ html[data-theme="light"] .theme-toggle .moon-icon { display: none; }
         bottom: 0;
         z-index: 50;
         box-shadow: var(--shadow-float);
+        transform: translateX(0);
+        transition: transform var(--transition-slow), opacity var(--transition-slow);
     }
     .app-sidebar-left.collapsed {
-        display: none;
+        transform: translateX(-100%);
+        opacity: 0;
+        pointer-events: none;
     }
     .chat-content {
         padding: 20px 16px 100px;
@@ -1843,6 +2022,178 @@ html[data-theme="light"] .theme-toggle .moon-icon { display: none; }
         padding: 0 16px 16px;
     }
     .welcome-title { font-size: 22px; }
+}
+
+/* ── Edit User Message (R3.2) ── */
+.edit-message-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 300px;
+}
+
+.edit-message-textarea {
+    background: var(--bg-elevated);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    resize: none;
+    outline: none;
+    min-height: 60px;
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.edit-message-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.message.user {
+    cursor: pointer;
+}
+
+.message.user:hover .msg-content {
+    filter: brightness(1.1);
+}
+
+/* ── Skeleton Loading (R3.3) ── */
+.skeleton-loading {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 20px 0;
+}
+
+.skeleton-message {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.skeleton-message.right {
+    flex-direction: row-reverse;
+}
+
+.skeleton-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-sm);
+    background: var(--skeleton-base);
+    flex-shrink: 0;
+    animation: skeletonPulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    max-width: 60%;
+}
+
+.skeleton-line {
+    height: 12px;
+    border-radius: 6px;
+    background: var(--skeleton-base);
+    animation: skeletonPulse 1.5s ease-in-out infinite;
+    width: 100%;
+}
+
+.skeleton-line.short {
+    width: 40%;
+}
+
+.skeleton-line.medium {
+    width: 70%;
+}
+
+@keyframes skeletonPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.8; }
+}
+
+/* ── Scroll-to-Bottom Button (R3.4) ── */
+.scroll-to-bottom-btn {
+    position: absolute;
+    bottom: 120px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--border-default);
+    background: var(--fab-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    box-shadow: var(--fab-shadow);
+    transition: all var(--transition-fast);
+    animation: fadeUp 0.2s ease-out both;
+}
+
+.scroll-to-bottom-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--accent);
+    box-shadow: 0 4px 16px var(--accent-glow);
+}
+
+.scroll-to-bottom-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* ── Sidebar Section Labels (R4.1) ── */
+.sidebar-conversations .sidebar-section-label {
+    padding: 10px 12px 4px;
+    margin-top: 4px;
+}
+
+.sidebar-conversations .sidebar-section-label:first-child {
+    margin-top: 0;
+}
+
+/* ── Inline Rename Input (R4.2) ── */
+.conv-rename-input {
+    width: 100%;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--accent);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* ── Sidebar Backdrop (R4.3) ── */
+.sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: var(--backdrop-bg);
+    z-index: 40;
+    opacity: 0;
+    transition: opacity var(--transition-base);
+    pointer-events: none;
+}
+
+.sidebar-backdrop.visible {
+    opacity: 1;
+    pointer-events: auto;
 }
 
 /* ── Utility ── */
@@ -1895,4 +2246,67 @@ html[data-theme="light"] .theme-toggle .moon-icon { display: none; }
 .backend-select:hover {
     border-color: var(--border-default);
     color: var(--text-primary);
+}
+
+/* ── Attachments Preview (R6.1) ── */
+.attachments-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 4px 8px 4px;
+}
+
+.attachment-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    max-width: 200px;
+    transition: all var(--transition-fast);
+    animation: slideUp 0.3s ease-out;
+}
+
+.attachment-chip:hover {
+    border-color: var(--border-default);
+    background: var(--bg-active);
+}
+
+.attachment-chip-icon {
+    color: var(--accent-primary);
+    display: flex;
+    align-items: center;
+}
+
+.attachment-chip-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+}
+
+.attachment-remove-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-quaternary);
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    border-radius: 50%;
+    transition: all var(--transition-fast);
+}
+
+.attachment-remove-btn:hover {
+    color: var(--error);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }

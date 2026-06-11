@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"gemini-cli/internal/api"
+	"gemini-cli/internal/pubsub"
 	"gemini-cli/internal/tools"
 	"gemini-cli/internal/utils"
-)
+	)
 
 type RoutePlan struct {
 	Agent    string   `json:"agent"`
@@ -49,7 +49,7 @@ func SelectRoutePlan(query string) RoutePlan {
 }
 
 func (a *Agent) selectRoutePlan() RoutePlan {
-	api.BroadcastLog("Đang phân tích yêu cầu để chọn Agent tối ưu...", "process")
+	pubsub.BroadcastLog("Đang phân tích yêu cầu để chọn Agent tối ưu...", "process")
 	routerSystemPrompt := utils.LoadPrompt("router_system_prompt.txt")
 
 	now := time.Now()
@@ -76,7 +76,7 @@ func (a *Agent) selectRoutePlan() RoutePlan {
 		}
 	}
 
-	api.BroadcastEvent(
+	pubsub.BroadcastEvent(
 		fmt.Sprintf("Đã chọn Agent: %s (Lý do: %s)", route.Agent, route.Reason),
 		"agent_selected",
 		map[string]interface{}{

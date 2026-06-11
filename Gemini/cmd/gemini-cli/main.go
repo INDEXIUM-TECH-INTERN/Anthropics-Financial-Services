@@ -22,7 +22,7 @@ func main() {
 		if len(args) > 0 {
 			userInput := args[0]
 			fmt.Printf("👤 User: %s\n", userInput)
-			reply, err := agent.ProcessMessage(userInput)
+			reply, err := agent.ProcessMessage(userInput, nil)
 			if err != nil {
 				fmt.Printf("❌ [Lỗi] %v\n", err)
 			} else {

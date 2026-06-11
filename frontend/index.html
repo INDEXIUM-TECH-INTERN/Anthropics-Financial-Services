@@ -19,16 +19,16 @@
                 <div class="brand-mark">IX</div>
                 <span class="brand-name">Indexium</span>
             </div>
-            <button class="sidebar-new-btn" id="new-chat-btn" title="Cuộc trò chuyện mới">
+            <button class="sidebar-new-btn" id="new-chat-btn" title="Cuộc trò chuyện mới" aria-label="Cuộc trò chuyện mới">
                 <i data-lucide="plus"></i>
             </button>
         </div>
 
         <div class="sidebar-search">
-            <input type="text" class="sidebar-search-input" placeholder="Tìm kiếm cuộc trò chuyện..." id="search-input">
+            <input type="text" class="sidebar-search-input" placeholder="Tìm kiếm cuộc trò chuyện..." id="search-input" aria-label="Tìm kiếm cuộc trò chuyện">
         </div>
 
-        <div class="sidebar-section-label">Gần đây</div>
+        <div class="sidebar-section-label" id="static-recent-label" style="display:none;">Gần đây</div>
         <div class="sidebar-conversations" id="conversations-list">
             <!-- Rendered dynamically -->
         </div>
@@ -38,7 +38,7 @@
                 <span class="sidebar-status-dot"></span>
                 <span>Sẵn sàng</span>
             </div>
-            <button class="sidebar-settings-btn" id="settings-trigger" title="Cài đặt">
+            <button class="sidebar-settings-btn" id="settings-trigger" title="Cài đặt" aria-label="Mở cài đặt">
                 <i data-lucide="settings"></i>
             </button>
         </div>
@@ -49,22 +49,18 @@
         <!-- Top bar -->
         <header class="chat-topbar">
             <div class="topbar-left">
-                <button class="topbar-btn" id="toggle-conversations" title="Danh sách cuộc trò chuyện">
+                <button class="topbar-btn" id="toggle-conversations" title="Danh sách cuộc trò chuyện" aria-label="Hiện/ẩn danh sách trò chuyện">
                     <i data-lucide="panel-left"></i>
                 </button>
                 <span class="topbar-title">Financial AI Agent</span>
                 <span class="topbar-subtitle" id="current-chat-title">Cuộc trò chuyện mới</span>
             </div>
             <div class="topbar-right">
-                <select class="backend-select" id="backend-select">
-                    <option value="gemini">Gemini</option>
-                    <option value="claude">Claude</option>
-                </select>
-                <button class="topbar-btn theme-toggle" id="theme-toggle" title="Chuyển theme">
+                <button class="topbar-btn theme-toggle" id="theme-toggle" title="Chuyển theme" aria-label="Chuyển giao diện sáng/tối">
                     <i data-lucide="sun" class="sun-icon"></i>
                     <i data-lucide="moon" class="moon-icon"></i>
                 </button>
-                <button class="topbar-btn" id="toggle-pipeline" title="Pipeline">
+                <button class="topbar-btn" id="toggle-pipeline" title="Pipeline" aria-label="Hiện/ẩn pipeline">
                     <i data-lucide="activity"></i>
                 </button>
             </div>
@@ -75,7 +71,20 @@
             <div class="chat-content" id="chat-content">
                 <!-- Welcome state -->
                 <div class="welcome-state" id="welcome-state">
-                    <div class="welcome-logo">IX</div>
+                    <div class="welcome-logo">
+                        <svg class="welcome-logo-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#60a5fa"/>
+                                    <stop offset="50%" stop-color="#a78bfa"/>
+                                    <stop offset="100%" stop-color="#34d399"/>
+                                </linearGradient>
+                            </defs>
+                            <rect class="logo-bg" width="64" height="64" rx="16" fill="url(#logo-grad)"/>
+                            <text x="32" y="40" text-anchor="middle" fill="white" font-size="24" font-weight="700" font-family="var(--font-display)">IX</text>
+                            <rect class="logo-shimmer" width="64" height="64" rx="16" fill="url(#logo-grad)" opacity="0"/>
+                        </svg>
+                    </div>
                     <h1 class="welcome-title">Tôi có thể giúp gì cho bạn?</h1>
                     <p class="welcome-desc">Phân tích kết quả kinh doanh, so sánh chỉ số tài chính ngân hàng và tự động hóa quy trình phân tích báo cáo tài chính.</p>
                     <div class="welcome-chips">
@@ -93,13 +102,33 @@
             </div>
         </div>
 
+        <button class="scroll-to-bottom-btn hidden" id="scroll-to-bottom" title="Cuộn xuống cuối" aria-label="Cuộn xuống cuối">
+            <i data-lucide="chevron-down"></i>
+        </button>
+
         <!-- Input area -->
         <div class="input-area">
+            <div class="attachments-preview" id="attachments-preview"></div>
             <div class="input-wrapper">
-                <textarea id="chat-input" rows="1" placeholder="Hỏi về dữ liệu tài chính, báo cáo, phân tích ngành..."></textarea>
-                <button class="send-btn" id="send-btn" title="Gửi">
+                <button class="input-toolbar-btn" id="attach-btn" title="Đính kèm tệp" aria-label="Đính kèm tệp">
+                    <i data-lucide="paperclip"></i>
+                </button>
+                <input type="file" id="file-input" style="display:none;" multiple>
+                <textarea id="chat-input" rows="1" placeholder="Hỏi về dữ liệu tài chính, báo cáo, phân tích ngành..." aria-label="Nhập câu hỏi"></textarea>
+                <button class="send-btn" id="send-btn" title="Gửi" aria-label="Gửi tin nhắn">
                     <i data-lucide="arrow-up"></i>
                 </button>
+            </div>
+            <div class="input-toolbar">
+                <div class="input-toolbar-left">
+                    <select class="input-model-select" id="backend-select" aria-label="Chọn mô hình AI">
+                        <option value="gemini">Gemini</option>
+                        <option value="claude">Claude</option>
+                    </select>
+                </div>
+                <div class="input-toolbar-right">
+                    <span class="shortcut-hint"><kbd>Enter</kbd> gửi · <kbd>Shift+Enter</kbd> xuống dòng</span>
+                </div>
             </div>
             <div class="input-hint">Indexium AI có thể mắc lỗi. Xác minh thông tin quan trọng.</div>
         </div>
@@ -112,7 +141,7 @@
                 <i data-lucide="activity"></i>
                 Pipeline
             </div>
-            <button class="right-panel-toggle" id="close-pipeline" title="Đóng">
+            <button class="right-panel-toggle" id="close-pipeline" title="Đóng" aria-label="Đóng pipeline">
                 <i data-lucide="x"></i>
             </button>
         </div>
@@ -146,7 +175,7 @@
         </div>
 
         <div class="panel-actions">
-            <button class="btn-run-test" id="run-test-btn">
+            <button class="btn-run-test" id="run-test-btn" aria-label="Chạy bộ kiểm thử">
                 <i data-lucide="play"></i>
                 Chạy bộ kiểm thử
             </button>
@@ -154,12 +183,15 @@
     </aside>
 </div>
 
+<!-- Sidebar Backdrop (R4.3) -->
+<div class="sidebar-backdrop hidden" id="sidebar-backdrop"></div>
+
 <!-- ═══ Settings Modal ═══ -->
 <div class="modal-overlay" id="settings-modal" style="display:none;">
     <div class="modal-content">
         <div class="modal-header">
             <h2><i data-lucide="settings"></i> Cài đặt</h2>
-            <button class="modal-close" id="close-settings">&times;</button>
+            <button class="modal-close" id="close-settings" aria-label="Đóng cài đặt">&times;</button>
         </div>
         <div class="modal-body">
             <div>

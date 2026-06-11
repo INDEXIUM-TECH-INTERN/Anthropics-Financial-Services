@@ -23,8 +23,14 @@ type GeminiContent struct {
 	Parts []GeminiPart `json:"parts"`
 }
 
+type GeminiInlineData struct {
+	MimeType string `json:"mimeType"`
+	Data     string `json:"data"` // base64
+}
+
 type GeminiPart struct {
 	Text             string                  `json:"text,omitempty"`
+	InlineData       *GeminiInlineData       `json:"inlineData,omitempty"`
 	FunctionCall     *GeminiFunctionCall     `json:"functionCall,omitempty"`
 	FunctionResponse *GeminiFunctionResponse `json:"functionResponse,omitempty"`
 	ThoughtSignature string                  `json:"thoughtSignature,omitempty"`
