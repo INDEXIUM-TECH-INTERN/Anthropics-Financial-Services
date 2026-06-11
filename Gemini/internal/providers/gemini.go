@@ -139,7 +139,7 @@ func (p *GeminiProvider) Generate(ctx context.Context, req messaging.Request) (m
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("x-goog-api-key", p.APIKey)
 
-	client := &http.Client{Timeout: 100 * time.Second}
+	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		return messaging.Message{}, fmt.Errorf("error performing http request: %w", err)

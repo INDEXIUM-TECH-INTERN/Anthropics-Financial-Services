@@ -162,7 +162,7 @@ func (p *OpenRouterProvider) generateWithModel(ctx context.Context, req messagin
 	httpReq.Header.Set("HTTP-Referer", "https://github.com/INDEXIUM-TECH-INTERN/Anthropics-Financial-Services")
 	httpReq.Header.Set("X-Title", "Indexium Financial AI Agent")
 
-	client := &http.Client{Timeout: 100 * time.Second}
+	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		return messaging.Message{}, fmt.Errorf("error performing http request: %w", err)

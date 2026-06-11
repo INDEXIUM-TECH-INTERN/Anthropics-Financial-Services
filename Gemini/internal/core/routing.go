@@ -103,10 +103,16 @@ var allowedSkillsByAgent = map[string]map[string]bool{
 	},
 }
 
+// SelectRoutePlan routes a query to the best agent using a lightweight heuristic only.
+// It does NOT create a full Agent (no provider initialization) — safe for testing.
 func SelectRoutePlan(query string) RoutePlan {
-	agent := NewAgent()
-	agent.userInput = query
-	return agent.selectRoutePlan()
+	now := time.Now()
+	if dateOverride := os.Getenv("SYSTEM_DATE_OVERRIDE"); dateOverride != "" {
+		if t, err := time.Parse("2006-01-02", dateOverride); err == nil {
+			now = t
+		}
+	}
+	return heuristicRoutePlan(query, now)
 }
 
 func (a *Agent) selectRoutePlan() RoutePlan {

@@ -332,9 +332,10 @@ func generateTitleIfNeeded(currentTitle, userMsg, reply string) string {
 	if currentTitle != "" && currentTitle != "Cuộc trò chuyện mới" {
 		return currentTitle
 	}
-	// simple title from first user message
-	if len(userMsg) > 60 {
-		return userMsg[:57] + "..."
+	// simple title from first user message (use rune count for Unicode safety)
+	runes := []rune(userMsg)
+	if len(runes) > 60 {
+		return string(runes[:57]) + "..."
 	}
 	if userMsg != "" {
 		return userMsg
