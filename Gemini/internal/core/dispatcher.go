@@ -29,8 +29,9 @@ type Dispatcher struct {
 	handlers map[string]toolHandler
 }
 
-// toolHandler is a function type that executes a tool and returns a string result.
-type toolHandler func(args handlers.Args) string
+// toolHandler is a function type that executes a tool and returns a string result
+// or an error. Errors are logged and converted to user-facing error strings.
+type toolHandler func(args handlers.Args) (string, error)
 
 // NewDispatcher creates a dispatcher with all tools registered.
 func NewDispatcher(a *Agent) *Dispatcher {
@@ -186,20 +187,26 @@ func (d *Dispatcher) HandleToolCalls(aiMessage messaging.Message) bool {
 }
 
 // dispatchToolCall looks up the handler in the map and executes it.
+// Errors are logged and returned as formatted error strings for the LLM.
 func (d *Dispatcher) dispatchToolCall(toolCall *messaging.ToolCall) string {
 	handler, ok := d.handlers[toolCall.Name]
 	if !ok {
 		return fmt.Sprintf("Error: Unknown tool %s", toolCall.Name)
 	}
-	return handler(toolCall.Args)
+	result, err := handler(toolCall.Args)
+	if err != nil {
+		fmt.Printf("❌ [Tool] %s failed: %v\n", toolCall.Name, err)
+		return fmt.Sprintf("Error: %v", err)
+	}
+	return result
 }
 
 // ─── Tool Handler Implementations ───────────────────────────────────────────
 
-func (d *Dispatcher) handleFinancialResearch(args handlers.Args) string {
+func (d *Dispatcher) handleFinancialResearch(args handlers.Args) (string, error) {
 	query, _ := args["query"].(string)
 	if query == "" {
-		return "Error: Missing query parameter"
+		return "", fmt.Errorf("missing query parameter")
 	}
 	pubsub.BroadcastLog(fmt.Sprintf("Tra cứu dữ liệu (Google): %s", query), "tool")
 
@@ -211,20 +218,20 @@ func (d *Dispatcher) handleFinancialResearch(args handlers.Args) string {
 	if cached, ok := d.cacheGet("google", searchQuery); ok && cached != "" {
 		fmt.Printf("💾 [Cache] Dùng kết quả research đã cache cho: %s\n", searchQuery)
 		pubsub.BroadcastLog("Dùng kết quả tìm kiếm từ cache (tiết kiệm quota)", "success")
-		return cached
+		return cached, nil
 	}
 
 	result := tools.SearchGoogle(searchQuery)
 	if result != "" && !strings.HasPrefix(result, "Lỗi") && !strings.HasPrefix(result, "Error") {
 		d.cachePut("google", searchQuery, result)
 	}
-	return result
+	return result, nil
 }
 
-func (d *Dispatcher) handleTavilySearch(args handlers.Args) string {
+func (d *Dispatcher) handleTavilySearch(args handlers.Args) (string, error) {
 	query, _ := args["query"].(string)
 	if query == "" {
-		return "Error: Missing query parameter"
+		return "", fmt.Errorf("missing query parameter")
 	}
 	pubsub.BroadcastLog(fmt.Sprintf("Tra cứu dữ liệu (Tavily): %s", query), "tool")
 
@@ -236,46 +243,46 @@ func (d *Dispatcher) handleTavilySearch(args handlers.Args) string {
 	if cached, ok := d.cacheGet("tavily", searchQuery); ok && cached != "" {
 		fmt.Printf("💾 [Cache] Dùng kết quả research đã cache (Tavily) cho: %s\n", searchQuery)
 		pubsub.BroadcastLog("Dùng kết quả tìm kiếm Tavily từ cache (tiết kiệm quota)", "success")
-		return cached
+		return cached, nil
 	}
 
 	result := tools.SearchTavily(searchQuery)
 	if result != "" && !strings.HasPrefix(result, "Lỗi") && !strings.HasPrefix(result, "Error") {
 		d.cachePut("tavily", searchQuery, result)
 	}
-	return result
+	return result, nil
 }
 
-func (d *Dispatcher) handleFinancialScrape(args handlers.Args) string {
+func (d *Dispatcher) handleFinancialScrape(args handlers.Args) (string, error) {
 	url, _ := args["url"].(string)
 	if url == "" {
-		return "Error: Missing url parameter"
+		return "", fmt.Errorf("missing url parameter")
 	}
 	pubsub.BroadcastLog(fmt.Sprintf("Đang đọc nội dung từ: %s", url), "tool")
 
 	if cached, ok := d.cacheGet("scrape", url); ok && cached != "" {
 		fmt.Printf("💾 [Cache] Dùng kết quả scrape đã cache cho: %s\n", url)
 		pubsub.BroadcastLog("Dùng kết quả đọc nội dung từ cache (tiết kiệm quota)", "success")
-		return cached
+		return cached, nil
 	}
 
 	result := tools.ScrapeWeb(url)
 	if result != "" && !strings.HasPrefix(result, "Lỗi") && !strings.HasPrefix(result, "Error") {
 		d.cachePut("scrape", url, result)
 	}
-	return result
+	return result, nil
 }
 
-func (d *Dispatcher) handleFinancialCalculate(args handlers.Args) string {
+func (d *Dispatcher) handleFinancialCalculate(args handlers.Args) (string, error) {
 	expr, _ := args["expression"].(string)
 	if expr == "" {
-		return "Error: Missing expression parameter"
+		return "", fmt.Errorf("missing expression parameter")
 	}
 	pubsub.BroadcastLog(fmt.Sprintf("Thực hiện tính toán: %s", expr), "tool")
-	return tools.Calculate(expr)
+	return tools.Calculate(expr), nil
 }
 
-func (d *Dispatcher) handleHandoff(args handlers.Args) string {
+func (d *Dispatcher) handleHandoff(args handlers.Args) (string, error) {
 	targetAgent, _ := args["target_agent"].(string)
 	reason, _ := args["reason"].(string)
 	payload, _ := args["task_payload"].(string)
@@ -290,17 +297,17 @@ func (d *Dispatcher) handleHandoff(args handlers.Args) string {
 	}
 	d.agent.mu.Unlock()
 
-	return fmt.Sprintf("Successfully initiated handoff to %s.", targetAgent)
+	return fmt.Sprintf("Successfully initiated handoff to %s.", targetAgent), nil
 }
 
-func (d *Dispatcher) handleLoadContext(args handlers.Args) string {
+func (d *Dispatcher) handleLoadContext(args handlers.Args) (string, error) {
 	docType, _ := args["type"].(string)
 	docName, _ := args["name"].(string)
 	pubsub.BroadcastLog(fmt.Sprintf("Nạp tài liệu: %s/%s", docType, docName), "process")
-	return tools.LoadDocument(docType, docName)
+	return tools.LoadDocument(docType, docName), nil
 }
 
-func (d *Dispatcher) handleExportReport(args handlers.Args) string {
+func (d *Dispatcher) handleExportReport(args handlers.Args) (string, error) {
 	format, _ := args["format"].(string)
 	if format == "" {
 		format, _ = args["type"].(string)
@@ -319,7 +326,7 @@ func (d *Dispatcher) handleExportReport(args handlers.Args) string {
 
 	exportsDir := resolveExportsDir()
 	if err := os.MkdirAll(exportsDir, 0755); err != nil {
-		return fmt.Sprintf("Error creating exports directory: %v", err)
+		return "", fmt.Errorf("creating exports directory: %w", err)
 	}
 
 	filename := fmt.Sprintf("report_%d.%s", time.Now().UnixNano(), format)
@@ -328,26 +335,26 @@ func (d *Dispatcher) handleExportReport(args handlers.Args) string {
 	if format == "xlsx" {
 		_, err := report_gen.Generate(report_gen.FormatXLSX, title, dataStr, outputPath)
 		if err != nil {
-			return fmt.Sprintf("Error generating Excel report: %v", err)
+			return "", fmt.Errorf("generating Excel report: %w", err)
 		}
 	} else {
 		outputPath = d.generatePPTXWithScript(title, dataStr, outputPath)
 	}
 
 	displayFormat := strings.ToUpper(format)
-	return fmt.Sprintf("[Tải về Báo cáo (%s)](/exports/%s)", displayFormat, filename)
+	return fmt.Sprintf("[Download Report (%s)](/exports/%s)", displayFormat, filename), nil
 }
 
-func (d *Dispatcher) handleReadLocalFile(args handlers.Args) string {
+func (d *Dispatcher) handleReadLocalFile(args handlers.Args) (string, error) {
 	path, _ := args["path"].(string)
 	if path == "" {
-		return "Error: Missing path parameter"
+		return "", fmt.Errorf("missing path parameter")
 	}
 	pubsub.BroadcastLog(fmt.Sprintf("Đang đọc tệp nội bộ: %s", path), "tool")
 
 	baseName := filepath.Base(path)
 	if baseName == "" || baseName == "." || baseName == ".." {
-		return "Error: Tên tệp không hợp lệ"
+		return "", fmt.Errorf("invalid filename")
 	}
 
 	allowedExts := map[string]bool{
@@ -357,7 +364,7 @@ func (d *Dispatcher) handleReadLocalFile(args handlers.Args) string {
 	}
 	ext := strings.ToLower(filepath.Ext(baseName))
 	if !allowedExts[ext] {
-		return fmt.Sprintf("Error: Định dạng file '%s' không được phép đọc", ext)
+		return "", fmt.Errorf("file extension %q not allowed", ext)
 	}
 
 	searchDirs := []string{"frontend/exports", "Gemini/frontend/exports", "../frontend/exports", "exports"}
@@ -375,22 +382,22 @@ func (d *Dispatcher) handleReadLocalFile(args handlers.Args) string {
 	}
 
 	if targetPath == "" {
-		return fmt.Sprintf("Lỗi: Không tìm thấy tệp %s trong thư mục exports.", baseName)
+		return "", fmt.Errorf("file %s not found in exports directory", baseName)
 	}
 
 	data, err := os.ReadFile(targetPath)
 	if err != nil {
-		return fmt.Sprintf("Lỗi khi đọc tệp: %v", err)
+		return "", fmt.Errorf("reading file: %w", err)
 	}
 
 	dataB64 := base64.StdEncoding.EncodeToString(data)
 	mimeType := ""
 
 	if content, ok := utils.ParseAttachment(baseName, mimeType, dataB64); ok {
-		return utils.GetFileContentWrapper(baseName, content)
+		return utils.GetFileContentWrapper(baseName, content), nil
 	}
 
-	return fmt.Sprintf("Thông báo: Tệp '%s' là định dạng nhị phân (Ảnh/PDF). Hãy kiểm tra file đính kèm hoặc dùng công cụ xem file.", baseName)
+	return fmt.Sprintf("Binary file detected: %s. Use a file viewer.", baseName), nil
 }
 
 // ─── Helper Methods ──────────────────────────────────────────────────────────

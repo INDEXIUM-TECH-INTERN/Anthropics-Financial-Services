@@ -85,17 +85,14 @@ func (a *Agent) Start() {
 }
 
 // ProcessMessage processes a user message and returns the AI response.
-// The RWMutex serializes concurrent HTTP requests to prevent data races.
+// Locking is managed internally by the orchestrator for minimal critical sections.
 func (a *Agent) ProcessMessage(userInput string, atts []messaging.Attachment) (string, error) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
 	return a.orchestrator.ProcessMessage(userInput, atts)
 }
 
 // ProcessMessageStream processes a message and streams tokens via onChunk.
+// Locking is managed internally by the orchestrator for minimal critical sections.
 func (a *Agent) ProcessMessageStream(userInput string, atts []messaging.Attachment, onChunk func(string, bool)) error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
 	return a.orchestrator.ProcessMessageStream(userInput, atts, onChunk)
 }
 

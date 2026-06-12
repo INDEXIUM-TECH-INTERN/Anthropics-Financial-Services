@@ -1,9 +1,10 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"strings"
-	"sync"
+	"time"
 
 	"gemini-cli/internal/pubsub"
 	"gemini-cli/internal/tools"
@@ -65,18 +66,46 @@ func BuildBootstrapContext(agent *Agent, route RoutePlan) []string {
 		pubsub.BroadcastLog("Phát hiện nhu cầu dữ liệu Real-time. Đang tìm kiếm...", "process")
 		queryPlan := tools.BuildMarketQueryPlan(agent.userInput)
 
+		// Concurrent search with timeout to prevent indefinite blocking.
+		const searchTimeout = 30 * time.Second
+		ctx, cancel := context.WithTimeout(context.Background(), searchTimeout)
+		defer cancel()
+
+		type searchResult struct {
+			result string
+			source string
+		}
+		resultsCh := make(chan searchResult, 2)
+
+		go func() {
+			r := tools.SearchGoogle(queryPlan.SearchQuery)
+			select {
+			case resultsCh <- searchResult{r, "google"}:
+			case <-ctx.Done():
+			}
+		}()
+		go func() {
+			r := tools.SearchTavily(queryPlan.SearchQuery)
+			select {
+			case resultsCh <- searchResult{r, "tavily"}:
+			case <-ctx.Done():
+			}
+		}()
+
 		var googleResult, tavilyResult string
-		var wg sync.WaitGroup
-		wg.Add(2)
-		go func() {
-			defer wg.Done()
-			googleResult = tools.SearchGoogle(queryPlan.SearchQuery)
-		}()
-		go func() {
-			defer wg.Done()
-			tavilyResult = tools.SearchTavily(queryPlan.SearchQuery)
-		}()
-		wg.Wait()
+		for i := 0; i < 2; i++ {
+			select {
+			case sr := <-resultsCh:
+				if sr.source == "google" {
+					googleResult = sr.result
+				} else {
+					tavilyResult = sr.result
+				}
+			case <-ctx.Done():
+				fmt.Printf("⚠️ [Bootstrap] Search timed out after %v, using partial results\n", searchTimeout)
+				i = 2 // break outer loop
+			}
+		}
 
 		var combinedResults []string
 		if googleResult != "" && !strings.HasPrefix(googleResult, "Lỗi") && !strings.HasPrefix(googleResult, "Error") {

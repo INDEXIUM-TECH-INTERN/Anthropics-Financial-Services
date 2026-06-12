@@ -100,28 +100,31 @@ func (o *Orchestrator) streamFinalResponse(onChunk func(string, bool)) error {
 	keepRecentMessages := getEnvInt("CONTEXT_KEEP_RECENT", 7)
 	maxContextTokens := getEnvInt("CONTEXT_MAX_TOKENS", 92000)
 	maxSummaryChars := getEnvInt("CONTEXT_MAX_SUMMARY_INPUT", 18000)
+	maxIterations := getEnvInt("REACT_MAX_ITERATIONS", 20)
 
-	for {
-		// Kiểm tra context summarization
-		o.agent.mu.Lock()
+	for i := 0; i < maxIterations; i++ {
+		// Kiểm tra context summarization (read lock)
+		o.agent.mu.RLock()
 		cw := o.agent.conversation.ContextWindow
 		needsSummary := cw.ShouldSummarize(maxContextTokens, keepRecentMessages)
-		o.agent.mu.Unlock()
+		o.agent.mu.RUnlock()
 
 		if needsSummary {
 			pubsub.BroadcastLog("Context window lớn, đang tóm tắt lịch sử cũ...", "process")
+			o.agent.mu.RLock()
 			_, err := cw.SummarizeOldest(o.agent.GetProvider(), keepRecentMessages, maxSummaryChars)
+			o.agent.mu.RUnlock()
 			if err != nil {
 				fmt.Printf("⚠️ [Context] Tóm tắt thất bại: %v.\n", err)
 			}
 		}
 
-		// Build messages
-		o.agent.mu.Lock()
+		// Build messages (read lock)
+		o.agent.mu.RLock()
 		systemPrompt := o.agent.systemPrompt
 		condensedHistory := o.agent.conversation.ContextWindow.BuildLLMHistory(keepRecentMessages)
 		tools := o.agent.dispatcher.GetTools()
-		o.agent.mu.Unlock()
+		o.agent.mu.RUnlock()
 
 		var messages []messaging.Message
 		if systemPrompt != "" {
@@ -137,7 +140,7 @@ func (o *Orchestrator) streamFinalResponse(onChunk func(string, bool)) error {
 			Tools:   tools,
 		}
 
-		// Gọi LLM với streaming thực tế
+		// Gọi LLM với streaming thực tế (ngoài lock)
 		var fullText strings.Builder
 		streamDone := make(chan error, 1)
 
@@ -163,7 +166,7 @@ func (o *Orchestrator) streamFinalResponse(onChunk func(string, bool)) error {
 			return fmt.Errorf("streaming timeout")
 		}
 
-		// Append vào history
+		// Append vào history (write lock)
 		finalText := fullText.String()
 		o.agent.mu.Lock()
 		o.agent.conversation.ContextWindow.History = append(o.agent.conversation.ContextWindow.History, messaging.Message{
@@ -184,31 +187,33 @@ func (o *Orchestrator) streamFinalResponse(onChunk func(string, bool)) error {
 		if !hasToolCall {
 			return nil
 		}
-		// Có tool call → loop tiếp (tool execution là blocking, response sẽ stream ở iteration sau)
 	}
+
+	return fmt.Errorf("exceeded maximum ReAct iterations (%d); possible infinite tool-call loop", maxIterations)
 }
 
 func (o *Orchestrator) runConversationLoopInternal() (string, error) {
-	// === Cấu hình Summarization (có thể override bằng biến môi trường) ===
 	keepRecentMessages := getEnvInt("CONTEXT_KEEP_RECENT", 7)
 	maxContextTokens := getEnvInt("CONTEXT_MAX_TOKENS", 92000)
 	maxSummaryChars := getEnvInt("CONTEXT_MAX_SUMMARY_INPUT", 18000)
+	maxIterations := getEnvInt("REACT_MAX_ITERATIONS", 20)
 
-	// Ghi chú: 92000 an toàn cho hầu hết model 128k. Với Gemini 1M+ có thể tăng lên 300k-500k.
-
-	for {
-		// === BƯỚC 1: KIỂM TRA VÀ TÓM TẮT NGỮ CẢNH NẾU CẦN (ngoài lock) ===
-		o.agent.mu.Lock()
+	for i := 0; i < maxIterations; i++ {
+		// === BƯỚC 1: KIỂM TRA VÀ TÓM TẮT NGỮ CẢNH NẾU CẦN (read lock) ===
+		o.agent.mu.RLock()
 		cw := o.agent.conversation.ContextWindow
 		needsSummary := cw.ShouldSummarize(maxContextTokens, keepRecentMessages)
-		o.agent.mu.Unlock()
+		o.agent.mu.RUnlock()
 
 		if needsSummary {
 			pubsub.BroadcastLog("Context window lớn, đang tóm tắt lịch sử cũ...", "process")
-			fmt.Printf("🧠 [Context] Đang tóm tắt %d tin nhắn cũ để tiết kiệm context...\n", len(cw.History)-keepRecentMessages)
+			fmt.Printf("🧠 [Context] Đang tóm tắt tin nhắn cũ để tiết kiệm context...\n")
 
-			// Gọi tóm tắt (dùng provider hiện tại)
+			// SummarizeOldest reads history — hold read lock during the call
+			o.agent.mu.RLock()
 			_, err := cw.SummarizeOldest(o.agent.GetProvider(), keepRecentMessages, maxSummaryChars)
+			o.agent.mu.RUnlock()
+
 			if err != nil {
 				fmt.Printf("⚠️ [Context] Tóm tắt thất bại: %v. Tiếp tục với context đầy đủ.\n", err)
 				pubsub.BroadcastLog("Tóm tắt context thất bại, tiếp tục với lịch sử gốc.", "error")
@@ -218,13 +223,12 @@ func (o *Orchestrator) runConversationLoopInternal() (string, error) {
 			}
 		}
 
-		// === BƯỚC 2: Xây dựng messages gửi cho LLM (dùng phiên bản đã nén) ===
-		o.agent.mu.Lock()
+		// === BƯỚC 2: Xây dựng messages gửi cho LLM (read lock) ===
+		o.agent.mu.RLock()
 		systemPrompt := o.agent.systemPrompt
-		// Dùng BuildLLMHistory thay vì copy toàn bộ
 		condensedHistory := o.agent.conversation.ContextWindow.BuildLLMHistory(keepRecentMessages)
 		tools := o.agent.dispatcher.GetTools()
-		o.agent.mu.Unlock()
+		o.agent.mu.RUnlock()
 
 		var messages []messaging.Message
 		if systemPrompt != "" {
@@ -235,22 +239,22 @@ func (o *Orchestrator) runConversationLoopInternal() (string, error) {
 		}
 		messages = append(messages, condensedHistory...)
 
-		// Log kích thước context đang dùng (rất hữu ích)
 		estTokens := utils.EstimateFullPrompt(systemPrompt, extractHistoryTexts(condensedHistory), "tools")
-		fmt.Printf("📏 [Context] Gửi ~%d tokens (gửi %d messages cho LLM: summary + bootstrap + tin gần nhất)\n", estTokens, len(condensedHistory))
+		fmt.Printf("📏 [Context] Gửi ~%d tokens (%d messages)\n", estTokens, len(condensedHistory))
 
 		req := messaging.Request{
 			History: messages,
 			Tools:   tools,
 		}
 
+		// === BƯỚC 3: Gọi LLM (ngoài lock) ===
 		aiMessage, err := o.agent.GetProvider().Generate(context.Background(), req)
 		if err != nil {
 			return "", err
 		}
 
+		// === BƯỚC 4: Append response + handle tool calls (write lock) ===
 		o.agent.mu.Lock()
-		// Luôn append vào FULL history (để UI và lịch sử đầy đủ)
 		o.agent.conversation.ContextWindow.History = append(o.agent.conversation.ContextWindow.History, aiMessage)
 		hasToolCall := o.agent.dispatcher.HandleToolCalls(aiMessage)
 
@@ -268,6 +272,8 @@ func (o *Orchestrator) runConversationLoopInternal() (string, error) {
 			return extractResponseText(aiMessage), nil
 		}
 	}
+
+	return "", fmt.Errorf("exceeded maximum ReAct iterations (%d); possible infinite tool-call loop", maxIterations)
 }
 
 // extractHistoryTexts hỗ trợ EstimateFullPrompt

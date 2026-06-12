@@ -27,11 +27,11 @@ func TestIsCasualGreeting(t *testing.T) {
 		{"ai do", "ai do", true},
 		{"who are you", "who are you", true},
 
-		// Help requests
-		{"giup toi", "giup toi", true},
-		{"huong dan", "huong dan", true},
-		{"su dung", "su dung", true},
-		{"test", "test", true},
+		// Help requests (no longer classified as greetings — too broad)
+		{"giup toi", "giup toi", false},
+		{"huong dan", "huong dan", false},
+		{"su dung", "su dung", false},
+		{"test", "test", false},
 
 		// With punctuation
 		{"hello with exclamation", "hello!", true},
@@ -42,10 +42,13 @@ func TestIsCasualGreeting(t *testing.T) {
 		{"hello with trailing space", "hello ", true},
 		{"hi with leading space", " hi", true},
 
-		// Short inputs (< 5 chars)
-		{"short abc", "abc", true},
-		{"short x", "x", true},
-		{"empty string", "", true},
+		// Short inputs are NOT automatically greetings (removed len < 5 catch-all)
+		{"short abc", "abc", false},
+		{"short x", "x", false},
+		{"empty string", "", false},
+		// Stock tickers should not be greetings
+		{"ticker VNM", "VNM", false},
+		{"ticker BTC", "BTC", false},
 
 		// Non-greetings (longer, specific queries)
 		{"financial query", "phân tích báo cáo tài chính Vinamilk 2025", false},
