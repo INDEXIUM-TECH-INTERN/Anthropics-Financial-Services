@@ -113,6 +113,60 @@ data: {"type":"tool_executed","payload":{"tool":"financial_research","args":{"qu
 | `ram_mb` | Current memory allocation |
 | `cpu_load` | Active goroutine count |
 
+## Error Codes
+
+All error responses follow a consistent envelope:
+
+```json
+{
+  "error": "error_code",
+  "message": "Human-readable description"
+}
+```
+
+| HTTP Status | Error Code | Meaning |
+|-------------|------------|---------|
+| 400 | `bad_request` | Malformed JSON or missing required fields |
+| 404 | `not_found` | Chat session not found (invalid `chat_id`) |
+| 429 | `rate_limited` | Too many requests (see Rate Limiting) |
+| 500 | `internal_error` | Unexpected server error |
+| 502 | `provider_failure` | All LLM providers failed (quota/rate-limit) |
+| 503 | `overloaded` | Server at capacity, retry after backoff |
+
+### Domain Errors
+
+These map to the error types in `Gemini/internal/errors/`:
+
+| Type | HTTP Status | When |
+|------|-------------|------|
+| `ErrProviderFailure` | 502 | All providers exhausted or quota exhausted |
+| `ErrRoutingFailure` | 400 | Router cannot determine agent for query |
+| `ErrContextOverflow` | 200 (internal) | Context window exceeded; summarization triggered automatically |
+| `ErrSessionNotFound` | 404 | Session ID not found in Redis/memory store |
+| `ErrToolExecution` | 200 (internal) | Tool execution failed; error returned to AI for retry |
+
+## Rate Limiting
+
+Rate limiting is applied per-IP on the `/api/chat` endpoint:
+
+| Tier | Limit | Window |
+|------|-------|--------|
+| Default | 30 requests | 60 seconds |
+| With valid API key | 120 requests | 60 seconds |
+
+When the limit is exceeded:
+- HTTP 429 is returned.
+- Response includes `Retry-After` header (seconds until next allowed request).
+- SSE connections are also subject to the same limits.
+
+Configuration via environment variables:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `RATE_LIMIT` | 30 | Requests per window (per IP) |
+| `RATE_LIMIT_WINDOW` | 60 | Window in seconds |
+| `DISABLE_RATE_LIMIT` | (empty) | Set to `1` to disable (dev only) |
+
 ## CORS
 
 All endpoints include: `Access-Control-Allow-Origin: *`, Methods: `POST, GET, OPTIONS`, Headers: `Content-Type, Authorization`.

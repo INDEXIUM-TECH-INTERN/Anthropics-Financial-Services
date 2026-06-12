@@ -64,3 +64,7 @@ Read the ADRs in `docs/adr/` for rationale behind key decisions:
 - ADR-002: ReAct Loop Architecture
 - ADR-003: Context Summarization
 - ADR-004: Routing Strategy
+- ADR-005: Context Window Summarization Strategy
+- ADR-006: SSRF Protection for Tool Execution
+- ADR-007: Redis Session Store
+- ADR-008: Go Document Parsing

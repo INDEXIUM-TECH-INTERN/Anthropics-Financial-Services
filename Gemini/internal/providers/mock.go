@@ -62,7 +62,7 @@ func NewMockProviderWithText(texts ...string) *MockProvider {
 }
 
 // NewMockProviderWithTools creates a MockProvider that returns a tool call response.
-func NewMockProviderWithTools(toolName string, args map[string]interface{}, finalText string) *MockProvider {
+func NewMockProviderWithTools(toolName string, args map[string]any, finalText string) *MockProvider {
 	toolID := fmt.Sprintf("call_%s_0", toolName)
 	return &MockProvider{
 		Responses: []messaging.Message{

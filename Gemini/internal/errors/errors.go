@@ -9,24 +9,24 @@ type ErrProviderFailure struct {
 }
 
 func (e *ErrProviderFailure) Error() string {
-	return fmt.Sprintf("Tat ca cac dich vu AI deu that bai: %v", e.Err)
+	return fmt.Sprintf("all AI providers failed: %v", e.Err)
 }
 
 func (e *ErrProviderFailure) Unwrap() error { return e.Err }
 
 // ErrRoutingFailure indicates the router failed to select a valid agent.
 type ErrRoutingFailure struct {
-	Query string
+	Query  string
 	Reason string
 }
 
 func (e *ErrRoutingFailure) Error() string {
-	return fmt.Sprintf("Routing failed for query '%s ...': %s", truncate(e.Query, 40), e.Reason)
+	return fmt.Sprintf("Routing failed for query (truncated): %s. Reason: %s", truncate(e.Query, 40), e.Reason)
 }
 
 // ErrContextOverflow indicates the context window exceeded the token limit.
 type ErrContextOverflow struct {
-	Tokens  int
+	Tokens    int
 	MaxTokens int
 }
 
