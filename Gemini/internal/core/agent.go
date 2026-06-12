@@ -19,7 +19,7 @@ import (
 // eliminating the previous deadlock risk from nested mu + requestMu locking.
 type Agent struct {
 	mu           sync.RWMutex
-	provider     providers.Provider
+	pm           *ProviderManager
 	systemPrompt string
 	userInput    string
 	handoffPlan  *RoutePlan
@@ -31,27 +31,10 @@ type Agent struct {
 func NewAgent() *Agent {
 	utils.LoadEnv()
 
-	geminiProviders := newGeminiProviders()
-	orProviders := newOpenRouterProviders(openRouterKeysFromEnv())
-
-	useOnlyOR := os.Getenv("USE_OPENROUTER_ONLY") == "1" || len(geminiProviders) == 0
-
 	a := &Agent{
+		pm:           NewProviderManager(),
 		systemPrompt: buildGroundedSystemPrompt(time.Now()),
 		conversation: NewConversation("default"),
-	}
-
-	if useOnlyOR && len(orProviders) > 0 {
-		fmt.Println("🚀 [Config] Sử dụng OpenRouter làm primary (bypass Gemini để tránh quota)")
-		primaryOR := orProviders[0]
-		fallbackORs := orProviders[1:]
-		a.provider = providers.NewMultiProvider(primaryOR, fallbackORs)
-	} else {
-		allProviders := append(geminiProviders, orProviders...)
-		if len(allProviders) == 0 {
-			allProviders = append(allProviders, newGeminiProvider(""))
-		}
-		a.provider = providers.NewMultiProvider(allProviders[0], allProviders[1:])
 	}
 
 	a.orchestrator = NewOrchestrator(a)
@@ -60,97 +43,11 @@ func NewAgent() *Agent {
 	return a
 }
 
-func numberedEnvKeys(base string, max int) []string {
-	keys := []string{base}
-	for i := 2; i <= max; i++ {
-		keys = append(keys, fmt.Sprintf("%s_%d", base, i))
-	}
-	return keys
-}
-
-func envValues(keys []string) []string {
-	var values []string
-	for _, key := range keys {
-		value := strings.TrimSpace(os.Getenv(key))
-		if value == "" || value == "disabled" {
-			continue
-		}
-		values = append(values, value)
-		fmt.Printf("🔑 [Config] Loaded key from %s\n", key)
-	}
-	return values
-}
-
-func openRouterKeysFromEnv() []string {
-	return envValues(numberedEnvKeys("OPENROUTER_API_KEY", 5))
-}
-
-func newGeminiProvider(apiKey string) *providers.GeminiProvider {
-	return &providers.GeminiProvider{
-		APIKey: apiKey,
-		Model:  normalizeGeminiModel(os.Getenv("GEMINI_MODEL")),
-	}
-}
-
-func newGeminiProviders() []providers.Provider {
-	keys := envValues(numberedEnvKeys("GEMINI_API_KEY", 5))
-	geminis := make([]providers.Provider, 0, len(keys))
-	for _, key := range keys {
-		geminis = append(geminis, newGeminiProvider(key))
-	}
-	return geminis
-}
-
-func newOpenRouterProviders(keys []string) []providers.Provider {
-	model := os.Getenv("OPENROUTER_MODEL")
-	if model == "" {
-		model = "meta-llama/llama-3.3-70b-instruct:free"
-	}
-
-	openRouters := make([]providers.Provider, 0, len(keys))
-	for _, key := range keys {
-		openRouters = append(openRouters, &providers.OpenRouterProvider{
-			APIKey: key,
-			Model:  model,
-		})
-	}
-	return openRouters
-}
-
-func normalizeGeminiModel(model string) string {
-	normalized := strings.TrimSpace(model)
-	if normalized == "" {
-		return "gemini-flash-latest"
-	}
-	if !strings.HasPrefix(normalized, "models/") {
-		return "models/" + normalized
-	}
-	return normalized
-}
-
 // SetOpenRouterKeys updates the provider chain at runtime with new OpenRouter keys.
 func (a *Agent) SetOpenRouterKeys(keys []string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-
-	var cleanKeys []string
-	for _, key := range keys {
-		key = strings.TrimSpace(key)
-		if key == "" {
-			continue
-		}
-		cleanKeys = append(cleanKeys, key)
-	}
-
-	geminiProviders := newGeminiProviders()
-	orProviders := newOpenRouterProviders(cleanKeys)
-	allProviders := append(geminiProviders, orProviders...)
-	if len(allProviders) == 0 {
-		allProviders = append(allProviders, newGeminiProvider(""))
-	}
-	a.provider = providers.NewMultiProvider(allProviders[0], allProviders[1:])
-
-	fmt.Printf("🔑 [Config] Updated OpenRouter keys. Count: %d\n", len(orProviders))
+	a.pm.SetOpenRouterKeys(keys)
 }
 
 func buildGroundedSystemPrompt(now time.Time) string {
@@ -257,7 +154,7 @@ func (a *Agent) GetHistory() []messaging.Message {
 func (a *Agent) GetProvider() providers.Provider {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
-	return a.provider
+	return a.pm.GetProvider()
 }
 
 // LoadHistory replaces the current conversation history (used for multi-session support with Redis).

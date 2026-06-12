@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"gemini-cli/internal/pubsub"
+	"gemini-cli/internal/routing"
 	"gemini-cli/internal/tools"
 	"gemini-cli/internal/utils"
 	)
@@ -109,57 +110,10 @@ func heuristicRoutePlan(userInput string, now time.Time) RoutePlan {
 	}
 
 	// 2. Determine Temporal Intent & Date
-	route.Temporal.Intent = ""
-	route.Temporal.ResolvedDate = ""
-	route.Temporal.IsFuture = false
-
-	// Future checks
-	if utils.ContainsAny(q, "ngày mai", "ngay mai", "sắp tới", "sap toi", "tương lai", "tuong lai", "dự báo", "du bao") {
-		if utils.ContainsAny(q, "gần đây", "gan day") {
-			route.Temporal.Intent = "latest"
-		} else {
-			route.Temporal.IsFuture = true
-		}
-	}
-
-	// Date checks
-	if utils.ContainsAny(q, "hôm nay", "hom nay", "hiện tại", "hien tai") {
-		route.Temporal.Intent = "realtime"
-		route.Temporal.ResolvedDate = now.Format("2006-01-02")
-	} else if utils.ContainsAny(q, "hôm qua", "hom qua") {
-		route.Temporal.Intent = "latest"
-		yesterday := now.AddDate(0, 0, -1)
-		route.Temporal.ResolvedDate = yesterday.Format("2006-01-02")
-	} else if utils.ContainsAny(q, "thứ hai vừa rồi", "thu hai vua roi", "thứ hai tuần này", "thu hai tuan nay") {
-		route.Temporal.Intent = "historical"
-		daysToSubtract := int(now.Weekday()) - 1
-		if daysToSubtract < 0 {
-			daysToSubtract = 6
-		}
-		lastMonday := now.AddDate(0, 0, -daysToSubtract)
-		route.Temporal.ResolvedDate = lastMonday.Format("2006-01-02")
-	}
-
-	if utils.ContainsAny(q, "6 tháng đầu năm 2025", "6 thang dau nam 2025") {
-		route.Temporal.Intent = "historical"
-		route.Temporal.ResolvedDate = "2025-06-30"
-	} else if utils.ContainsAny(q, "năm 2023", "nam 2023") {
-		route.Temporal.Intent = "historical"
-		route.Temporal.ResolvedDate = "2023-12-31"
-	} else if utils.ContainsAny(q, "năm 2024", "nam 2024") {
-		route.Temporal.Intent = "historical"
-		route.Temporal.ResolvedDate = "2024-12-31"
-	} else if utils.ContainsAny(q, "năm 2025", "nam 2025") {
-		route.Temporal.Intent = "historical"
-	}
-
-	if utils.ContainsAny(q, "10 năm qua", "10 nam qua") {
-		route.Temporal.Intent = "historical"
-	} else if utils.ContainsAny(q, "3 năm gần đây", "3 nam gan day") {
-		route.Temporal.Intent = "historical"
-	} else if utils.ContainsAny(q, "những năm gần đây", "nhung nam gan day") {
-		route.Temporal.Intent = "latest"
-	}
+	temporal := routing.ResolveTemporal(q, now)
+	route.Temporal.Intent = temporal.Intent
+	route.Temporal.ResolvedDate = temporal.ResolvedDate
+	route.Temporal.IsFuture = temporal.IsFuture
 
 	route.Skills = guessSkillsForAgent(route.Agent)
 	route.Reason = "Heuristically determined based on query patterns."

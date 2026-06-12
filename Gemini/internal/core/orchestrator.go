@@ -11,6 +11,7 @@ import (
 	"gemini-cli/internal/models/messaging"
 	"gemini-cli/internal/providers"
 	"gemini-cli/internal/pubsub"
+	"gemini-cli/internal/routing"
 	"gemini-cli/internal/utils"
 )
 
@@ -34,7 +35,7 @@ func (o *Orchestrator) ProcessMessage(userInput string, atts []messaging.Attachm
 				// handled
 			}
 		} else {
-			if isCasualGreeting(userInput) {
+			if routing.IsCasualGreeting(userInput) {
 				pubsub.BroadcastLog("Nhận diện ý định xã giao. Đang phản hồi nhanh...", "routing")
 				o.agent.appendUserTextInternal(userInput, atts)
 				o.agent.mu.Unlock()
@@ -72,7 +73,7 @@ func (o *Orchestrator) ProcessMessageStream(userInput string, atts []messaging.A
 				// handled
 			}
 		} else {
-			if isCasualGreeting(userInput) {
+			if routing.IsCasualGreeting(userInput) {
 				pubsub.BroadcastLog("Nhận diện ý định xã giao. Đang phản hồi nhanh...", "routing")
 				o.agent.appendUserTextInternal(userInput, atts)
 				o.agent.mu.Unlock()
