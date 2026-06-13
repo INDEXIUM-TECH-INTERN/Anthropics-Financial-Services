@@ -4,15 +4,18 @@
 
 ## REST Endpoints
 
+<!-- AUTO-GENERATED: endpoints from source — regenerate with /ecc:update-docs -->
+
 ### `POST /api/chat`
 
-Send a chat message. The main endpoint for AI interaction.
+Send a chat message. The main endpoint for AI interaction (non-streaming).
 
 **Request:**
 ```json
 {
-  "message": "Analyse VCB stock",
-  "chat_id": "chat_1234567890"
+  "message": "Phân tích cổ phiếu VCB",
+  "chat_id": "chat_1234567890",
+  "attachments": []
 }
 ```
 
@@ -21,7 +24,7 @@ Send a chat message. The main endpoint for AI interaction.
 {
   "reply": "Based on the analysis...",
   "history": [
-    {"role": "user", "content": "Analyse VCB stock"},
+    {"role": "user", "content": "Phân tích cổ phiếu VCB"},
     {"role": "assistant", "content": "Based on the analysis..."}
   ],
   "metrics": {
@@ -34,7 +37,31 @@ Send a chat message. The main endpoint for AI interaction.
 }
 ```
 
-Notes: Request body limited to 1MB. If `chat_id` is empty, defaults to `"default"`. Session history loaded from Redis before processing, saved back after.
+**Constraints:**
+- Request body: max 10MB
+- Message length: max 50,000 characters
+- Attachments: max 10 per request
+- If `chat_id` is empty, defaults to `"default"`
+- Session history loaded from Redis/memory before processing, saved back after
+
+---
+
+### `POST /api/chat/stream`
+
+Streaming chat endpoint — returns Server-Sent Events (SSE) with real-time token chunks.
+
+**Request:** Same as `POST /api/chat`.
+
+**SSE Response Stream:**
+```
+data: {"type":"token","text":"Based"}
+data: {"type":"token","text":" on"}
+data: {"type":"token","text":" the analysis..."}
+data: {"type":"done","text":"Based on the analysis...","metrics":{"latency_ms":3500,"token_in":250,"token_out":500,"ram_mb":"45.23 MB","cpu_load":"12 Goroutines (Active)"}}
+data: {"type":"error","error":"..."}   // only on failure
+```
+
+**Session save:** Conversation history is auto-saved to Redis/memory after stream completes.
 
 ---
 
@@ -48,31 +75,63 @@ List all chat sessions (lightweight, no messages).
 
 ### `POST /api/chats`
 
-Create a new chat session. **Request:** `{"title": "New Chat"}`
+Create a new chat session.
+
+**Request:**
+```json
+{"title": "New Chat"}
+```
+
+If title is empty, defaults to `"Cuộc trò chuyện mới"`.
 
 ---
 
 ### `DELETE /api/chats?chat_id=...`
 
-Delete a chat session. **Response:** `{"status": "deleted", "chat_id": "..."}`
+Delete a chat session.
+
+**Response:** `{"status": "deleted", "chat_id": "..."}`
 
 ---
 
 ### `GET /api/history?chat_id=...`
 
-Get full message history. **Response:** `{"history": [...]}`
+Get full message history for a session.
+
+**Response:** `{"history": [...]}`
+
+If `chat_id` is empty, returns current in-memory history.
 
 ---
 
 ### `POST /api/config/keys`
 
-Update OpenRouter API keys at runtime. **Request:** `{"keys": ["sk-or-v1-xxx"]}`
+Update OpenRouter API keys at runtime (no restart required).
+
+**Request:**
+```json
+{"keys": ["sk-or-v1-xxx", "sk-or-v1-yyy"]}
+```
+
+Empty keys are filtered out automatically.
 
 ---
 
 ### `GET /api/reset`
 
-Reset the current in-memory conversation. **Response:** `{"status": "reset"}`
+Reset the current in-memory conversation.
+
+**Response:** `{"status": "reset"}`
+
+---
+
+### `GET /health`
+
+Health check endpoint. Returns `200 OK` with body `"ok"`.
+
+**Response:** `ok`
+
+<!-- /AUTO-GENERATED -->
 
 ---
 
@@ -113,6 +172,29 @@ data: {"type":"tool_executed","payload":{"tool":"financial_research","args":{"qu
 | `ram_mb` | Current memory allocation |
 | `cpu_load` | Active goroutine count |
 
+## Security Headers
+
+All responses include the following security headers:
+
+| Header | Value |
+|--------|-------|
+| `X-Content-Type-Options` | `nosniff` |
+| `X-Frame-Options` | `DENY` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` |
+
+### Content-Security-Policy
+
+```
+default-src 'self';
+script-src 'self' https://cdn.jsdelivr.net;
+style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net;
+img-src 'self' data: https:;
+font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net;
+connect-src 'self' https://generativelanguage.googleapis.com https://openrouter.ai;
+frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'
+```
+
 ## Error Codes
 
 All error responses follow a consistent envelope:
@@ -147,26 +229,30 @@ These map to the error types in `Gemini/internal/errors/`:
 
 ## Rate Limiting
 
-Rate limiting is applied per-IP on the `/api/chat` endpoint:
+Rate limiting is applied **globally** (not per-IP) via `golang.org/x/time/rate`:
 
-| Tier | Limit | Window |
-|------|-------|--------|
-| Default | 30 requests | 60 seconds |
-| With valid API key | 120 requests | 60 seconds |
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| Rate | 20 req/s | Sustained request rate |
+| Burst | 50 | Maximum burst size |
 
-When the limit is exceeded:
-- HTTP 429 is returned.
-- Response includes `Retry-After` header (seconds until next allowed request).
-- SSE connections are also subject to the same limits.
+When the limit is exceeded, HTTP 429 is returned with body `{"error":"Too many requests"}`.
 
-Configuration via environment variables:
-
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `RATE_LIMIT` | 30 | Requests per window (per IP) |
-| `RATE_LIMIT_WINDOW` | 60 | Window in seconds |
-| `DISABLE_RATE_LIMIT` | (empty) | Set to `1` to disable (dev only) |
+> **Note:** The rate limiter is a simple global limiter shared across all IPs. For per-IP limiting, a middleware update is needed.
 
 ## CORS
 
-All endpoints include: `Access-Control-Allow-Origin: *`, Methods: `POST, GET, OPTIONS`, Headers: `Content-Type, Authorization`.
+CORS is configured via the `ALLOWED_ORIGIN` environment variable:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ALLOWED_ORIGIN` | `http://localhost:8080` | Allowed origin for CORS |
+
+When set, the server sends:
+- `Access-Control-Allow-Origin: <value>` (never wildcard `*`)
+- `Access-Control-Allow-Credentials: true`
+- Methods: `GET, POST, PUT, DELETE, OPTIONS`
+- Headers: `Content-Type, Authorization, X-CSRF-Token`
+- Max-Age: `86400`
+
+SSE endpoint (`/api/events`) always allows `*` origin for compatibility.
