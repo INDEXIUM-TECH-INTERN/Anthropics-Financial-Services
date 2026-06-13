@@ -18,12 +18,12 @@ import (
 // Free-tier model fallback chain for OpenRouter
 // When primary model fails, we cycle through these alternatives.
 var openRouterFreeModels = []string{
-	"google/gemini-2.0-flash:free",
-	"google/gemini-flash-1.5:free",
-	"mistralai/mistral-7b-instruct:free",
-	"qwen/qwen-2.5-72b-instruct:free",
-	"meta-llama/llama-3.3-70b-instruct:free",
+	"openrouter/free",
 	"nvidia/nemotron-3-super-120b-a12b:free",
+	"meta-llama/llama-3.3-70b-instruct:free",
+	"meta-llama/llama-3.2-3b-instruct:free",
+	"openai/gpt-oss-120b:free",
+	"openai/gpt-oss-20b:free",
 }
 
 type OpenRouterProvider struct {
@@ -390,6 +390,13 @@ func (p *OpenRouterProvider) streamWithModel(ctx context.Context, req messaging.
 	reader := bufio.NewReader(resp.Body)
 	var fullText strings.Builder
 
+	type tempToolCall struct {
+		id        string
+		name      string
+		arguments strings.Builder
+	}
+	tempCalls := make(map[int]*tempToolCall)
+
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
@@ -424,8 +431,57 @@ func (p *OpenRouterProvider) streamWithModel(ctx context.Context, req messaging.
 			fullText.WriteString(delta)
 			onChunk(StreamChunk{Text: delta})
 		}
+
+		// Parse and accumulate tool calls
+		for _, tc := range chunk.Choices[0].Delta.ToolCalls {
+			idx := 0
+			if tc.Index != nil {
+				idx = *tc.Index
+			}
+			tCall, exists := tempCalls[idx]
+			if !exists {
+				tCall = &tempToolCall{}
+				tempCalls[idx] = tCall
+			}
+			if tc.ID != "" {
+				tCall.id = tc.ID
+			}
+			if tc.Function.Name != "" {
+				tCall.name = tc.Function.Name
+			}
+			if tc.Function.Arguments != "" {
+				tCall.arguments.WriteString(tc.Function.Arguments)
+			}
+		}
 	}
 
-	onChunk(StreamChunk{Done: true, Text: fullText.String()})
+	maxIdx := -1
+	for idx := range tempCalls {
+		if idx > maxIdx {
+			maxIdx = idx
+		}
+	}
+	var accumulatedToolCalls []messaging.ToolCall
+	for idx := 0; idx <= maxIdx; idx++ {
+		tCall, exists := tempCalls[idx]
+		if !exists {
+			continue
+		}
+		var args map[string]interface{}
+		rawArgs := tCall.arguments.String()
+		if rawArgs != "" {
+			_ = json.Unmarshal([]byte(rawArgs), &args)
+		}
+		if args == nil {
+			args = make(map[string]interface{})
+		}
+		accumulatedToolCalls = append(accumulatedToolCalls, messaging.ToolCall{
+			ID:   tCall.id,
+			Name: tCall.name,
+			Args: args,
+		})
+	}
+
+	onChunk(StreamChunk{Done: true, Text: fullText.String(), ToolCalls: accumulatedToolCalls})
 	return nil
 }

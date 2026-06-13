@@ -1,0 +1,67 @@
+/* ═══════════════════════════════════════════════════════════
+   glass.css — Glass Morphism Effects
+   ═══════════════════════════════════════════════════════════ */
+
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow);
+  transition: background-color var(--transition-base), border-color var(--transition-base);
+}
+
+.glass-input {
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-elevated);
+  transition: all var(--transition-base);
+}
+
+.glass-input:focus-within {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-float), 0 0 0 3px var(--accent-glow);
+}
+
+/* ── Ambient Background Orbs ── */
+.glass-ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.glass-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.6;
+  animation: orbFloat 20s ease-in-out infinite;
+}
+
+.glass-orb-1 { width: 500px; height: 500px; top: -10%; left: 20%; background: var(--orb-1); }
+.glass-orb-2 { width: 400px; height: 400px; bottom: -5%; right: 10%; background: var(--orb-2); animation-delay: -7s; }
+.glass-orb-3 { width: 350px; height: 350px; top: 50%; left: 50%; background: var(--orb-3); animation-delay: -14s; }
+
+@keyframes orbFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(30px, -40px) scale(1.05); }
+  50% { transform: translate(-20px, 20px) scale(0.95); }
+  75% { transform: translate(40px, 30px) scale(1.02); }
+}
+
+/* Noise grain within ambient */
+.glass-ambient::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+  background-size: 128px 128px;
+}
+
+/* Theme toggle: ensure SVG icons don't swallow clicks */
+.theme-toggle svg { pointer-events: none; }

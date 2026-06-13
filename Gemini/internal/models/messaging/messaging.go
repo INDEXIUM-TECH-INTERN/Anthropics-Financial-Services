@@ -28,12 +28,17 @@ type Attachment struct {
 }
 
 type Message struct {
-	Role             Role
-	Content          string
-	ToolCalls        []ToolCall
-	ToolResponses    []ToolResponse
-	ThoughtSignature string
-	Attachments      []Attachment
+	Role             Role           `json:"role"`
+	Content          string         `json:"content"`
+	ToolCalls        []ToolCall     `json:"tool_calls,omitempty"`
+	ToolResponses    []ToolResponse `json:"tool_responses,omitempty"`
+	ThoughtSignature string         `json:"thought_signature,omitempty"`
+	Attachments      []Attachment   `json:"attachments,omitempty"`
+	LatencyMs        int64          `json:"latency_ms,omitempty"`
+	TokenIn          int            `json:"token_in,omitempty"`
+	TokenOut         int            `json:"token_out,omitempty"`
+	RamMB            string         `json:"ram_mb,omitempty"`
+	CpuLoad          string         `json:"cpu_load,omitempty"`
 }
 
 type ToolSchema struct {

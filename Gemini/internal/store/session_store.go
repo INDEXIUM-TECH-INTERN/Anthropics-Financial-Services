@@ -108,7 +108,7 @@ func ListSessions() ([]*ChatSession, error) {
 	if redis.Client == nil {
 		memMu.RLock()
 		defer memMu.RUnlock()
-		var sessions []*ChatSession
+		sessions := []*ChatSession{}
 		for _, sess := range memSessions {
 			light := &ChatSession{
 				ID:        sess.ID,
@@ -129,7 +129,7 @@ func ListSessions() ([]*ChatSession, error) {
 		return nil, err
 	}
 
-	var sessions []*ChatSession
+	sessions := []*ChatSession{}
 	for _, id := range ids {
 		sess, err := GetSession(id)
 		if err != nil {

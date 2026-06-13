@@ -43,6 +43,7 @@ type OpenRouterFunctionDeclare struct {
 }
 
 type OpenRouterToolCall struct {
+	Index    *int               `json:"index,omitempty"`
 	ID       string             `json:"id"`
 	Type     string             `json:"type"`
 	Function OpenRouterFunction `json:"function"`
@@ -66,8 +67,9 @@ type OpenRouterResponse struct {
 type OpenRouterStreamChunk struct {
 	Choices []struct {
 		Delta struct {
-			Content   string `json:"content"`
-			Reasoning string `json:"reasoning"`
+			Content   string               `json:"content"`
+			Reasoning string               `json:"reasoning"`
+			ToolCalls []OpenRouterToolCall `json:"tool_calls"`
 		} `json:"delta"`
 	} `json:"choices"`
 }

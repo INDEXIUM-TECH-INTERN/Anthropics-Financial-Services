@@ -1,6 +1,8 @@
 package api
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,6 +14,14 @@ import (
 	"gemini-cli/internal/store"
 	"gemini-cli/internal/utils"
 )
+
+func generateSessionID() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("chat_%d", time.Now().UnixNano())
+	}
+	return "chat_" + hex.EncodeToString(b)
+}
 
 // ── Health check handler ──
 func handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -69,7 +79,7 @@ func handleSSE(w http.ResponseWriter, r *http.Request) {
 // ── Reset handler ──
 func handleReset(agent AgentInterface) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		enableCORS(w)
+		enableCORS(w, r)
 		if r.Method == "OPTIONS" {
 			return
 		}
@@ -81,7 +91,7 @@ func handleReset(agent AgentInterface) http.HandlerFunc {
 
 // ── Chat sessions CRUD handler ──
 func handleChats(w http.ResponseWriter, r *http.Request) {
-	enableCORS(w)
+	enableCORS(w, r)
 	if r.Method == "OPTIONS" {
 		return
 	}
@@ -111,7 +121,7 @@ func handleChats(w http.ResponseWriter, r *http.Request) {
 		}
 
 		sess := &store.ChatSession{
-			ID:       fmt.Sprintf("chat_%d", time.Now().UnixNano()),
+			ID:       generateSessionID(),
 			Title:    title,
 			Messages: []messaging.Message{},
 		}
@@ -146,7 +156,7 @@ func handleChats(w http.ResponseWriter, r *http.Request) {
 // ── Main chat handler ──
 func handleChat(agent AgentInterface) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		enableCORS(w)
+		enableCORS(w, r)
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
 			return
@@ -162,6 +172,15 @@ func handleChat(agent AgentInterface) http.HandlerFunc {
 			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
 		}
+		if len(req.Message) > 50000 {
+			http.Error(w, `{"error":"Message too long (max 50000 characters)"}`, http.StatusBadRequest)
+			return
+		}
+		if len(req.Attachments) > 10 {
+			http.Error(w, `{"error":"Too many attachments (max 10)"}`, http.StatusBadRequest)
+			return
+		}
+
 		fmt.Printf("📩 [Server] Received message: %s (chat_id=%s, attachments=%d)\n", req.Message, req.ChatID, len(req.Attachments))
 
 		chatID := req.ChatID
@@ -190,11 +209,23 @@ func handleChat(agent AgentInterface) http.HandlerFunc {
 		}
 
 		updatedHistory := agent.GetHistory()
+		if len(updatedHistory) > 0 {
+			for idx := len(updatedHistory) - 1; idx >= 0; idx-- {
+				if updatedHistory[idx].Role == messaging.RoleAssistant {
+					updatedHistory[idx].LatencyMs = latency
+					updatedHistory[idx].TokenIn = utils.EstimateTokens(req.Message)
+					updatedHistory[idx].TokenOut = utils.EstimateTokens(reply)
+					updatedHistory[idx].RamMB = ram
+					updatedHistory[idx].CpuLoad = cpu
+					break
+				}
+			}
+		}
 		sess.Messages = updatedHistory
 		sess.Title = generateTitleIfNeeded(sess.Title, req.Message)
 		if err := store.SaveSession(sess); err != nil {
-				fmt.Printf("⚠️ [SaveSession] Error: %v\n", err)
-			}
+			fmt.Printf("⚠️ [SaveSession] Error: %v\n", err)
+		}
 
 		resp := ChatResponse{
 			Reply:   reply,
@@ -215,7 +246,7 @@ func handleChat(agent AgentInterface) http.HandlerFunc {
 // ── Streaming chat handler ──
 func handleChatStream(agent AgentInterface) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		enableCORS(w)
+		enableCORS(w, r)
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
 			return
@@ -229,6 +260,15 @@ func handleChatStream(agent AgentInterface) http.HandlerFunc {
 		var req ChatRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "Bad request", http.StatusBadRequest)
+			return
+		}
+
+		if len(req.Message) > 50000 {
+			http.Error(w, `{"error":"Message too long (max 50000 characters)"}`, http.StatusBadRequest)
+			return
+		}
+		if len(req.Attachments) > 10 {
+			http.Error(w, `{"error":"Too many attachments (max 10)"}`, http.StatusBadRequest)
 			return
 		}
 
@@ -294,18 +334,32 @@ func handleChatStream(agent AgentInterface) http.HandlerFunc {
 
 		// Save conversation history
 		updatedHistory := agent.GetHistory()
+		latency := time.Since(startTime).Milliseconds()
+		ram, cpu := getSystemMetrics()
+		if len(updatedHistory) > 0 {
+			for idx := len(updatedHistory) - 1; idx >= 0; idx-- {
+				if updatedHistory[idx].Role == messaging.RoleAssistant {
+					updatedHistory[idx].LatencyMs = latency
+					updatedHistory[idx].TokenIn = utils.EstimateTokens(req.Message)
+					updatedHistory[idx].TokenOut = utils.EstimateTokens(fullReply.String())
+					updatedHistory[idx].RamMB = ram
+					updatedHistory[idx].CpuLoad = cpu
+					break
+				}
+			}
+		}
 		sess.Messages = updatedHistory
 		sess.Title = generateTitleIfNeeded(sess.Title, req.Message)
 		if err := store.SaveSession(sess); err != nil {
-				fmt.Printf("⚠️ [SaveSession] Error: %v\n", err)
-			}
+			fmt.Printf("⚠️ [SaveSession] Error: %v\n", err)
+		}
 	}
 }
 
 // ── History handler ──
 func handleHistory(agent AgentInterface) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		enableCORS(w)
+		enableCORS(w, r)
 		if r.Method == "OPTIONS" {
 			return
 		}
@@ -328,6 +382,47 @@ func handleHistory(agent AgentInterface) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"history": history,
+		})
+	}
+}
+
+// ── Config Keys handler ──
+func handleConfigKeys(agent AgentInterface) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		enableCORS(w, r)
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var payload struct {
+			Keys []string `json:"keys"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			http.Error(w, "Bad request: invalid JSON", http.StatusBadRequest)
+			return
+		}
+
+		// Filter empty lines
+		var validKeys []string
+		for _, k := range payload.Keys {
+			k = strings.TrimSpace(k)
+			if k != "" {
+				validKeys = append(validKeys, k)
+			}
+		}
+
+		agent.SetOpenRouterKeys(validKeys)
+
+		fmt.Printf("🔑 [Config] Updated %d OpenRouter keys\n", len(validKeys))
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "ok",
+			"count":  len(validKeys),
 		})
 	}
 }

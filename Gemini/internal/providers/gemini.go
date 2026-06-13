@@ -361,6 +361,7 @@ func (p *GeminiProvider) GenerateStream(ctx context.Context, req messaging.Reque
 	// Gemini SSE streaming: each line is "data: {json}"
 	scanner := bufio.NewScanner(resp.Body)
 	var fullText strings.Builder
+	var accumulatedToolCalls []messaging.ToolCall
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if !strings.HasPrefix(line, "data: ") {
@@ -381,10 +382,18 @@ func (p *GeminiProvider) GenerateStream(ctx context.Context, req messaging.Reque
 				fullText.WriteString(part.Text)
 				onChunk(StreamChunk{Text: part.Text})
 			}
+			if part.FunctionCall != nil {
+				callID := fmt.Sprintf("call_%s_%d", part.FunctionCall.Name, len(accumulatedToolCalls))
+				accumulatedToolCalls = append(accumulatedToolCalls, messaging.ToolCall{
+					ID:   callID,
+					Name: part.FunctionCall.Name,
+					Args: part.FunctionCall.Args,
+				})
+			}
 		}
 	}
 
-	onChunk(StreamChunk{Done: true, Text: fullText.String()})
+	onChunk(StreamChunk{Done: true, Text: fullText.String(), ToolCalls: accumulatedToolCalls})
 	return nil
 }
 

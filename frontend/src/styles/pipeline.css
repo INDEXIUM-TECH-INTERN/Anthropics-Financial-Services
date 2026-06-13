@@ -1,0 +1,111 @@
+/* ═══════════════════════════════════════════════════════════
+   pipeline.css — Right Sidebar Pipeline / Thinking Steps
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Steps Container ───────────────────────────────────── */
+.pipeline-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--radius-sm);
+}
+
+/* ── Step Card ─────────────────────────────────────────── */
+.pipeline-step-card {
+  padding: var(--radius-md);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-base) var(--ease-out-expo),
+              background var(--transition-base) var(--ease-out-expo),
+              box-shadow var(--transition-base) var(--ease-out-expo);
+}
+
+.pipeline-step-card:hover {
+  background: color-mix(in srgb, var(--glass-bg) 120%, transparent);
+}
+
+.pipeline-step-card.is-active {
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.pipeline-step-card.is-done {
+  border-color: color-mix(in srgb, var(--accent-mint) 25%, transparent);
+  background: color-mix(in srgb, var(--accent-mint) 4%, transparent);
+}
+
+.pipeline-step-card.is-pending {
+  opacity: 0.55;
+}
+
+/* ── Step Header ───────────────────────────────────────── */
+.pipeline-step-header {
+  display: flex;
+  align-items: center;
+  gap: var(--radius-sm);
+}
+
+/* ── Step Dot ──────────────────────────────────────────── */
+.pipeline-step-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  transition: background var(--transition-base) ease,
+              box-shadow var(--transition-base) ease;
+}
+
+.pipeline-step-card.is-active .pipeline-step-dot {
+  background: var(--accent);
+  animation: pipeline-dot-pulse 1.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.pipeline-step-card.is-done .pipeline-step-dot {
+  background: var(--accent-mint);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent-mint) 35%, transparent);
+}
+
+.pipeline-step-card.is-pending .pipeline-step-dot {
+  background: var(--color-quaternary, #475569);
+  box-shadow: none;
+}
+
+@keyframes pipeline-dot-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 40%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 0%, transparent);
+  }
+}
+
+/* ── Step Name ─────────────────────────────────────────── */
+.pipeline-step-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--text-sm, 0.8125rem);
+  font-weight: 600;
+  color: var(--color-text, #e2e8f0);
+  line-height: 1.3;
+}
+
+.pipeline-step-card.is-pending .pipeline-step-name {
+  color: var(--color-muted, #94a3b8);
+}
+
+/* ── Step Detail ───────────────────────────────────────── */
+.pipeline-step-detail {
+  margin-top: 6px;
+  padding-left: calc(8px + var(--radius-sm));
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: var(--text-xs, 0.6875rem);
+  line-height: 1.4;
+  color: var(--color-muted, #94a3b8);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

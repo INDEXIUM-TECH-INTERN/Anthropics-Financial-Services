@@ -12,6 +12,7 @@ import (
 
 	"gemini-cli/internal/models/messaging"
 	"gemini-cli/internal/redis"
+	"golang.org/x/time/rate"
 )
 
 type AgentInterface interface {
@@ -44,6 +45,40 @@ type ChatResponse struct {
 	Error   string              `json:"error,omitempty"`
 }
 
+// securityHeaders adds essential security headers to all responses
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		// CSP: strict but allows CDN resources needed by the app
+		w.Header().Set("Content-Security-Policy",
+			"default-src 'self'; "+
+				"script-src 'self' https://cdn.jsdelivr.net; "+
+				"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "+
+				"img-src 'self' data: https:; "+
+				"font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "+
+				"connect-src 'self' https://generativelanguage.googleapis.com https://openrouter.ai; "+
+				"frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// rateLimitMiddleware limits requests per second per IP
+// TODO: run 'go get golang.org/x/time/rate' to enable rate limiting
+func rateLimitMiddleware(next http.Handler) http.Handler {
+	// Simple global rate limiter: 20 req/s, burst 50
+	limiter := rate.NewLimiter(20, 50)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !limiter.Allow() {
+			http.Error(w, `{"error":"Too many requests"}`, http.StatusTooManyRequests)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func getSystemMetrics() (string, string) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
@@ -69,6 +104,7 @@ func StartServer(agent AgentInterface) {
 	mux.HandleFunc("/api/chat", handleChat(agent))
 	mux.HandleFunc("/api/chat/stream", handleChatStream(agent))
 	mux.HandleFunc("/api/history", handleHistory(agent))
+	mux.HandleFunc("/api/config/keys", handleConfigKeys(agent))
 
 	// Static files
 	frontendDir := resolveFrontendDir()
@@ -80,9 +116,10 @@ func StartServer(agent AgentInterface) {
 		port = "8080"
 	}
 
+	handler := rateLimitMiddleware(securityHeaders(mux))
 	server := &http.Server{
 		Addr:              ":" + port,
-		Handler:           mux,
+		Handler:           handler,
 		ReadHeaderTimeout: 30 * time.Second,
 		ReadTimeout:       120 * time.Second,
 		IdleTimeout:       600 * time.Second,
@@ -109,7 +146,8 @@ func StartServer(agent AgentInterface) {
 }
 
 func resolveFrontendDir() string {
-	for _, dir := range []string{"frontend", "../../frontend", "../frontend"} {
+	// Check for Vite build output first, then fall back to dev paths
+	for _, dir := range []string{"frontend/dist", "frontend", "../../frontend", "../frontend"} {
 		if _, err := os.Stat(dir); err == nil {
 			return dir
 		}
@@ -117,14 +155,19 @@ func resolveFrontendDir() string {
 	return "frontend"
 }
 
-func enableCORS(w http.ResponseWriter) {
+func enableCORS(w http.ResponseWriter, r *http.Request) {
 	origin := os.Getenv("ALLOWED_ORIGIN")
 	if origin == "" {
-		origin = "*" // fallback for dev; set ALLOWED_ORIGIN in production
+		origin = "http://localhost:8080"
 	}
-	w.Header().Set("Access-Control-Allow-Origin", origin)
-	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	// Only set CORS for matching origin, never wildcard with credentials
+	if origin != "*" {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+	}
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CSRF-Token")
+	w.Header().Set("Access-Control-Max-Age", "86400")
 }
 
 // generateTitleIfNeeded creates a nice title from the first user message if still default.

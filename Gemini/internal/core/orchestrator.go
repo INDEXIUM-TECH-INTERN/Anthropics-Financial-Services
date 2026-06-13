@@ -97,12 +97,14 @@ func (o *Orchestrator) ProcessMessageStream(userInput string, atts []messaging.A
 // Mỗi iteration: gọi GenerateStream → collect tokens → nếu có tool call thì execute (blocking)
 // → lặp lại cho đến khi AI trả về text response không có tool call → stream tokens.
 func (o *Orchestrator) streamFinalResponse(onChunk func(string, bool)) error {
+	fmt.Println("🚀 [Orchestrator] Entering streamFinalResponse...")
 	keepRecentMessages := getEnvInt("CONTEXT_KEEP_RECENT", 7)
 	maxContextTokens := getEnvInt("CONTEXT_MAX_TOKENS", 92000)
 	maxSummaryChars := getEnvInt("CONTEXT_MAX_SUMMARY_INPUT", 18000)
 	maxIterations := getEnvInt("REACT_MAX_ITERATIONS", 20)
 
 	for i := 0; i < maxIterations; i++ {
+		fmt.Printf("🔄 [Orchestrator] streamFinalResponse iteration %d...\n", i)
 		// Kiểm tra context summarization (read lock)
 		o.agent.mu.RLock()
 		cw := o.agent.conversation.ContextWindow
@@ -142,16 +144,18 @@ func (o *Orchestrator) streamFinalResponse(onChunk func(string, bool)) error {
 
 		// Gọi LLM với streaming thực tế (ngoài lock)
 		var fullText strings.Builder
+		var accumulatedToolCalls []messaging.ToolCall
 		streamDone := make(chan error, 1)
 
+		fmt.Printf("📡 [Orchestrator] Calling GenerateStream on provider: %T...\n", o.agent.GetProvider())
 		go func() {
 			err := o.agent.GetProvider().GenerateStream(context.Background(), req, func(sc providers.StreamChunk) {
 				if sc.Text != "" {
+					fmt.Printf("📥 [Orchestrator] Received stream chunk: %q\n", sc.Text)
 					fullText.WriteString(sc.Text)
-					onChunk(sc.Text, false)
 				}
-				if sc.Done {
-					onChunk("", true)
+				if len(sc.ToolCalls) > 0 {
+					accumulatedToolCalls = append(accumulatedToolCalls, sc.ToolCalls...)
 				}
 			})
 			streamDone <- err
@@ -159,6 +163,7 @@ func (o *Orchestrator) streamFinalResponse(onChunk func(string, bool)) error {
 
 		select {
 		case err := <-streamDone:
+			fmt.Printf("📬 [Orchestrator] GenerateStream returned error: %v\n", err)
 			if err != nil {
 				return err
 			}
@@ -168,13 +173,38 @@ func (o *Orchestrator) streamFinalResponse(onChunk func(string, bool)) error {
 
 		// Append vào history (write lock)
 		finalText := fullText.String()
+		msg := messaging.Message{
+			Role:      messaging.RoleAssistant,
+			Content:   finalText,
+			ToolCalls: accumulatedToolCalls,
+		}
 		o.agent.mu.Lock()
-		o.agent.conversation.ContextWindow.History = append(o.agent.conversation.ContextWindow.History, messaging.Message{
-			Role:    messaging.RoleAssistant,
-			Content: finalText,
-		})
-		hasToolCall := o.agent.dispatcher.HandleToolCalls(o.agent.conversation.ContextWindow.History[len(o.agent.conversation.ContextWindow.History)-1])
+		o.agent.conversation.ContextWindow.History = append(o.agent.conversation.ContextWindow.History, msg)
+		o.agent.mu.Unlock()
 
+		hasToolCall := o.agent.dispatcher.HandleToolCalls(msg)
+
+		// Send thinking/streaming chunks to client
+		if hasToolCall {
+			trimmed := strings.TrimSpace(finalText)
+			if trimmed != "" {
+				wrapped := fmt.Sprintf("<details class=\"thinking-details\"><summary class=\"thinking-summary\">Suy nghĩ của AI</summary><div class=\"thinking-content\">%s</div></details>\n\n", trimmed)
+				onChunk(wrapped, false)
+			}
+		} else {
+			runes := []rune(finalText)
+			chunkSize := 3
+			for i := 0; i < len(runes); i += chunkSize {
+				end := i + chunkSize
+				if end > len(runes) {
+					end = len(runes)
+				}
+				onChunk(string(runes[i:end]), false)
+				time.Sleep(12 * time.Millisecond)
+			}
+		}
+
+		o.agent.mu.Lock()
 		if o.agent.handoffPlan != nil {
 			plan := *o.agent.handoffPlan
 			o.agent.handoffPlan = nil
@@ -185,6 +215,7 @@ func (o *Orchestrator) streamFinalResponse(onChunk func(string, bool)) error {
 		o.agent.mu.Unlock()
 
 		if !hasToolCall {
+			onChunk("", true)
 			return nil
 		}
 	}
@@ -256,8 +287,11 @@ func (o *Orchestrator) runConversationLoopInternal() (string, error) {
 		// === BƯỚC 4: Append response + handle tool calls (write lock) ===
 		o.agent.mu.Lock()
 		o.agent.conversation.ContextWindow.History = append(o.agent.conversation.ContextWindow.History, aiMessage)
+		o.agent.mu.Unlock()
+
 		hasToolCall := o.agent.dispatcher.HandleToolCalls(aiMessage)
 
+		o.agent.mu.Lock()
 		if o.agent.handoffPlan != nil {
 			plan := *o.agent.handoffPlan
 			o.agent.handoffPlan = nil

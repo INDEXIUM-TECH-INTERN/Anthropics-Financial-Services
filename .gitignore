@@ -25,3 +25,6 @@ Gemini/internal/evaluator/test_results.json
 # Teamwork agent workspace files (runtime artifacts)
 .agents/
 .trash_old/
+
+# Patch files (leftover from dev)
+*.patch
