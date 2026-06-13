@@ -28,3 +28,14 @@ Gemini/internal/evaluator/test_results.json
 
 # Patch files (leftover from dev)
 *.patch
+
+# Frontend
+frontend/node_modules/
+frontend/playwright-report/
+frontend/test-results/
+frontend/.vite/
+
+# Root-level artifacts
+package-lock.json
+.claude/
+Gemini/Ahihi.txt

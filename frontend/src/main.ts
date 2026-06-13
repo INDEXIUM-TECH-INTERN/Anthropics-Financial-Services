@@ -32,7 +32,6 @@ const settingsTrigger = $('settings-trigger')!;
 const closeSettings = $('close-settings')!;
 const closeSettingsBtn = $('close-settings-btn')!;
 const saveSettingsBtn = $('save-settings-btn')!;
-const geminiKeyInput = $<HTMLInputElement>('gemini-key-input')!;
 const orKeysInput = $<HTMLTextAreaElement>('or-keys-input')!;
 const toggleConversations = $('toggle-conversations')!;
 const togglePipeline = $('toggle-pipeline')!;
@@ -120,7 +119,6 @@ closeSettingsBtn?.addEventListener('click', hideSettings);
 settingsModal?.addEventListener('click', (e) => { if (e.target === settingsModal) hideSettings(); });
 // API keys are sent to server via /api/config/keys and stored server-side only
 saveSettingsBtn?.addEventListener('click', async () => {
-  const gk = geminiKeyInput?.value.trim() || '';
   const ok = orKeysInput?.value.trim() || '';
   if (saveSettingsBtn) { (saveSettingsBtn as HTMLButtonElement).disabled = true; saveSettingsBtn.textContent = 'Đang lưu...'; }
   try {
