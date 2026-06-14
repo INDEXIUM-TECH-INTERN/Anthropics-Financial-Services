@@ -424,8 +424,9 @@ func (p *OpenRouterProvider) streamWithModel(ctx context.Context, req messaging.
 			continue
 		}
 		delta := chunk.Choices[0].Delta.Content
-		if delta == "" || delta == "null" {
-			delta = chunk.Choices[0].Delta.Reasoning
+		// Skip reasoning field — it is internal chain-of-thought, not user-facing content
+		if delta == "null" {
+			delta = ""
 		}
 		if delta != "" {
 			fullText.WriteString(delta)

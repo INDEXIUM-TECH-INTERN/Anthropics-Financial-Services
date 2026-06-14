@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -184,23 +185,22 @@ func (o *Orchestrator) streamFinalResponse(onChunk func(string, bool)) error {
 
 		hasToolCall := o.agent.dispatcher.HandleToolCalls(msg)
 
-		// Send thinking/streaming chunks to client
-		if hasToolCall {
-			trimmed := strings.TrimSpace(finalText)
-			if trimmed != "" {
-				wrapped := fmt.Sprintf("<details class=\"thinking-details\"><summary class=\"thinking-summary\">Suy nghĩ của AI</summary><div class=\"thinking-content\">%s</div></details>\n\n", trimmed)
-				onChunk(wrapped, false)
-			}
-		} else {
-			runes := []rune(finalText)
-			chunkSize := 3
-			for i := 0; i < len(runes); i += chunkSize {
-				end := i + chunkSize
-				if end > len(runes) {
-					end = len(runes)
+		// Send only the final response to client (skip thinking/tool-call preamble)
+		if !hasToolCall && finalText != "" {
+			// Strip any leaked thinking HTML blocks that may have been prepended
+			cleaned := stripThinkingTags(finalText)
+			cleaned = strings.TrimSpace(cleaned)
+			if cleaned != "" {
+				runes := []rune(cleaned)
+				chunkSize := 3
+				for i := 0; i < len(runes); i += chunkSize {
+					end := i + chunkSize
+					if end > len(runes) {
+						end = len(runes)
+					}
+					onChunk(string(runes[i:end]), false)
+					time.Sleep(12 * time.Millisecond)
 				}
-				onChunk(string(runes[i:end]), false)
-				time.Sleep(12 * time.Millisecond)
 			}
 		}
 
@@ -333,4 +333,13 @@ func getEnvInt(key string, fallback int) int {
 		return i
 	}
 	return fallback
+}
+
+// stripThinkingTags removes HTML thinking/reasoning blocks that leak into the final response.
+func stripThinkingTags(text string) string {
+	re := regexp.MustCompile(`(?is)<details[^>]*class="thinking-details"[^>]*>.*?</details>`)
+	text = re.ReplaceAllString(text, "")
+	re2 := regexp.MustCompile(`(?is)<div[^>]*class="thinking-content"[^>]*>.*?</div>`)
+	text = re2.ReplaceAllString(text, "")
+	return text
 }

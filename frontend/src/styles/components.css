@@ -297,10 +297,204 @@
   }
 }
 
+/* ── Connection Status Indicator ── */
+.conn-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+}
+
+.conn-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background var(--transition-fast);
+}
+
+.conn-connected .conn-status-dot {
+  background: var(--success);
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+}
+
+.conn-disconnected .conn-status-dot {
+  background: var(--danger);
+  box-shadow: 0 0 6px rgba(248, 113, 113, 0.5);
+  animation: connPulse 1.5s ease-in-out infinite;
+}
+
+.conn-reconnecting .conn-status-dot {
+  background: var(--warning);
+  animation: connPulse 0.8s ease-in-out infinite;
+}
+
+.conn-status-label {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.conn-status-retry-btn {
+  border: none;
+  background: var(--accent-muted);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.conn-status-retry-btn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+@keyframes connPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+/* ── Typing Indicator ── */
+.typing-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  animation: typingBounce 1.4s ease-in-out infinite;
+}
+
+.typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* ── Sidebar Overlay (mobile) ── */
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.sidebar-backdrop.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sidebar-backdrop.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── Error Container (inline in chat) ── */
+.error-container {
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+}
+
+.error-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.error-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--danger);
+}
+
+.error-badge {
+  font-size: 12px;
+}
+
+.error-body {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.error-suggestions {
+  margin-top: 8px;
+}
+
+.error-suggestions-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  margin-bottom: 4px;
+}
+
+.error-suggestion-item {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 2px 0;
+  padding-left: 12px;
+  position: relative;
+}
+
+.error-suggestion-item::before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
+.error-details {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.error-details summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.error-details-content {
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  opacity: 0.7;
+  word-break: break-all;
+}
+
 /* ── Responsive: Tablet < 768px ── */
 @media (max-width: 767px) {
   .slash-menu {
     left: -8px;
     right: -8px;
+  }
+
+  .conn-status-indicator {
+    padding: 3px 8px;
+    font-size: 10px;
   }
 }
