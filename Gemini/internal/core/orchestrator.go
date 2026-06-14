@@ -16,6 +16,12 @@ import (
 	"gemini-cli/internal/utils"
 )
 
+var (
+	// Pre-compiled regexes for stripThinkingTags — avoids regexp.MustCompile on every call
+	thinkingDetailsRe = regexp.MustCompile(`(?is)<details[^>]*class="thinking-details"[^>]*>.*?</details>`)
+	thinkingContentRe = regexp.MustCompile(`(?is)<div[^>]*class="thinking-content"[^>]*>.*?</div>`)
+)
+
 type Orchestrator struct {
 	agent *Agent
 }
@@ -24,7 +30,7 @@ func NewOrchestrator(a *Agent) *Orchestrator {
 	return &Orchestrator{agent: a}
 }
 
-func (o *Orchestrator) ProcessMessage(userInput string, atts []messaging.Attachment) (string, error) {
+func (o *Orchestrator) ProcessMessage(ctx context.Context, userInput string, atts []messaging.Attachment) (string, error) {
 	o.agent.mu.Lock()
 	o.agent.userInput = userInput
 
@@ -40,21 +46,21 @@ func (o *Orchestrator) ProcessMessage(userInput string, atts []messaging.Attachm
 				pubsub.BroadcastLog("Nhận diện ý định xã giao. Đang phản hồi nhanh...", "routing")
 				o.agent.appendUserTextInternal(userInput, atts)
 				o.agent.mu.Unlock()
-				return o.runConversationLoopInternal()
+				return o.runConversationLoopInternal(ctx)
 			}
 
 			pubsub.BroadcastLog("Khởi tạo cuộc hội thoại mới...", "process")
 			o.agent.appendUserTextInternal(userInput, atts)
 			o.agent.mu.Unlock()
 			BootstrapContext(o.agent)
-			return o.runConversationLoopInternal()
+			return o.runConversationLoopInternal(ctx)
 		}
 	} else {
 		o.agent.appendUserTextInternal(userInput, atts)
 	}
 	o.agent.mu.Unlock()
 
-	return o.runConversationLoopInternal()
+	return o.runConversationLoopInternal(ctx)
 }
 
 // ProcessMessageStream xử lý chat với real streaming từ LLM provider.
@@ -62,7 +68,7 @@ func (o *Orchestrator) ProcessMessage(userInput string, atts []messaging.Attachm
 // để stream tokens thực tế từ provider.
 // Lưu ý: Tool calls không hỗ trợ streaming — nếu AI cần gọi tool, streaming sẽ
 // chuyển sang chế độ blocking cho đến khi tool xong, rồi stream final response.
-func (o *Orchestrator) ProcessMessageStream(userInput string, atts []messaging.Attachment, onChunk func(string, bool)) error {
+func (o *Orchestrator) ProcessMessageStream(ctx context.Context, userInput string, atts []messaging.Attachment, onChunk func(string, bool)) error {
 	// Phase 1: Bootstrap context (giống ProcessMessage nhưng không stream)
 	o.agent.mu.Lock()
 	o.agent.userInput = userInput
@@ -78,34 +84,32 @@ func (o *Orchestrator) ProcessMessageStream(userInput string, atts []messaging.A
 				pubsub.BroadcastLog("Nhận diện ý định xã giao. Đang phản hồi nhanh...", "routing")
 				o.agent.appendUserTextInternal(userInput, atts)
 				o.agent.mu.Unlock()
-				return o.streamFinalResponse(onChunk)
+				return o.streamFinalResponse(ctx, onChunk)
 			}
 			pubsub.BroadcastLog("Khởi tạo cuộc hội thoại mới...", "process")
 			o.agent.appendUserTextInternal(userInput, atts)
 			o.agent.mu.Unlock()
 			BootstrapContext(o.agent)
-			return o.streamFinalResponse(onChunk)
+			return o.streamFinalResponse(ctx, onChunk)
 		}
 	} else {
 		o.agent.appendUserTextInternal(userInput, atts)
 	}
 	o.agent.mu.Unlock()
 
-	return o.streamFinalResponse(onChunk)
+	return o.streamFinalResponse(ctx, onChunk)
 }
 
 // streamFinalResponse chạy ReAct loop nhưng với streaming cho LLM calls.
 // Mỗi iteration: gọi GenerateStream → collect tokens → nếu có tool call thì execute (blocking)
 // → lặp lại cho đến khi AI trả về text response không có tool call → stream tokens.
-func (o *Orchestrator) streamFinalResponse(onChunk func(string, bool)) error {
-	fmt.Println("🚀 [Orchestrator] Entering streamFinalResponse...")
+func (o *Orchestrator) streamFinalResponse(ctx context.Context, onChunk func(string, bool)) error {
 	keepRecentMessages := getEnvInt("CONTEXT_KEEP_RECENT", 7)
 	maxContextTokens := getEnvInt("CONTEXT_MAX_TOKENS", 92000)
 	maxSummaryChars := getEnvInt("CONTEXT_MAX_SUMMARY_INPUT", 18000)
 	maxIterations := getEnvInt("REACT_MAX_ITERATIONS", 20)
 
 	for i := 0; i < maxIterations; i++ {
-		fmt.Printf("🔄 [Orchestrator] streamFinalResponse iteration %d...\n", i)
 		// Kiểm tra context summarization (read lock)
 		o.agent.mu.RLock()
 		cw := o.agent.conversation.ContextWindow
@@ -148,11 +152,15 @@ func (o *Orchestrator) streamFinalResponse(onChunk func(string, bool)) error {
 		var accumulatedToolCalls []messaging.ToolCall
 		streamDone := make(chan error, 1)
 
-		fmt.Printf("📡 [Orchestrator] Calling GenerateStream on provider: %T...\n", o.agent.GetProvider())
 		go func() {
-			err := o.agent.GetProvider().GenerateStream(context.Background(), req, func(sc providers.StreamChunk) {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Printf("⚠️ [Stream] Recovered from panic: %v\n", r)
+					streamDone <- fmt.Errorf("stream panic: %v", r)
+				}
+			}()
+			err := o.agent.GetProvider().GenerateStream(ctx, req, func(sc providers.StreamChunk) {
 				if sc.Text != "" {
-					fmt.Printf("📥 [Orchestrator] Received stream chunk: %q\n", sc.Text)
 					fullText.WriteString(sc.Text)
 				}
 				if len(sc.ToolCalls) > 0 {
@@ -164,7 +172,6 @@ func (o *Orchestrator) streamFinalResponse(onChunk func(string, bool)) error {
 
 		select {
 		case err := <-streamDone:
-			fmt.Printf("📬 [Orchestrator] GenerateStream returned error: %v\n", err)
 			if err != nil {
 				return err
 			}
@@ -181,9 +188,8 @@ func (o *Orchestrator) streamFinalResponse(onChunk func(string, bool)) error {
 		}
 		o.agent.mu.Lock()
 		o.agent.conversation.ContextWindow.History = append(o.agent.conversation.ContextWindow.History, msg)
-		o.agent.mu.Unlock()
-
 		hasToolCall := o.agent.dispatcher.HandleToolCalls(msg)
+		o.agent.mu.Unlock()
 
 		// Send only the final response to client (skip thinking/tool-call preamble)
 		if !hasToolCall && finalText != "" {
@@ -199,7 +205,6 @@ func (o *Orchestrator) streamFinalResponse(onChunk func(string, bool)) error {
 						end = len(runes)
 					}
 					onChunk(string(runes[i:end]), false)
-					time.Sleep(12 * time.Millisecond)
 				}
 			}
 		}
@@ -223,7 +228,7 @@ func (o *Orchestrator) streamFinalResponse(onChunk func(string, bool)) error {
 	return fmt.Errorf("exceeded maximum ReAct iterations (%d); possible infinite tool-call loop", maxIterations)
 }
 
-func (o *Orchestrator) runConversationLoopInternal() (string, error) {
+func (o *Orchestrator) runConversationLoopInternal(ctx context.Context) (string, error) {
 	keepRecentMessages := getEnvInt("CONTEXT_KEEP_RECENT", 7)
 	maxContextTokens := getEnvInt("CONTEXT_MAX_TOKENS", 92000)
 	maxSummaryChars := getEnvInt("CONTEXT_MAX_SUMMARY_INPUT", 18000)
@@ -279,7 +284,7 @@ func (o *Orchestrator) runConversationLoopInternal() (string, error) {
 		}
 
 		// === BƯỚC 3: Gọi LLM (ngoài lock) ===
-		aiMessage, err := o.agent.GetProvider().Generate(context.Background(), req)
+		aiMessage, err := o.agent.GetProvider().Generate(ctx, req)
 		if err != nil {
 			return "", err
 		}
@@ -287,9 +292,8 @@ func (o *Orchestrator) runConversationLoopInternal() (string, error) {
 		// === BƯỚC 4: Append response + handle tool calls (write lock) ===
 		o.agent.mu.Lock()
 		o.agent.conversation.ContextWindow.History = append(o.agent.conversation.ContextWindow.History, aiMessage)
-		o.agent.mu.Unlock()
-
 		hasToolCall := o.agent.dispatcher.HandleToolCalls(aiMessage)
+		o.agent.mu.Unlock()
 
 		o.agent.mu.Lock()
 		if o.agent.handoffPlan != nil {
@@ -337,9 +341,7 @@ func getEnvInt(key string, fallback int) int {
 
 // stripThinkingTags removes HTML thinking/reasoning blocks that leak into the final response.
 func stripThinkingTags(text string) string {
-	re := regexp.MustCompile(`(?is)<details[^>]*class="thinking-details"[^>]*>.*?</details>`)
-	text = re.ReplaceAllString(text, "")
-	re2 := regexp.MustCompile(`(?is)<div[^>]*class="thinking-content"[^>]*>.*?</div>`)
-	text = re2.ReplaceAllString(text, "")
+	text = thinkingDetailsRe.ReplaceAllString(text, "")
+	text = thinkingContentRe.ReplaceAllString(text, "")
 	return text
 }

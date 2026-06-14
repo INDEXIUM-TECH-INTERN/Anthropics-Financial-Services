@@ -7,16 +7,19 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
     
     <!-- KaTeX CSS and JS (SRI hashes from https://www.srihash.org/) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw444OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
-  <script type="module" crossorigin src="/assets/main-Duprf4wZ.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-CmxIItKX.css">
+  <script type="module" crossorigin src="/assets/main-XzM2x1x6.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-DfSGmBDP.css">
 </head>
 <body>
+<a href="#chat-viewport" class="skip-link">Chuyển đến nội dung chính</a>
 
 <div id="app-root" class="workspace-layout">
     <!-- ═══ Ambient Glass Background ═══ -->
@@ -125,9 +128,9 @@
 <div class="sidebar-backdrop hidden" id="sidebar-backdrop"></div>
 
 <!-- ═══ Settings Modal ═══ -->
-<div class="modal-overlay hidden" id="settings-modal">
+<div class="modal-overlay hidden" id="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
     <div class="modal-content glass-panel">
-        <div class="modal-header"><h2>Cài đặt</h2><button class="modal-close" id="close-settings">×</button></div>
+        <div class="modal-header"><h2 id="settings-modal-title">Cài đặt</h2><button class="modal-close" id="close-settings" aria-label="Đóng cài đặt">×</button></div>
         <div class="modal-body">
             <form class="modal-form" onsubmit="return false;">
                 <div><label class="form-label" for="gemini-key-input">Gemini API Key</label><input type="password" class="form-input" id="gemini-key-input" placeholder="AIza..." autocomplete="off"></div>
@@ -139,11 +142,11 @@
 </div>
 
 <!-- ═══ Metrics Modal ═══ -->
-<div class="modal-overlay hidden" id="metrics-modal">
+<div class="modal-overlay hidden" id="metrics-modal" role="dialog" aria-modal="true" aria-labelledby="metrics-modal-title">
     <div class="modal-content glass-panel metrics-modal-content">
         <div class="modal-header">
-            <h2>📊 Chỉ số hiệu suất (Performance Metrics)</h2>
-            <button class="modal-close" id="close-metrics">×</button>
+            <h2 id="metrics-modal-title">📊 Chỉ số hiệu suất (Performance Metrics)</h2>
+            <button class="modal-close" id="close-metrics" aria-label="Đóng chỉ số">×</button>
         </div>
         <div class="modal-body metrics-modal-body">
             <div class="metrics-grid">
@@ -188,9 +191,9 @@
 </div>
 
 <!-- ═══ Keyboard Shortcuts Panel ═══ -->
-<div class="shortcuts-overlay hidden" id="shortcuts-panel">
+<div class="shortcuts-overlay hidden" id="shortcuts-panel" role="dialog" aria-modal="true" aria-labelledby="shortcuts-modal-title">
     <div class="shortcuts-content glass-panel">
-        <div class="shortcuts-header"><h3>Phím tắt</h3><button class="shortcuts-close" id="close-shortcuts">×</button></div>
+        <div class="shortcuts-header"><h3 id="shortcuts-modal-title">Phím tắt</h3><button class="shortcuts-close" id="close-shortcuts" aria-label="Đóng phím tắt">×</button></div>
         <div class="shortcuts-body">
             <div class="shortcuts-group"><div class="shortcuts-group-title">Soạn tin nhắn</div>
                 <div class="shortcut-row"><span>Gửi tin nhắn</span><kbd>Enter</kbd></div>

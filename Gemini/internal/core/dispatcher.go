@@ -352,37 +352,19 @@ func (d *Dispatcher) handleReadLocalFile(args handlers.Args) (string, error) {
 	}
 	pubsub.BroadcastLog(fmt.Sprintf("Đang đọc tệp nội bộ: %s", path), "tool")
 
-	baseName := filepath.Base(path)
-	if baseName == "" || baseName == "." || baseName == ".." {
-		return "", fmt.Errorf("invalid filename")
+	targetPath, err := resolveLocalFilePath(path)
+	if err != nil {
+		return "", err
 	}
 
-	allowedExts := map[string]bool{
-		".xlsx": true, ".xls": true, ".csv": true, ".txt": true,
-		".md": true, ".json": true, ".xml": true, ".pdf": true,
-		".docx": true, ".pptx": true, ".png": true, ".jpg": true,
+	// Check file size before reading to prevent OOM on huge files
+	info, err := os.Stat(targetPath)
+	if err != nil {
+		return "", fmt.Errorf("stat file: %w", err)
 	}
-	ext := strings.ToLower(filepath.Ext(baseName))
-	if !allowedExts[ext] {
-		return "", fmt.Errorf("file extension %q not allowed", ext)
-	}
-
-	searchDirs := []string{"frontend/exports", "Gemini/frontend/exports", "../frontend/exports", "exports"}
-	var targetPath string
-	for _, dir := range searchDirs {
-		p := filepath.Join(dir, baseName)
-		if _, err := os.Stat(p); err == nil {
-			absPath, _ := filepath.Abs(p)
-			absDir, _ := filepath.Abs(dir)
-			if strings.HasPrefix(absPath, absDir) {
-				targetPath = absPath
-				break
-			}
-		}
-	}
-
-	if targetPath == "" {
-		return "", fmt.Errorf("file %s not found in exports directory", baseName)
+	const maxFileSize = 5 * 1024 * 1024 // 5 MB
+	if info.Size() > maxFileSize {
+		return "", fmt.Errorf("file exceeds max size of 5 MB (actual: %.1f MB)", float64(info.Size())/1024/1024)
 	}
 
 	data, err := os.ReadFile(targetPath)
@@ -390,6 +372,7 @@ func (d *Dispatcher) handleReadLocalFile(args handlers.Args) (string, error) {
 		return "", fmt.Errorf("reading file: %w", err)
 	}
 
+	baseName := filepath.Base(targetPath)
 	dataB64 := base64.StdEncoding.EncodeToString(data)
 	mimeType := ""
 
@@ -398,6 +381,51 @@ func (d *Dispatcher) handleReadLocalFile(args handlers.Args) (string, error) {
 	}
 
 	return fmt.Sprintf("Binary file detected: %s. Use a file viewer.", baseName), nil
+}
+
+// allowedFileExts defines the set of file extensions permitted for local file reads.
+var allowedFileExts = map[string]bool{
+	".xlsx": true, ".xls": true, ".csv": true, ".txt": true,
+	".md": true, ".json": true, ".xml": true, ".pdf": true,
+	".docx": true, ".pptx": true, ".png": true, ".jpg": true,
+}
+
+// resolveLocalFilePath validates the user-supplied path and resolves it to a
+// safe absolute path inside the exports search directories.
+// Returns an error if the path contains traversal sequences, is absolute,
+// has a disallowed extension, or cannot be found in any search directory.
+func resolveLocalFilePath(path string) (string, error) {
+	if filepath.IsAbs(path) {
+		return "", fmt.Errorf("absolute paths not allowed")
+	}
+	if strings.Contains(path, "..") {
+		return "", fmt.Errorf("path traversal not allowed")
+	}
+
+	baseName := filepath.Base(path)
+	if baseName == "" || baseName == "." || baseName == ".." {
+		return "", fmt.Errorf("invalid filename")
+	}
+
+	ext := strings.ToLower(filepath.Ext(baseName))
+	if !allowedFileExts[ext] {
+		return "", fmt.Errorf("file extension %q not allowed", ext)
+	}
+
+	searchDirs := []string{"frontend/exports", "Gemini/frontend/exports", "../frontend/exports", "exports"}
+	for _, dir := range searchDirs {
+		p := filepath.Join(dir, baseName)
+		if _, err := os.Stat(p); err != nil {
+			continue
+		}
+		absPath, _ := filepath.Abs(p)
+		absDir, _ := filepath.Abs(dir)
+		if strings.HasPrefix(absPath, absDir) {
+			return absPath, nil
+		}
+	}
+
+	return "", fmt.Errorf("file %s not found in exports directory", baseName)
 }
 
 // ─── Helper Methods ──────────────────────────────────────────────────────────

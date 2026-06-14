@@ -1,0 +1,260 @@
+[
+  {
+    "iteration": 1,
+    "timestamp": "2026-06-14T08:12:09.834957",
+    "average_score": 0,
+    "pass_rate": "0/5",
+    "link_validity": "6/10",
+    "results": [
+      {
+        "id": "q1_fundamental",
+        "query": "Tổng quan về thị trường chứng khoán Việt Nam năm 2025",
+        "category": "market_overview",
+        "response": "<details class=\"thinking-details\"><summary class=\"thinking-summary\">Suy nghĩ của AI</summary><div class=\"thinking-content\">We need to provide a comprehensive overview of Vietnam stock market in 2025, using the skill sector-overview and competitive-analysis? Actually the user asks: \"Tổng quan về thị trường chứng khoán Việt Nam năm 2025\". This is a sector overview request. We need to produce industry overview: market size, growth, structure, key drivers, etc. Use the skills sector-overview and com",
+        "response_length": 9788,
+        "links": [
+          {
+            "url": "https://vneconomy.vn/thi-truong-chung-khoan-viet-nam-2025-va-trien-vong-2026.htm",
+            "context": "ờng chứng khoán Việt Nam 2025‑2026”, 09/05/2026 – https://vneconomy.vn/thi-truong-chung-khoan-viet-nam-2025-va-trien-vong-2026.htm"
+          },
+          {
+            "url": "https://vneconomy.vn/thi-truong-chung-khoan-viet-nam-2025-va-trien-vong-2026.htm",
+            "context": "ờng chứng khoán Việt Nam 2025‑2026”, 09/05/2026 – https://vneconomy.vn/thi-truong-chung-khoan-viet-nam-2025-va-trien-vong-2026.htm"
+          }
+        ],
+        "link_results": [
+          {
+            "url": "https://vneconomy.vn/thi-truong-chung-khoan-viet-nam-2025-va-trien-vong-2026.htm",
+            "status": 200,
+            "valid": true,
+            "context": "ờng chứng khoán Việt Nam 2025‑2026”, 09/05/2026 – https://vneconomy.vn/thi-truong-chung-khoan-viet-nam-2025-va-trien-vong-2026.htm"
+          },
+          {
+            "url": "https://vneconomy.vn/thi-truong-chung-khoan-viet-nam-2025-va-trien-vong-2026.htm",
+            "status": 200,
+            "valid": true,
+            "context": "ờng chứng khoán Việt Nam 2025‑2026”, 09/05/2026 – https://vneconomy.vn/thi-truong-chung-khoan-viet-nam-2025-va-trien-vong-2026.htm"
+          }
+        ],
+        "score": 0,
+        "verdict": "ERROR",
+        "scores": {
+          "accuracy": 0,
+          "completeness": 0,
+          "sources": 0,
+          "structure": 0
+        },
+        "issues": [
+          "Gemini API error: HTTP Error 429: Too Many Requests"
+        ],
+        "suggestions": [],
+        "metrics": {
+          "latency_ms": 112189,
+          "token_in": 15,
+          "token_out": 3077,
+          "ram_mb": "3.52 MB",
+          "cpu_load": "8 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q2_comparison",
+        "query": "So sánh tổng tài sản HDBank và ACB trong 3 năm gần đây",
+        "category": "comparison",
+        "response": "<details class=\"thinking-details\"><summary class=\"thinking-summary\">Suy nghĩ của AI</summary><div class=\"thinking-content\">Need scrape first link.Need scrape first link.</div></details>\n\n<details class=\"thinking-details\"><summary class=\"thinking-summary\">Suy nghĩ của AI</summary><div class=\"thinking-content\">Need totals. Likely from article snippet: HDBank 931k, ACB 1,025.85k 31/12/2025. Need 2023, 2024. Could use other sources quickly. Search again.Need totals. Likely from article snippet: HDBa",
+        "response_length": 15406,
+        "links": [
+          {
+            "url": "https://www.ssi.com.vn/en/organization-customer/strategy-report",
+            "context": "5)** – “Key growth drivers for Vietnam in 2025” – https://www.ssi.com.vn/en/organization-customer/strategy-report"
+          },
+          {
+            "url": "https://archive.shs.com.vn/Sites/QuoteVN/SiteRoot/reportattach/20250121_10314_Outlook2025.pdf",
+            "context": "2025 – SHS** – “STOCK MARKET OUTLOOK FOR 2025” – https://archive.shs.com.vn/Sites/QuoteVN/SiteRoot/reportattach/20250121_10314_Outlook2025.pdf"
+          },
+          {
+            "url": "https://english.vov.vn/en/economy/2025-to-be-turning-point-for-vietnamese-stock-market-post1151129.vov",
+            "context": "o be turning point for Vietnamese stock market” – https://english.vov.vn/en/economy/2025-to-be-turning-point-for-vietnamese-stock-market-post1151129.vov"
+          },
+          {
+            "url": "https://www.ssi.com.vn/en/organization-customer/strategy-report",
+            "context": "5)** – “Key growth drivers for Vietnam in 2025” – https://www.ssi.com.vn/en/organization-customer/strategy-report"
+          },
+          {
+            "url": "https://archive.shs.com.vn/Sites/QuoteVN/SiteRoot/reportattach/20250121_10314_Outlook2025.pdf",
+            "context": "2025 – SHS** – “STOCK MARKET OUTLOOK FOR 2025” – https://archive.shs.com.vn/Sites/QuoteVN/SiteRoot/reportattach/20250121_10314_Outlook2025.pdf"
+          },
+          {
+            "url": "https://english.vov.vn/en/economy/2025-to-be-turning-point-for-vietnamese-stock-market-post1151129.vov",
+            "context": "o be turning point for Vietnamese stock market” – https://english.vov.vn/en/economy/2025-to-be-turning-point-for-vietnamese-stock-market-post1151129.vov"
+          }
+        ],
+        "link_results": [
+          {
+            "url": "https://www.ssi.com.vn/en/organization-customer/strategy-report",
+            "status": 200,
+            "valid": true,
+            "context": "5)** – “Key growth drivers for Vietnam in 2025” – https://www.ssi.com.vn/en/organization-customer/strategy-report"
+          },
+          {
+            "url": "https://archive.shs.com.vn/Sites/QuoteVN/SiteRoot/reportattach/20250121_10314_Outlook2025.pdf",
+            "status": 0,
+            "valid": false,
+            "error": "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1081)>",
+            "context": "2025 – SHS** – “STOCK MARKET OUTLOOK FOR 2025” – https://archive.shs.com.vn/Sites/QuoteVN/SiteRoot/reportattach/20250121_10314_Outlook2025.pdf"
+          },
+          {
+            "url": "https://english.vov.vn/en/economy/2025-to-be-turning-point-for-vietnamese-stock-market-post1151129.vov",
+            "status": 302,
+            "valid": true,
+            "context": "o be turning point for Vietnamese stock market” – https://english.vov.vn/en/economy/2025-to-be-turning-point-for-vietnamese-stock-market-post1151129.vov"
+          },
+          {
+            "url": "https://www.ssi.com.vn/en/organization-customer/strategy-report",
+            "status": 200,
+            "valid": true,
+            "context": "5)** – “Key growth drivers for Vietnam in 2025” – https://www.ssi.com.vn/en/organization-customer/strategy-report"
+          },
+          {
+            "url": "https://archive.shs.com.vn/Sites/QuoteVN/SiteRoot/reportattach/20250121_10314_Outlook2025.pdf",
+            "status": 0,
+            "valid": false,
+            "error": "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1081)>",
+            "context": "2025 – SHS** – “STOCK MARKET OUTLOOK FOR 2025” – https://archive.shs.com.vn/Sites/QuoteVN/SiteRoot/reportattach/20250121_10314_Outlook2025.pdf"
+          },
+          {
+            "url": "https://english.vov.vn/en/economy/2025-to-be-turning-point-for-vietnamese-stock-market-post1151129.vov",
+            "status": 302,
+            "valid": true,
+            "context": "o be turning point for Vietnamese stock market” – https://english.vov.vn/en/economy/2025-to-be-turning-point-for-vietnamese-stock-market-post1151129.vov"
+          }
+        ],
+        "score": 0,
+        "verdict": "ERROR",
+        "scores": {
+          "accuracy": 0,
+          "completeness": 0,
+          "sources": 0,
+          "structure": 0
+        },
+        "issues": [
+          "Gemini API error: HTTP Error 429: Too Many Requests"
+        ],
+        "suggestions": [],
+        "metrics": {
+          "latency_ms": 142143,
+          "token_in": 18,
+          "token_out": 4849,
+          "ram_mb": "3.20 MB",
+          "cpu_load": "6 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q3_risk",
+        "query": "Chi phí dự phòng rủi ro tín dụng của HDBank năm 2024 là bao nhiêu?",
+        "category": "specific_data",
+        "response": "<details class=\"thinking-details\"><summary class=\"thinking-summary\">Suy nghĩ của AI</summary><div class=\"thinking-content\">Need exact figure. Open article.Need exact figure. Open article.</div></details>\n\nNeed answer: cost of credit risk provisioning 2024. We have quarterly data. Need annual? Use data: 1.270 tỷ in Q1. Likely annual ~ 4.5? Provide estimate with source.**Chi phí dự phòng rủi ro tín dụng của HDBank trong năm 2024**\n\n| Thời gian | Chi phí dự phòng rủi ro tín dụng | Số tiền (tỷ đồng)",
+        "response_length": 3427,
+        "links": [
+          {
+            "url": "https://etime.danviet.vn/tang-manh-du-phong-rui-ro-tin-dung-hdbank-van-bao-lai-tang-47-len-hon-4000-ty-dong-20240501180705904-d118363.html",
+            "context": "h đến 1 270 tỷ đồng.” – *Etime, 02/05/2024* [[3]](https://etime.danviet.vn/tang-manh-du-phong-rui-ro-tin-dung-hdbank-van-bao-lai-tang-47-len-hon-4000-ty-dong-20240501180705904-d118363.html"
+          },
+          {
+            "url": "https://etime.danviet.vn/tang-manh-du-phong-rui-ro-tin-dung-hdbank-van-bao-lai-tang-47-len-hon-4000-ty-dong-20240501180705904-d118363.html",
+            "context": "h đến 1 270 tỷ đồng.” – *Etime, 02/05/2024* [[3]](https://etime.danviet.vn/tang-manh-du-phong-rui-ro-tin-dung-hdbank-van-bao-lai-tang-47-len-hon-4000-ty-dong-20240501180705904-d118363.html"
+          }
+        ],
+        "link_results": [
+          {
+            "url": "https://etime.danviet.vn/tang-manh-du-phong-rui-ro-tin-dung-hdbank-van-bao-lai-tang-47-len-hon-4000-ty-dong-20240501180705904-d118363.html",
+            "status": 403,
+            "valid": false,
+            "context": "h đến 1 270 tỷ đồng.” – *Etime, 02/05/2024* [[3]](https://etime.danviet.vn/tang-manh-du-phong-rui-ro-tin-dung-hdbank-van-bao-lai-tang-47-len-hon-4000-ty-dong-20240501180705904-d118363.html"
+          },
+          {
+            "url": "https://etime.danviet.vn/tang-manh-du-phong-rui-ro-tin-dung-hdbank-van-bao-lai-tang-47-len-hon-4000-ty-dong-20240501180705904-d118363.html",
+            "status": 403,
+            "valid": false,
+            "context": "h đến 1 270 tỷ đồng.” – *Etime, 02/05/2024* [[3]](https://etime.danviet.vn/tang-manh-du-phong-rui-ro-tin-dung-hdbank-van-bao-lai-tang-47-len-hon-4000-ty-dong-20240501180705904-d118363.html"
+          }
+        ],
+        "score": 0,
+        "verdict": "ERROR",
+        "scores": {
+          "accuracy": 0,
+          "completeness": 0,
+          "sources": 0,
+          "structure": 0
+        },
+        "issues": [
+          "Gemini API error: HTTP Error 429: Too Many Requests"
+        ],
+        "suggestions": [],
+        "metrics": {
+          "latency_ms": 37333,
+          "token_in": 21,
+          "token_out": 1077,
+          "ram_mb": "3.03 MB",
+          "cpu_load": "9 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q4_sector",
+        "query": "Triển vọng ngành ngân hàng Việt Nam năm 2025",
+        "category": "sector_outlook",
+        "response": "<details class=\"thinking-details\"><summary class=\"thinking-summary\">Suy nghĩ của AI</summary><div class=\"thinking-content\">We need more sources. Use tavily_search.We need more sources. Use tavily_search.</div></details>\n\nNeed to summarize outlook. Use tavily results.## Triển vọng ngành ngân hàng Việt Nam năm 2025\n\n| Vấn đề | Dự báo / Thông tin chính | Nguồn |\n|--------|--------------------------|-------|\n| **Tăng trưởng tín dụng** | Ngân hàng Việt Nam dự kiến tăng tín dụng hệ thống khoảng **17 %",
+        "response_length": 5339,
+        "links": [],
+        "link_results": [],
+        "score": 0,
+        "verdict": "ERROR",
+        "scores": {
+          "accuracy": 0,
+          "completeness": 0,
+          "sources": 0,
+          "structure": 0
+        },
+        "issues": [
+          "Gemini API error: HTTP Error 429: Too Many Requests"
+        ],
+        "suggestions": [],
+        "metrics": {
+          "latency_ms": 55801,
+          "token_in": 12,
+          "token_out": 1679,
+          "ram_mb": "2.48 MB",
+          "cpu_load": "10 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q5_concept",
+        "query": "Giải thích khái niệm P/E ratio và cách sử dụng trong định giá cổ phiếu",
+        "category": "concept_explanation",
+        "response": "Chào bạn, với tư cách là một chuyên viên phân tích tài chính, tôi xin giải thích khái niệm P/E và cách ứng dụng chỉ số này trong định giá cổ phiếu một cách chuyên nghiệp và thực tế.\n\n---\n\n### 1. Khái niệm P/E Ratio (Price-to-Earnings Ratio)\n\n**P/E (Hệ số giá trên thu nhập)** là chỉ số tài chính so sánh giá thị trường của một cổ phiếu (Price) với thu nhập trên mỗi cổ phiếu đó (Earnings Per Share - EPS).\n\n*   **Công thức:** \n    $$\\text{P/E} = \\frac{\\text{Giá thị trường của cổ phiếu (P)}}{\\text{Th",
+        "response_length": 7470,
+        "links": [],
+        "link_results": [],
+        "score": 0,
+        "verdict": "ERROR",
+        "scores": {
+          "accuracy": 0,
+          "completeness": 0,
+          "sources": 0,
+          "structure": 0
+        },
+        "issues": [
+          "Gemini API error: HTTP Error 429: Too Many Requests"
+        ],
+        "suggestions": [],
+        "metrics": {
+          "latency_ms": 44419,
+          "token_in": 21,
+          "token_out": 2345,
+          "ram_mb": "3.14 MB",
+          "cpu_load": "8 Goroutines (Active)"
+        }
+      }
+    ],
+    "all_passed": true
+  }
+]

@@ -2,6 +2,7 @@ package core
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -75,7 +76,7 @@ func (a *Agent) Start() {
 			return
 		}
 
-		reply, err := a.ProcessMessage(userInput, nil)
+		reply, err := a.ProcessMessage(context.Background(), userInput, nil)
 		if err != nil {
 			fmt.Printf("❌ [Lỗi] %v\n", err)
 			continue
@@ -86,14 +87,14 @@ func (a *Agent) Start() {
 
 // ProcessMessage processes a user message and returns the AI response.
 // Locking is managed internally by the orchestrator for minimal critical sections.
-func (a *Agent) ProcessMessage(userInput string, atts []messaging.Attachment) (string, error) {
-	return a.orchestrator.ProcessMessage(userInput, atts)
+func (a *Agent) ProcessMessage(ctx context.Context, userInput string, atts []messaging.Attachment) (string, error) {
+	return a.orchestrator.ProcessMessage(ctx, userInput, atts)
 }
 
 // ProcessMessageStream processes a message and streams tokens via onChunk.
 // Locking is managed internally by the orchestrator for minimal critical sections.
-func (a *Agent) ProcessMessageStream(userInput string, atts []messaging.Attachment, onChunk func(string, bool)) error {
-	return a.orchestrator.ProcessMessageStream(userInput, atts, onChunk)
+func (a *Agent) ProcessMessageStream(ctx context.Context, userInput string, atts []messaging.Attachment, onChunk func(string, bool)) error {
+	return a.orchestrator.ProcessMessageStream(ctx, userInput, atts, onChunk)
 }
 
 func readUserInput() (string, bool) {

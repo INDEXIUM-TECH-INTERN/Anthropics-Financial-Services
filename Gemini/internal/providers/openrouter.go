@@ -301,8 +301,13 @@ func (p *OpenRouterProvider) streamWithModel(ctx context.Context, req messaging.
 	var orTools []models.OpenRouterTool
 	for _, t := range req.Tools {
 		var params models.Parameters
-		paramBytes, _ := json.Marshal(t.Parameters)
-		json.Unmarshal(paramBytes, &params)
+		paramBytes, err := json.Marshal(t.Parameters)
+		if err != nil {
+			return fmt.Errorf("failed to marshal tool parameters for %s: %w", t.Name, err)
+		}
+		if err := json.Unmarshal(paramBytes, &params); err != nil {
+			return fmt.Errorf("failed to unmarshal tool parameters for %s: %w", t.Name, err)
+		}
 		orTools = append(orTools, models.OpenRouterTool{
 			Type: "function",
 			Function: models.OpenRouterFunctionDeclare{
@@ -398,6 +403,11 @@ func (p *OpenRouterProvider) streamWithModel(ctx context.Context, req messaging.
 	tempCalls := make(map[int]*tempToolCall)
 
 	for {
+		// Check context cancellation before blocking read
+		if ctx.Err() != nil {
+			return fmt.Errorf("stream cancelled: %w", ctx.Err())
+		}
+
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {
@@ -471,7 +481,9 @@ func (p *OpenRouterProvider) streamWithModel(ctx context.Context, req messaging.
 		var args map[string]interface{}
 		rawArgs := tCall.arguments.String()
 		if rawArgs != "" {
-			_ = json.Unmarshal([]byte(rawArgs), &args)
+			if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
+				return fmt.Errorf("failed to parse tool call arguments for %s: %w", tCall.name, err)
+			}
 		}
 		if args == nil {
 			args = make(map[string]interface{})

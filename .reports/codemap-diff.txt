@@ -1,0 +1,50 @@
+# Codemap Generation Report — 2026-06-14
+
+## Summary
+- **Type**: Initial generation (no previous codemaps — greenfield)
+- **Project**: TestAIFinance / Indexium Financial AI Services
+- **Classification**: Full-stack monorepo — Go backend + Vanilla TypeScript frontend
+- **Files scanned**: ~80 Go files (backend) + ~23 TypeScript files (frontend)
+- **Total token estimate across all codemaps**: ~4,050 tokens
+
+## Files Added (New Codemaps)
+| File | Description |
+|------|-------------|
+| `docs/CODEMAPS/architecture.md` | System diagram, data flow, ReAct loop, provider failover |
+| `docs/CODEMAPS/backend.md` | Route map, middleware chain, package hierarchy, session lifecycle |
+| `docs/CODEMAPS/frontend.md` | Component tree, event flow, SSE pipeline, build config |
+| `docs/CODEMAPS/data.md` | Redis schema, session structure, LRU cache, pub/sub |
+| `docs/CODEMAPS/dependencies.md` | External APIs, Go modules, frontend packages, build tools |
+
+## Architecture Changes Detected
+- **N/A** — First generation, no baseline to compare against
+
+## New Dependencies Detected
+### External APIs
+- Google Gemini API (2 keys, rotation)
+- OpenRouter API (5 keys, rotation)
+- SerpAPI (2 keys, rotation)
+- Tavily API (2 keys, rotation)
+- Redis (optional session store)
+
+### Go Modules
+- go-redis/v9 — Redis client
+- ledongthuc/pdf — PDF extraction
+- nguyenthenguyen/docx — DOCX extraction
+- xuri/excelize/v2 — XLSX parsing
+- golang.org/x/time — rate limiting
+
+### Frontend Packages
+- marked — Markdown rendering
+- prismjs — Syntax highlighting
+- isomorphic-dompurify — HTML sanitization
+
+## Staleness Warnings
+- No staleness detected (fresh generation)
+
+## Notes
+- This is a single-process architecture: Go API server serves both API and static frontend
+- Database: Redis-first with in-memory fallback (no SQL database)
+- No migrations to track — session schema is flat JSON stored in Redis keys
+- Frontend has no framework dependencies (vanilla TypeScript, Vite for bundling)
+- Provider failover chain: Gemini → OpenRouter (up to 5 keys) with automatic rotation

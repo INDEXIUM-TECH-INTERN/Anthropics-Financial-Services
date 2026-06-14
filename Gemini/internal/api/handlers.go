@@ -154,6 +154,31 @@ func handleChats(w http.ResponseWriter, r *http.Request) {
 }
 
 // ── Main chat handler ──
+// validateChatRequest validates a ChatRequest and writes HTTP errors on failure.
+func validateChatRequest(w http.ResponseWriter, req *ChatRequest) bool {
+	if len(req.Message) > 50000 {
+		http.Error(w, `{"error":"Message too long (max 50000 characters)"}`, http.StatusBadRequest)
+		return false
+	}
+	if len(req.Attachments) > 10 {
+		http.Error(w, `{"error":"Too many attachments (max 10)"}`, http.StatusBadRequest)
+		return false
+	}
+	return true
+}
+
+// resolveChatSession returns an existing session or creates a default one.
+func resolveChatSession(chatID string) *store.ChatSession {
+	if chatID == "" {
+		chatID = "default"
+	}
+	sess, err := store.GetSession(chatID)
+	if err != nil {
+		return &store.ChatSession{ID: chatID, Title: "Cuộc trò chuyện mới", Messages: []messaging.Message{}}
+	}
+	return sess
+}
+
 func handleChat(agent AgentInterface) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		enableCORS(w, r)
@@ -172,31 +197,17 @@ func handleChat(agent AgentInterface) http.HandlerFunc {
 			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
 		}
-		if len(req.Message) > 50000 {
-			http.Error(w, `{"error":"Message too long (max 50000 characters)"}`, http.StatusBadRequest)
-			return
-		}
-		if len(req.Attachments) > 10 {
-			http.Error(w, `{"error":"Too many attachments (max 10)"}`, http.StatusBadRequest)
+		if !validateChatRequest(w, &req) {
 			return
 		}
 
 		fmt.Printf("📩 [Server] Received message: %s (chat_id=%s, attachments=%d)\n", req.Message, req.ChatID, len(req.Attachments))
 
-		chatID := req.ChatID
-		if chatID == "" {
-			chatID = "default"
-		}
-
-		sess, err := store.GetSession(chatID)
-		if err != nil {
-			sess = &store.ChatSession{ID: chatID, Title: "Cuộc trò chuyện mới", Messages: []messaging.Message{}}
-		}
-
+		sess := resolveChatSession(req.ChatID)
 		agent.LoadHistory(sess.Messages)
 
 		startTime := time.Now()
-		reply, err := agent.ProcessMessage(req.Message, req.Attachments)
+		reply, err := agent.ProcessMessage(r.Context(), req.Message, req.Attachments)
 		latency := time.Since(startTime).Milliseconds()
 
 		ram, cpu := getSystemMetrics()
@@ -263,26 +274,13 @@ func handleChatStream(agent AgentInterface) http.HandlerFunc {
 			return
 		}
 
-		if len(req.Message) > 50000 {
-			http.Error(w, `{"error":"Message too long (max 50000 characters)"}`, http.StatusBadRequest)
-			return
-		}
-		if len(req.Attachments) > 10 {
-			http.Error(w, `{"error":"Too many attachments (max 10)"}`, http.StatusBadRequest)
+		if !validateChatRequest(w, &req) {
 			return
 		}
 
 		fmt.Printf("📩 [Server-Stream] Received message: %s (chat_id=%s, attachments=%d)\n", req.Message, req.ChatID, len(req.Attachments))
 
-		chatID := req.ChatID
-		if chatID == "" {
-			chatID = "default"
-		}
-
-		sess, err := store.GetSession(chatID)
-		if err != nil {
-			sess = &store.ChatSession{ID: chatID, Title: "Cuộc trò chuyện mới", Messages: []messaging.Message{}}
-		}
+		sess := resolveChatSession(req.ChatID)
 
 		agent.LoadHistory(sess.Messages)
 		startTime := time.Now()
@@ -301,10 +299,14 @@ func handleChatStream(agent AgentInterface) http.HandlerFunc {
 		}
 
 		var fullReply strings.Builder
-		streamErr := agent.ProcessMessageStream(req.Message, req.Attachments, func(text string, done bool) {
+		streamErr := agent.ProcessMessageStream(r.Context(), req.Message, req.Attachments, func(text string, done bool) {
 			if !done && text != "" {
 				chunk := map[string]interface{}{"type": "token", "text": text}
-				data, _ := json.Marshal(chunk)
+				data, err := json.Marshal(chunk)
+				if err != nil {
+					fmt.Printf("⚠️ [Stream] Marshal token chunk error: %v\n", err)
+					return
+				}
 				fmt.Fprintf(w, "data: %s\n\n", data)
 				flusher.Flush()
 				fullReply.WriteString(text)
@@ -317,16 +319,24 @@ func handleChatStream(agent AgentInterface) http.HandlerFunc {
 					"text":    fullReply.String(),
 					"metrics": Metrics{LatencyMs: latency, TokenIn: utils.EstimateTokens(req.Message), TokenOut: utils.EstimateTokens(fullReply.String()), RamMB: ram, CpuLoad: cpu},
 				}
-				data, _ := json.Marshal(final)
+				data, err := json.Marshal(final)
+				if err != nil {
+					fmt.Printf("⚠️ [Stream] Marshal done chunk error: %v\n", err)
+					return
+				}
 				fmt.Fprintf(w, "data: %s\n\n", data)
 				flusher.Flush()
 			}
 		})
 
 		if streamErr != nil {
-			fmt.Printf("❌ [Stream] Error: %v (chat_id=%s)\n", streamErr, chatID)
+			fmt.Printf("❌ [Stream] Error: %v (chat_id=%s)\n", streamErr, req.ChatID)
 			errChunk := map[string]interface{}{"type": "error", "error": streamErr.Error()}
-			data, _ := json.Marshal(errChunk)
+			data, err := json.Marshal(errChunk)
+			if err != nil {
+				fmt.Printf("⚠️ [Stream] Marshal error chunk error: %v\n", err)
+				return
+			}
 			fmt.Fprintf(w, "data: %s\n\n", data)
 			flusher.Flush()
 			return
@@ -341,7 +351,7 @@ func handleChatStream(agent AgentInterface) http.HandlerFunc {
 				if updatedHistory[idx].Role == messaging.RoleAssistant {
 					updatedHistory[idx].LatencyMs = latency
 					updatedHistory[idx].TokenIn = utils.EstimateTokens(req.Message)
-					updatedHistory[idx].TokenOut = utils.EstimateTokens(fullReply.String())
+					updatedHistory[idx].TokenOut = utils.EstimateTokens(updatedHistory[idx].Content)
 					updatedHistory[idx].RamMB = ram
 					updatedHistory[idx].CpuLoad = cpu
 					break

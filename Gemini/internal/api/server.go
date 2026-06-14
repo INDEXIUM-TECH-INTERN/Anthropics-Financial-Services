@@ -3,10 +3,13 @@ package api
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -17,8 +20,8 @@ import (
 
 type AgentInterface interface {
 	Reset()
-	ProcessMessage(string, []messaging.Attachment) (string, error)
-	ProcessMessageStream(string, []messaging.Attachment, func(string, bool)) error
+	ProcessMessage(context.Context, string, []messaging.Attachment) (string, error)
+	ProcessMessageStream(context.Context, string, []messaging.Attachment, func(string, bool)) error
 	GetHistory() []messaging.Message
 	LoadHistory([]messaging.Message)
 	SetOpenRouterKeys([]string)
@@ -65,13 +68,18 @@ func securityHeaders(next http.Handler) http.Handler {
 	})
 }
 
-// rateLimitMiddleware limits requests per second per IP
-// TODO: run 'go get golang.org/x/time/rate' to enable rate limiting
+// rateLimitMiddleware creates a per-IP rate limiter. SSE and static routes
+// are excluded so long-lived streams are never 403'd by a shared budget.
 func rateLimitMiddleware(next http.Handler) http.Handler {
-	// Simple global rate limiter: 20 req/s, burst 50
-	limiter := rate.NewLimiter(20, 50)
+	// Global API limiter: 20 req/s, burst 50 — applies only to /api/* (excludes SSE)
+	apiLimiter := rate.NewLimiter(20, 50)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !limiter.Allow() {
+		// Skip rate limiting for SSE streams, static files, and health checks
+		if strings.HasPrefix(r.URL.Path, "/api/events") || strings.HasPrefix(r.URL.Path, "/health") || !strings.HasPrefix(r.URL.Path, "/api/") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if !apiLimiter.Allow() {
 			http.Error(w, `{"error":"Too many requests"}`, http.StatusTooManyRequests)
 			return
 		}
@@ -79,12 +87,27 @@ func rateLimitMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// getSystemMetrics returns cached system metrics, refreshing at most once per second.
+// This avoids calling runtime.ReadMemStats (which triggers stopTheWorld) on every request.
+var (
+	cachedRAM       string
+	cachedCPU       string
+	cacheMetricsMu  sync.Mutex
+	cacheMetricsAt  time.Time
+)
+
 func getSystemMetrics() (string, string) {
+	cacheMetricsMu.Lock()
+	defer cacheMetricsMu.Unlock()
+	if time.Since(cacheMetricsAt) < time.Second {
+		return cachedRAM, cachedCPU
+	}
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	ram := fmt.Sprintf("%.2f MB", float64(m.Alloc)/1024/1024)
-	cpu := fmt.Sprintf("%d Goroutines (Active)", runtime.NumGoroutine())
-	return ram, cpu
+	cachedRAM = fmt.Sprintf("%.2f MB", float64(m.Alloc)/1024/1024)
+	cachedCPU = fmt.Sprintf("%d Goroutines (Active)", runtime.NumGoroutine())
+	cacheMetricsAt = time.Now()
+	return cachedRAM, cachedCPU
 }
 
 func StartServer(agent AgentInterface) {
@@ -104,7 +127,7 @@ func StartServer(agent AgentInterface) {
 	mux.HandleFunc("/api/chat", handleChat(agent))
 	mux.HandleFunc("/api/chat/stream", handleChatStream(agent))
 	mux.HandleFunc("/api/history", handleHistory(agent))
-	mux.HandleFunc("/api/config/keys", handleConfigKeys(agent))
+	mux.HandleFunc("/api/config/keys", requireConfigSecret(handleConfigKeys(agent)))
 
 	// Static files
 	frontendDir := resolveFrontendDir()
@@ -153,6 +176,34 @@ func resolveFrontendDir() string {
 		}
 	}
 	return "frontend"
+}
+
+// requireConfigSecret wraps a handler with a simple shared-secret check.
+// The client must provide the secret via X-Config-Secret header.
+// If CONFIG_KEYS_SECRET env var is not set, only localhost requests are allowed.
+func requireConfigSecret(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		secret := os.Getenv("CONFIG_KEYS_SECRET")
+		if secret != "" {
+			if r.Header.Get("X-Config-Secret") != secret {
+				http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+		} else {
+			// No secret configured — restrict to localhost only
+			host, _, err := net.SplitHostPort(r.RemoteAddr)
+			if err != nil {
+				// If RemoteAddr is malformed, reject the request
+				http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+			if host != "127.0.0.1" && host != "::1" && host != "localhost" {
+				http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+		}
+		next(w, r)
+	}
 }
 
 func enableCORS(w http.ResponseWriter, r *http.Request) {

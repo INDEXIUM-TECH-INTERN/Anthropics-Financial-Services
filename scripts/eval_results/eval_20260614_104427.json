@@ -1,0 +1,1124 @@
+[
+  {
+    "iteration": 1,
+    "timestamp": "2026-06-14T10:04:23.644574",
+    "average_score": 33.4,
+    "pass_rate": "0/5",
+    "link_validity": "4/4",
+    "results": [
+      {
+        "id": "q1_fundamental",
+        "query": "Tổng quan về thị trường chứng khoán Việt Nam năm 2025",
+        "category": "market_overview",
+        "response_preview": "Để có cái nhìn toàn diện về thị trường chứng khoán Việt Nam năm 2025, chúng ta cần phân tích dựa trên các dữ liệu đã được công bố chính thức sau khi kết thúc năm tài chính. Dưới đây là bảng tổng hợp chi tiết:\n\n### Bảng tóm tắt chỉ số chính năm 2025\n\n| Chỉ số | Kết quả năm 2025 | Tăng trưởng (YoY) | Ghi chú |\n| :--- | :--- | :--- | :--- |\n| **VN-Index** | **1.784,49 điểm** | **+41%** | Mức tăng lịch sử, đóng cửa cao nhất năm [1][3] |\n| **Thanh khoản bình quân** | **15.000 tỷ đồng/phiên** | **+26,",
+        "response_length": 7908,
+        "links_count": 4,
+        "link_results": [
+          {
+            "url": "https://en.vietnamplus.vn/vietnams-stock-market-closes-2025-with-impressive-41-gain-post335320.vnp",
+            "status": 200,
+            "valid": true,
+            "context": "ket closes 2025 with impressive 41% gain” - [URL: https://en.vietnamplus.vn/vietnams-stock-market-closes-2025-with-impressive-41-gain-post335320.vnp"
+          },
+          {
+            "url": "https://cafef.vn/cap-nhat-sang-30-1-20-ngan-hang-da-cong-bo-loi-nhuan-nam-2025-hdbank-lot-top-3-ngan-hang-tu-nhan-lai-lon-nhat-188260130093838012.chn",
+            "status": 200,
+            "valid": true,
+            "context": "ngân hàng đã công bố lợi nhuận năm 2025” - [URL: https://cafef.vn/cap-nhat-sang-30-1-20-ngan-hang-da-cong-bo-loi-nhuan-nam-2025-hdbank-lot-top-3-ngan-hang-tu-nhan-lai-lon-nhat-188260130093838012.chn"
+          },
+          {
+            "url": "https://theinvestor.vn/vietnam-stocks-cap-a-stellar-year-as-vn-index-jumps-more-than-500-points-d18004.html",
+            "status": 200,
+            "valid": true,
+            "context": "r as VN-Index jumps more than 500 points” - [URL: https://theinvestor.vn/vietnam-stocks-cap-a-stellar-year-as-vn-index-jumps-more-than-500-points-d18004.html"
+          },
+          {
+            "url": "https://vietnamnet.vn/en/a-radiant-year-for-vietnam-s-stock-market-vn-index-jumps-40-2478441.html",
+            "status": 200,
+            "valid": true,
+            "context": "etnam’s stock market: VN-Index jumps 40%” - [URL: https://vietnamnet.vn/en/a-radiant-year-for-vietnam-s-stock-market-vn-index-jumps-40-2478441.html"
+          }
+        ],
+        "score": 50,
+        "verdict": "FAIL",
+        "scores": {
+          "accuracy": 5,
+          "completeness": 15,
+          "sources": 10,
+          "structure": 20
+        },
+        "issues": [
+          "Nhiều số liệu và dự báo cho năm 2025 chưa được công bố nên không thể xác nhận tính chính xác",
+          "Các nguồn được liệt kê không có định dạng chuẩn và một số có thể không tồn tại",
+          "Câu trả lời chưa đề cập đầy đủ các yếu tố kỳ vọng như dự báo lợi nhuận từng ngành, chỉ số P/E, mức độ tham gia của nhà đầu tư cá nhân"
+        ],
+        "suggestions": [
+          "Sử dụng dữ liệu thực tế đã công bố đến thời điểm hiện tại (2023/2024) và tránh đưa ra số liệu tương lai chưa được xác nhận",
+          "Trích dẫn nguồn tin cậy theo chuẩn APA hoặc Harvard, kèm URL đầy đủ và ngày truy cập",
+          "Mở rộng phần phân tích bao gồm các chỉ số tài chính chi tiết (P/E, P/B, ROE) và đánh giá chi tiết rủin tài chính, chính sách tiền tệ và xu hướng đầu tư cá nhân"
+        ],
+        "metrics": {
+          "latency_ms": 65890,
+          "token_in": 15,
+          "token_out": 2485,
+          "ram_mb": "3.91 MB",
+          "cpu_load": "6 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q2_comparison",
+        "query": "So sánh tổng tài sản HDBank và ACB trong 3 năm gần đây",
+        "category": "comparison",
+        "response_preview": "Need to summarize market overview 2025. Use data from earlier context and maybe need latest stats. Already have VN-Index etc. Provide overview.**Tổng quan Thị trường Chứng khoán Việt Nam – Năm 2025**\n\n| Yếu tố | Nội dung | Nguồn |\n|--------|----------|-------|\n| **VN‑Index (đóng cửa)** | 1 784,49 điểm, tăng **≈20 %** so với 2024 | [1] |\n| **Khối lượng giao dịch trung bình/phiên** | 15 000 tỷ đồng, tăng **≈26,8 %** so với 2024 | [1] |\n| **Vốn hóa thị trường** | Ước tính **≈30 %** của tổng vốn hóa",
+        "response_length": 8374,
+        "links_count": 0,
+        "link_results": [],
+        "score": 10,
+        "verdict": "FAIL",
+        "scores": {
+          "accuracy": 0,
+          "completeness": 0,
+          "sources": 0,
+          "structure": 10
+        },
+        "issues": [
+          "Câu trả lời không liên quan đến câu hỏi so sánh tổng tài sản HDBank và ACB. Chỉ cung cấp tổng quan thị trường 2025 không có dữ liệu cụ thể về hai ngân hàng."
+        ],
+        "suggestions": [
+          "Cần tập trung vào phân tích tài chính HDBank và ACB, cung cấp dữ liệu tổng tài sản 3 năm gần đây, và so sánh trực tiếp giữa hai ngân hàng."
+        ],
+        "metrics": {
+          "latency_ms": 157098,
+          "token_in": 18,
+          "token_out": 2950,
+          "ram_mb": "3.25 MB",
+          "cpu_load": "7 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q3_risk",
+        "query": "Chi phí dự phòng rủi ro tín dụng của HDBank năm 2024 là bao nhiêu?",
+        "category": "specific_data",
+        "response_preview": "Need answer: provision cost 5.321434 billion VND. Provide citation.Chi phí dự phòng rủi ro tín dụng của HDBank năm 2024 là **5 321 434 triệu đồng** (tương đương 5,32 tỷ VND).  \n\n*Nguồn:* Báo cáo tài chính thường niên HDBank 2024 – Thuyết minh chi phí dự phòng rủi ro tín dụng (đã được trích dẫn từ trang web chính thức của ngân hàng).【1】\n\n> **Lưu ý:** Đây là con số được công bố trong báo cáo tài chính 2024, không phải là ước tính.Need answer: provision cost 5.321434 billion VND. Provide citation.C",
+        "response_length": 864,
+        "links_count": 0,
+        "link_results": [],
+        "score": 25,
+        "verdict": "FAIL",
+        "scores": {
+          "accuracy": 0,
+          "completeness": 20,
+          "sources": 0,
+          "structure": 5
+        },
+        "issues": [
+          "Sai sót nghiêm trọng về đơn vị tính: 5.321.434 triệu đồng phải là 5.321 tỷ đồng, nhưng AI lại ghi tương đương 5,32 tỷ VND (sai lệch 1000 lần).",
+          "Lỗi logic thời gian: Hiện tại chưa có Báo cáo tài chính năm 2024 đầy đủ (vì năm 2024 chưa kết thúc), việc khẳng định đây là con số công bố không phải ước tính là sai sự thật.",
+          "Lỗi hiển thị: Câu trả lời bị lặp lại toàn bộ nội dung hai lần và chứa các đoạn text rác ('Need answer: provision cost...').",
+          "Thiếu link nguồn cụ thể dù có ghi chú trích dẫn 【1】."
+        ],
+        "suggestions": [
+          "Kiểm tra kỹ đơn vị tính (triệu đồng vs tỷ đồng) để tránh sai số nghiêm trọng trong báo cáo tài chính.",
+          "Loại bỏ các câu lệnh điều hướng (prompt leakage) như 'Need answer...' ra khỏi câu trả lời cuối cùng.",
+          "Xác minh lại mốc thời gian của báo cáo (có thể là báo cáo quý hoặc bán niên năm 2024 chứ không phải báo cáo năm).",
+          "Cung cấp đường link trực tiếp đến file PDF hoặc trang web chính thức của HDBank để đối chiếu."
+        ],
+        "metrics": {
+          "latency_ms": 49797,
+          "token_in": 21,
+          "token_out": 453,
+          "ram_mb": "3.73 MB",
+          "cpu_load": "9 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q4_sector",
+        "query": "Triển vọng ngành ngân hàng Việt Nam năm 2025",
+        "category": "sector_outlook",
+        "response_preview": "We need to handle this. The user asks \"Triển vọng ngành ngân hàng Việt Nam năm 2025\". The context says we need to produce sector overview. But the tool \"sector-overview\" is not recognized. Possibly need to use \"financial_research\" or \"tavily_search\" to get detailed data, then synthesize. Also we need to follow the workflow: define scope, then use sector-overview tool. But it's not recognized. Maybe the sector-overview tool is part of the skill set, but we need to call it correctly. The tool name",
+        "response_length": 24571,
+        "links_count": 0,
+        "link_results": [],
+        "score": 11,
+        "verdict": "FAIL",
+        "scores": {
+          "accuracy": 5,
+          "completeness": 3,
+          "sources": 0,
+          "structure": 3
+        },
+        "issues": [
+          "Câu trả lời không phải là nội dung phân tích triển vọng ngành ngân hàng Việt Nam năm 2025 mà là đoạn suy nghĩ nội bộ về cách xử lý công cụ và tìm kiếm dữ liệu.",
+          "Không đưa ra kết luận đầu tư hoặc nhận định rõ ràng về triển vọng ngành ngân hàng năm 2025.",
+          "Thông tin tài chính rất ít, chủ yếu là snippet tìm kiếm chưa được kiểm chứng và không được tổng hợp thành phân tích.",
+          "Không cung cấp link nguồn tham khảo đáng tin cậy.",
+          "Cấu trúc kém, dùng tiếng Anh lẫn lộn, không phù hợp với yêu cầu bằng tiếng Việt.",
+          "Không đề cập đầy đủ các yếu tố quan trọng như tăng trưởng tín dụng, NIM, chất lượng tài sản, CASA, phí dịch vụ, vốn, rủi ro bất động sản, lãi suất, chính sách tiền tệ và định giá cổ phiếu ngân hàng."
+        ],
+        "suggestions": [
+          "Cung cấp câu trả lời trực tiếp bằng tiếng Việt, có tiêu đề, luận điểm chính và kết luận triển vọng cho năm 2025.",
+          "Phân tích theo các trụ cột: tăng trưởng tín dụng, biên lãi ròng, thu nhập phí, chất lượng tài sản, chi phí vốn, CASA, tỷ lệ bao phủ nợ xấu, CAR và định giá P/B.",
+          "Đánh giá tác động của lãi suất giảm, phục hồi kinh tế, bất động sản, trái phiếu doanh nghiệp, chính sách SBV và nhu cầu vốn.",
+          "Nêu rõ cơ hội và rủi ro theo nhóm ngân hàng: Big4, ngân hàng tư nhân, ngân hàng bán lẻ, ngân hàng doanh nghiệp.",
+          "Cung cấp nguồn tham khảo đáng tin cậy như SBV, World Bank, IMF, ADB, FiinGroup, SSI Research, VCSC, VNDirect, HSC hoặc báo cáo thường niên của các ngân hàng."
+        ],
+        "metrics": {
+          "latency_ms": 146674,
+          "token_in": 12,
+          "token_out": 7794,
+          "ram_mb": "3.73 MB",
+          "cpu_load": "5 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q5_concept",
+        "query": "Giải thích khái niệm P/E ratio và cách sử dụng trong định giá cổ phiếu",
+        "category": "concept_explanation",
+        "response_preview": "Khái niệm **P/E Ratio** (Price-to-Earnings Ratio), hay còn gọi là **hệ số giá trên thu nhập**, là một trong những chỉ số tài chính quan trọng và phổ biến nhất mà các nhà đầu tư sử dụng để đánh giá sự \"đắt - rẻ\" của một cổ phiếu.\n\nDưới đây là giải thích chi tiết về chỉ số này và cách ứng dụng trong thực tế.\n\n---\n\n### 1. Khái niệm P/E Ratio là gì?\n\nP/E đo lường mối quan hệ giữa **giá thị trường của một cổ phiếu (Price)** và **thu nhập trên mỗi cổ phiếu (EPS - Earnings Per Share)**.\n\n**Công thức tí",
+        "response_length": 7032,
+        "links_count": 0,
+        "link_results": [],
+        "score": 71,
+        "verdict": "FAIL",
+        "scores": {
+          "accuracy": 23,
+          "completeness": 19,
+          "sources": 6,
+          "structure": 23
+        },
+        "issues": [
+          "No source citation provided",
+          "Missing discussion of forward P/E, negative earnings, and share count changes",
+          "Limited coverage of sector variations and broader limitations"
+        ],
+        "suggestions": [
+          "Provide reliable references (e.g., Investopedia, SEC filings, academic papers)",
+          "Explain forward P/E and trailing P/E distinctions",
+          "Add notes on companies with negative EPS and the impact of share buybacks or issuances",
+          "Include sector-specific P/E benchmarks and comparative analysis"
+        ],
+        "metrics": {
+          "latency_ms": 45570,
+          "token_in": 21,
+          "token_out": 2233,
+          "ram_mb": "3.16 MB",
+          "cpu_load": "6 Goroutines (Active)"
+        }
+      }
+    ],
+    "all_passed": false
+  },
+  {
+    "iteration": 2,
+    "timestamp": "2026-06-14T10:16:45.433141",
+    "average_score": 29.8,
+    "pass_rate": "0/5",
+    "link_validity": "1/1",
+    "results": [
+      {
+        "id": "q1_fundamental",
+        "query": "Tổng quan về thị trường chứng khoán Việt Nam năm 2025",
+        "category": "market_overview",
+        "response_preview": "Thị trường chứng khoán (TTCK) Việt Nam trong năm 2025 đã chứng kiến một chu kỳ tăng trưởng ấn tượng, phản ánh sự phục hồi mạnh mẽ của nền kinh tế và những bước tiến dài về chất lượng thị trường. Dưới đây là tổng quan các khía cạnh trọng yếu của thị trường trong năm vừa qua:\n\n### 1. Diễn biến chỉ số và thanh khoản\n*   **Chỉ số VN-Index:** Kết thúc năm 2025, VN-Index đóng cửa ở mức **1.784,49 điểm**, ghi nhận mức tăng trưởng **+20%** so với năm 2024. Đây là kết quả của sự kỳ vọng vào tăng trưởng G",
+        "response_length": 6841,
+        "links_count": 0,
+        "link_results": [],
+        "score": 30,
+        "verdict": "FAIL",
+        "scores": {
+          "accuracy": 5,
+          "completeness": 10,
+          "sources": 0,
+          "structure": 15
+        },
+        "issues": [
+          "Thông tin số liệu và chỉ số có vẻ không được xác thực, nhiều con số có thể không chính xác hoặc chưa được kiểm chứng; thiếu nguồn tham khảo đáng tin cậy; câu trả lời chưa đề cập đầy đủ các yếu tố kỳ vọng như lãi suất, chính sách tiền tệ, xu hướng ngành công nghệ, v.v.; cấu trúc câu trả lời bị cắt ngắn và thiếu phần kết luận; không có liên kết nguồn hoặc tài liệu tham khảo."
+        ],
+        "suggestions": [],
+        "metrics": {
+          "latency_ms": 45663,
+          "token_in": 15,
+          "token_out": 2151,
+          "ram_mb": "4.14 MB",
+          "cpu_load": "6 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q2_comparison",
+        "query": "So sánh tổng tài sản HDBank và ACB trong 3 năm gần đây",
+        "category": "comparison",
+        "response_preview": "Dưới đây là bản tổng quan thị trường chứng khoán Việt Nam năm 2025 ở góc nhìn thị trường vốn, gồm quy mô, thanh khoản, cấu trúc ngành, động lực tăng trưởng, rủi ro và triển vọng.\n\n## 1. Tổng quan chung\n\nNăm 2025, thị trường chứng khoán Việt Nam tiếp tục là một trong những thị trường mới nổi có tính thanh khoản cao trong khu vực Đông Nam Á, với hai sàn chính là HOSE và HNX, cùng nhóm UPCoM. Tâm điểm của thị trường là quá trình nâng hạng thị trường, cải cách hệ thống giao dịch, mở rộng room ngoại,",
+        "response_length": 18674,
+        "links_count": 0,
+        "link_results": [],
+        "score": 9,
+        "verdict": "FAIL",
+        "scores": {
+          "accuracy": 1,
+          "completeness": 0,
+          "sources": 0,
+          "structure": 8
+        },
+        "issues": [
+          "Câu trả lời lạc đề hoàn toàn so với yêu cầu so sánh tổng tài sản của HDBank và ACB trong 3 năm gần đây.",
+          "Không cung cấp số liệu tổng tài sản của HDB và ACB theo từng năm.",
+          "Không có bảng so sánh, không nêu chênh lệch tuyệt đối hoặc tỷ lệ giữa hai ngân hàng.",
+          "Thông tin đưa ra là tổng quan thị trường chứng khoán 2025, không liên quan trực tiếp đến câu hỏi.",
+          "Không cung cấp nguồn tham khảo đáng tin cậy."
+        ],
+        "suggestions": [
+          "Trả lời đúng trọng tâm bằng bảng tổng tài sản của HDBank và ACB trong 3 năm gần nhất, kèm đơn vị tỷ đồng.",
+          "Tính toán chênh lệch tổng tài sản giữa HDBank và ACB theo từng năm, bao gồm chênh lệch tuyệt đối và tỷ lệ chênh lệch.",
+          "Nêu nhận xét ngắn gọn về xu hướng tăng trưởng tổng tài sản của từng ngân hàng.",
+          "Sử dụng nguồn đáng tin cậy như báo cáo tài chính kiểm toán, website ngân hàng, HOSE, Vietstock hoặc CafeF.",
+          "Nếu không chắc về năm dữ liệu, cần ghi rõ giai đoạn được chọn, ví dụ 2022-2024 hoặc 2023-2025."
+        ],
+        "metrics": {
+          "latency_ms": 216249,
+          "token_in": 18,
+          "token_out": 7310,
+          "ram_mb": "3.68 MB",
+          "cpu_load": "6 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q3_risk",
+        "query": "Chi phí dự phòng rủi ro tín dụng của HDBank năm 2024 là bao nhiêu?",
+        "category": "specific_data",
+        "response_preview": "Okay, let me try to figure out how to handle this user's query. The user asked for a summary of the 2025 Vietnamese stock market, and the agent has already provided some data from HDBank's 2024 annual report. The user's latest tool response is from a search about HDBank's loan loss provision in 2024.\n\nFirst, I need to recall the user's original request. They wanted a summary of the 2025 stock market, which includes data like VN-Index performance, key sectors, and industry trends. The agent has b",
+        "response_length": 10144,
+        "links_count": 1,
+        "link_results": [
+          {
+            "url": "https://cdn.hdbank.com.vn/hdbank/bctn/2024-6-17/thong-tin-chung-EN.html",
+            "status": 200,
+            "valid": true,
+            "context": "ham khảo**:  \n1. Báo cáo thường niên HDBank 2024 (https://cdn.hdbank.com.vn/hdbank/bctn/2024-6-17/thong-tin-chung-EN.html"
+          }
+        ],
+        "score": 0,
+        "verdict": "FAIL",
+        "scores": {
+          "accuracy": 0,
+          "completeness": 0,
+          "sources": 0,
+          "structure": 0
+        },
+        "issues": [
+          "Câu trả lời bị lộ toàn bộ quá trình suy nghĩ nội bộ (Chain-of-Thought) của AI thay vì đưa ra câu trả lời cuối cùng cho người dùng.",
+          "Không cung cấp con số cụ thể cho chi phí dự phòng rủi ro tín dụng của HDBank năm 2024 cho người dùng.",
+          "Ngôn ngữ trả lời là tiếng Anh trong khi câu hỏi là tiếng Việt.",
+          "Không cung cấp link nguồn trong nội dung phản hồi."
+        ],
+        "suggestions": [
+          "Loại bỏ phần suy nghĩ nội bộ (thought process) và chỉ trả về kết quả cuối cùng.",
+          "Trích xuất chính xác con số dự phòng (ví dụ: ước tính 4.500 – 5.000 tỷ đồng) và trình bày rõ ràng bằng tiếng Việt.",
+          "Đính kèm link nguồn được cung cấp để tăng tính minh bạch và tin cậy."
+        ],
+        "metrics": {
+          "latency_ms": 147009,
+          "token_in": 21,
+          "token_out": 6424,
+          "ram_mb": "4.91 MB",
+          "cpu_load": "8 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q4_sector",
+        "query": "Triển vọng ngành ngân hàng Việt Nam năm 2025",
+        "category": "sector_outlook",
+        "response_preview": "Dựa trên các báo cáo phân tích thị trường tài chính và dữ liệu ngành cập nhật đến tháng 06/2026, dưới đây là tổng quan triển vọng ngành ngân hàng Việt Nam năm 2025:\n\n### 1. Bối cảnh và Động lực tăng trưởng\nNgành ngân hàng Việt Nam trong năm 2025 ghi nhận sự phục hồi và tăng trưởng vững chắc nhờ các yếu tố vĩ mô thuận lợi và cải cách thể chế:\n*   **Tăng trưởng tín dụng hệ thống**: Đạt mức khoảng **17% so với năm 2024**, được dẫn dắt bởi nhu cầu phục hồi từ lĩnh vực tiêu dùng, hạ tầng trọng điểm v",
+        "response_length": 6168,
+        "links_count": 0,
+        "link_results": [],
+        "score": 45,
+        "verdict": "FAIL",
+        "scores": {
+          "accuracy": 10,
+          "completeness": 15,
+          "sources": 0,
+          "structure": 20
+        },
+        "issues": [
+          "Thông tin đưa ra không có bằng chứng xác thực, một số số liệu (ví dụ: luật sửa đổi có hiệu lực từ 15/10/2025, tăng trưởng lợi nhuận 106% cho ngân hàng vừa và nhỏ) có khả năng không chính xác.",
+          "Không cung cấp bất kỳ nguồn tham khảo nào, làm giảm độ tin cậy của câu trả lời.",
+          "Một số yếu tố quan trọng như dự báo GDP, lạm phát, chính sách tiền tệ và xu hướng cạnh tranh quốc tế chưa được đề cập."
+        ],
+        "suggestions": [
+          "Thêm trích dẫn cụ thể từ các báo cáo của Ngân hàng Nhà nước, Bloomberg, Fitch, hoặc các công ty nghiên cứu tài chính uy tín.",
+          "Kiểm chứng lại các số liệu và đưa ra phạm vi dự báo thay vì con số tuyệt đối khi không chắc chắn.",
+          "Mở rộng phân tích bao gồm các chỉ số kinh tế vĩ mô (GDP, lạm phát, tỷ giá) và các rủi ro ngoại vi (biến động thị trường tài chính toàn cầu)."
+        ],
+        "metrics": {
+          "latency_ms": 105152,
+          "token_in": 12,
+          "token_out": 1960,
+          "ram_mb": "3.85 MB",
+          "cpu_load": "7 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q5_concept",
+        "query": "Giải thích khái niệm P/E ratio và cách sử dụng trong định giá cổ phiếu",
+        "category": "concept_explanation",
+        "response_preview": "Hệ số **P/E (Price-to-Earnings Ratio)** là một trong những chỉ số tài chính cơ bản và phổ biến nhất mà các nhà đầu tư sử dụng để đánh giá xem một cổ phiếu đang được định giá \"đắt\" hay \"rẻ\".\n\n### 1. Khái niệm P/E là gì?\nP/E là tỷ lệ giữa **Giá thị trường** (Price) của cổ phiếu và **Thu nhập trên mỗi cổ phiếu** (Earnings Per Share - EPS).\n\n*   **Công thức:**\n    $$P/E = \\frac{\\text{Giá thị trường hiện tại của cổ phiếu}}{\\text{Thu nhập trên mỗi cổ phiếu (EPS)}}$$\n\n*   **Ý nghĩa:** Chỉ số này cho bi",
+        "response_length": 6501,
+        "links_count": 0,
+        "link_results": [],
+        "score": 65,
+        "verdict": "FAIL",
+        "scores": {
+          "accuracy": 22,
+          "completeness": 20,
+          "sources": 0,
+          "structure": 23
+        },
+        "issues": [
+          "Không có nguồn tham khảo đáng tin cậy",
+          "Có lỗi chính tả và mã Unicode trong phần \"Điều chnh\"",
+          "Chưa đề cập đến các dạng P/E khác như forward P/E và trailing P/E",
+          "Chưa nêu rõ hạn chế của P/E đối với các công ty tăng trưởng cao hoặc có lợi nhuận không ổn định"
+        ],
+        "suggestions": [
+          "Thêm các nguồn tham khảo uy tín như sách giáo trình tài chính, báo cáo phân tích của các công ty chứng khoán",
+          "Sửa lỗi chính tả và đảm bảo mã ký tự hiển thị đúng",
+          "Mở rộng phần giải thích để bao gồm forward P/E, trailing P/E và cách lựa chọn chúng",
+          "Nhắc đến các hạn chế của P/E khi áp dụng cho công ty có lợi nhuận biến động hoặc không có lợi nhuận, và đề xuất các chỉ số bổ trợ khác"
+        ],
+        "metrics": {
+          "latency_ms": 87214,
+          "token_in": 21,
+          "token_out": 2057,
+          "ram_mb": "3.16 MB",
+          "cpu_load": "7 Goroutines (Active)"
+        }
+      }
+    ],
+    "all_passed": false
+  },
+  {
+    "iteration": 3,
+    "timestamp": "2026-06-14T10:24:18.578980",
+    "average_score": 58.0,
+    "pass_rate": "2/5",
+    "link_validity": "2/3",
+    "results": [
+      {
+        "id": "q1_fundamental",
+        "query": "Tổng quan về thị trường chứng khoán Việt Nam năm 2025",
+        "category": "market_overview",
+        "response_preview": "Dựa trên các báo cáo phân tích chiến lược và dữ liệu thị trường cập nhật đến giữa năm 2026, dưới đây là tổng quan toàn cảnh về thị trường chứng khoán Việt Nam trong năm 2025 – một năm được đánh dấu bởi sự phục hồi mạnh mẽ và những bước chuyển mình quan trọng.\n\n### 1. Diễn biến chỉ số và Thanh khoản\nNăm 2025 ghi nhận sự tăng trưởng tích cực, đưa VN-Index tiến sát và vượt qua các ngưỡng kháng cự quan trọng.\n*   **Điểm số**: VN-Index kết thúc năm 2025 ở mức **1.784,49 điểm**, tương đương mức tăng t",
+        "response_length": 6773,
+        "links_count": 0,
+        "link_results": [],
+        "score": 42,
+        "verdict": "FAIL",
+        "scores": {
+          "accuracy": 10,
+          "completeness": 12,
+          "sources": 0,
+          "structure": 20
+        },
+        "issues": [
+          "Không có nguồn tham khảo đáng tin cậy",
+          "Một số số liệu (ví dụ VN-Index 1.784,49, tỷ lệ NPL) không được xác thực và có thể là suy đoán",
+          "Câu trả lời bị cắt ngắn, một phần nội dung bị mất (ví dụ phần mô tả chi tiết về NPL)"
+        ],
+        "suggestions": [
+          "Cung cấp các nguồn dữ liệu chính thống (Bộ Tài chính, HOSE, Bloomberg, Reuters) cho mọi số liệu đưa ra",
+          "Kiểm chứng lại các con số và chỉ số thực tế của năm 2025 trước khi đưa vào câu trả lời",
+          "Hoàn thiện nội dung bị thiếu, đảm bảo câu trả lời có kết thúc rõ ràng và đầy đủ các yếu tố kỳ vọng"
+        ],
+        "metrics": {
+          "latency_ms": 45709,
+          "token_in": 15,
+          "token_out": 2131,
+          "ram_mb": "3.19 MB",
+          "cpu_load": "6 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q2_comparison",
+        "query": "So sánh tổng tài sản HDBank và ACB trong 3 năm gần đây",
+        "category": "comparison",
+        "response_preview": "Need data 2023,2024,2025 for both. Use snippets.**So sánh tổng tài sản HDBank và ACB (2023‑2025)**  \n\n| Năm | Tổng tài sản HDBank | Tổng tài sản ACB | Ghi chú |\n|-----|--------------------|------------------|---------|\n| **2023** | **508.263 tỷ đồng** – HDBank đạt mức này vào cuối năm 2023, tăng��≈22 % so với đầu năm 2023【2†L1-L3】 | **≈ 862 tỷ đồng** – ACB đã công bố tổng tài sản gần 862 tỷ đồng vào cuối năm 2023 (số liệu được trích từ báo cáo thường niên 2023, ngày 31‑12‑2023)【1†L1-L2】 | Năm 20",
+        "response_length": 5749,
+        "links_count": 0,
+        "link_results": [],
+        "score": 35,
+        "verdict": "FAIL",
+        "scores": {
+          "accuracy": 5,
+          "completeness": 12,
+          "sources": 0,
+          "structure": 18
+        },
+        "issues": [
+          "Dữ liệu tổng tài sản không được trích dẫn rõ ràng, nhiều số liệu có vẻ giả định hoặc không khớp với báo cáo thực tế",
+          "Không có link nguồn tin cậy, chỉ có mô tả chung mà không chỉ ra tài liệu cụ thể",
+          "Một số thông tin (ví dụ năm 2025) chưa có báo cáo chính thức nên không thể xác thực"
+        ],
+        "suggestions": [
+          "Thu thập số liệu tổng tài sản thực tế từ báo cáo thường niên của HDBank và ACB cho các năm 2022‑2024 (và năm 2025 nếu đã công bố)",
+          "Cung cấp trích dẫn chi tiết kèm URL tới báo cáo tài chính hoặc nguồn tin tài chính uy tín (Ví: VnExpress, Cafef, Bloomberg)",
+          "Kiểm tra lại tính toán tăng trưởng và trình bày bảng so sánh một cách nhất quán, tránh sử dụng ký hiệu hoặc dấu câu không chuẩn"
+        ],
+        "metrics": {
+          "latency_ms": 95694,
+          "token_in": 18,
+          "token_out": 1897,
+          "ram_mb": "4.52 MB",
+          "cpu_load": "7 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q3_risk",
+        "query": "Chi phí dự phòng rủi ro tín dụng của HDBank năm 2024 là bao nhiêu?",
+        "category": "specific_data",
+        "response_preview": "**Chi phí dự phòng rủi ro tín dụng (PDD) của HDBank năm 2024**\n\n- **Số tiền**: **2.454 tỷ đồng** (chi phí dự phòng rủi ro tín dụng cho cả năm 2024)【1†L1-L2】  \n\n*Giải thích*: Đây là khoản chi phí HDBank dự phòng cho các khoản vay có khả năng trở thành nợ xấu, được ghi nhận trong báo cáo tài chính năm 2024.  \n\n---\n\n**Nguồn tham khảo**  \n1. “Tăng mạnh dự phòng rủi ro tín dụng, HDBank vẫn báo lãi tăng …” – eTime Danviet (02 / 05 / 2024) – chi phí dự phòng rủi ro tín dụng cho năm 2024 là 2.454 tỷ đồn",
+        "response_length": 1006,
+        "links_count": 0,
+        "link_results": [],
+        "score": 75,
+        "verdict": "PASS",
+        "scores": {
+          "accuracy": 22,
+          "completeness": 23,
+          "sources": 10,
+          "structure": 20
+        },
+        "issues": [
+          "Nguồn tham khảo không có link URL cụ thể, chỉ nêu tên bài báo",
+          "Nội dung trả lời bị lặp lại một phần"
+        ],
+        "suggestions": [
+          "Cung cấp đường link trực tiếp tới bài báo hoặc báo cáo tài chính",
+          "Loại bỏ phần lặp lại để trả lời ngắn gọn, súc tích hơn"
+        ],
+        "metrics": {
+          "latency_ms": 49817,
+          "token_in": 21,
+          "token_out": 389,
+          "ram_mb": "4.54 MB",
+          "cpu_load": "8 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q4_sector",
+        "query": "Triển vọng ngành ngân hàng Việt Nam năm 2025",
+        "category": "sector_outlook",
+        "response_preview": "We have sources. Summarize outlook.**Triển vọng ngành Ngân hàng Việt Nam năm 2025**\n\n| Nội dung | Chi tiết | Nguồn |\n|----------|----------|------|\n| **Tăng trưởng tín dụng** | Tín dụng toàn hệ thống tăng **13,9 % YTD** đến 30/9/2025, với mục tiêu **≥ 16 %** cho cả năm 2025 nhờ gói tín dụng ưu đãi và nhu cầu doanh nghiệp tăng lên. | 【1†L1-L2】 |\n| **Tăng trưởng lợi nhuận** | Lợi nhuận trước thuế (PBT) dự kiến tăng **17 %‑20 %** so với 2024, nhờ biên lợi nhuận cải thiện và giảm tỷ lệ nợ xấu. | 【2†",
+        "response_length": 6012,
+        "links_count": 3,
+        "link_results": [
+          {
+            "url": "https://hdbs.vn/wp-content/uploads/2025/12/HDS_Nganh-Ngan-hang-9-thang-nam-2025-va-Trien-vong.pdf",
+            "status": 200,
+            "valid": true,
+            "context": "ăm 2025 và Triển vọng** – HDBS (03 / 12 / 2025) – https://hdbs.vn/wp-content/uploads/2025/12/HDS_Nganh-Ngan-hang-9-thang-nam-2025-va-Trien-vong.pdf"
+          },
+          {
+            "url": "https://finance.vietstock.vn/bao-cao-phan-tich/14710/bao-cao-nganh-ngan-hang-2025-trien-vong-loi-nhuan-tang-truong-tich-cuc-.htm",
+            "status": 404,
+            "valid": false,
+            "context": "g lợi nhuận** – Vietstock (ngày không xác định) – https://finance.vietstock.vn/bao-cao-phan-tich/14710/bao-cao-nganh-ngan-hang-2025-trien-vong-loi-nhuan-tang-truong-tich-cuc-.htm"
+          },
+          {
+            "url": "https://vncsi.com.vn/dien-bien-va-trien-vong-nganh-ngan-hang-/",
+            "status": 200,
+            "valid": true,
+            "context": "àng nửa đầu năm 2025** – VNCsi (21 / 07 / 2025) – https://vncsi.com.vn/dien-bien-va-trien-vong-nganh-ngan-hang-/"
+          }
+        ],
+        "score": 73,
+        "verdict": "PASS",
+        "scores": {
+          "accuracy": 18,
+          "completeness": 20,
+          "sources": 15,
+          "structure": 20
+        },
+        "issues": [
+          "Không đầy đủ các liên kết nguồn cụ thể và chi tiết",
+          "Thiếu thông tin chi tiết về rủi ro lãi suất và tác động của chính sách tiền tệ",
+          "Không đề cập rõ ràng đến các ngân hàng trung tâm và vai trò của họ"
+        ],
+        "suggestions": [
+          "Cung cấp đầy đủ URL và ngày truy cập cho từng nguồn; thêm dữ liệu cụ thể từ báo cáo; bổ sung phân tích rủi ro lãi suất và chính sách tiền tệ; đề cập vai trò của ngân hàng trung ương và các ngân hàng lớn trong ngành"
+        ],
+        "metrics": {
+          "latency_ms": 84488,
+          "token_in": 12,
+          "token_out": 1888,
+          "ram_mb": "3.88 MB",
+          "cpu_load": "7 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q5_concept",
+        "query": "Giải thích khái niệm P/E ratio và cách sử dụng trong định giá cổ phiếu",
+        "category": "concept_explanation",
+        "response_preview": "**P/E Ratio (Price-to-Earnings Ratio)** – hay **Hệ số Giá/Thu nhập** – là một trong những chỉ số tài chính phổ biến và quan trọng nhất được các nhà đầu tư sử dụng để đánh giá xem một cổ phiếu đang ở mức giá \"đắt\" hay \"rẻ\" so với khả năng sinh lời của doanh nghiệp đó.\n\n### 1. Khái niệm và Công thức tính\n\nP/E đo lường số tiền mà nhà đầu tư sẵn sàng bỏ ra để sở hữu **1 đồng lợi nhuận** của doanh nghiệp.\n\n**Công thức:**\n$$P/E = \\frac{\\text{Giá thị trường của cổ phiếu (Price)}}{\\text{Thu nhập trên mỗ",
+        "response_length": 6432,
+        "links_count": 0,
+        "link_results": [],
+        "score": 65,
+        "verdict": "FAIL",
+        "scores": {
+          "accuracy": 22,
+          "completeness": 20,
+          "sources": 0,
+          "structure": 23
+        },
+        "issues": [
+          "Không cung cấp nguồn tham khảo đáng tin cậy",
+          "Chưa đề cập đến P/E dự báo (forward P/E) và sự khác biệt giữa trailing P/E và forward P/E",
+          "Không giải thích chi tiết về cách tính EPS (lợi nhuận sau thuế, lợi nhuận thuần, lợi nhuận điều chỉnh)",
+          "Thiếu lưu ý về ảnh hưởng của tỷ lệ nợ và cấu trúc vốn tới P/E"
+        ],
+        "suggestions": [
+          "Thêm phần tham khảo từ các nguồn uy tín như Bloomberg, Reuters, hoặc sách giáo trình tài chính",
+          "Mở rộng nội dung để giải thích forward P/E và sự khác nhau giữa trailing và forward P/E",
+          "Chi tiết hơn về cách tính EPS và các biến thể (adjusted EPS, diluted EPS)",
+          "Nhắc tới việc điều chỉnh P/E cho các yếu tố như nợ, tỷ lệ cổ tức và mức độ rủi ro"
+        ],
+        "metrics": {
+          "latency_ms": 41855,
+          "token_in": 21,
+          "token_out": 2029,
+          "ram_mb": "3.58 MB",
+          "cpu_load": "6 Goroutines (Active)"
+        }
+      }
+    ],
+    "all_passed": false
+  },
+  {
+    "iteration": 4,
+    "timestamp": "2026-06-14T10:33:07.280392",
+    "average_score": 63.6,
+    "pass_rate": "1/5",
+    "link_validity": "5/9",
+    "results": [
+      {
+        "id": "q1_fundamental",
+        "query": "Tổng quan về thị trường chứng khoán Việt Nam năm 2025",
+        "category": "market_overview",
+        "response_preview": "**Tổng quan thị trường chứng khoán Việt Nam 2025**\n\n| Nội dung | Chi tiết | Nguồn |\n|----------|----------|------|\n| **VN‑Index** | Đóng cửa cuối năm 2025 ở mức **1 784,49 điểm**, tăng **≈ 20 %** so với 2024. | 【2†L1-L2】 |\n| **Thanh khoản** | Giá trị giao dịch bình quân **≈ 15.000 tỷ đồng/phiên**, tăng **26,8 %** YoY. | 【1†L1-L2】 |\n| **Cấu trúc vốn hoá** | 5 công ty lớn (Vingroup, Vinamilk, Vietcombank, Vinhomes, Masan) chiếm **≈ 30 %** vốn hoá thị trường. | (được nêu trong ngữ cảnh) |\n| **Ngành",
+        "response_length": 6570,
+        "links_count": 4,
+        "link_results": [
+          {
+            "url": "https://tapchinganhang.gov.vn/dau-an-thi-truong-chung-khoan-viet-nam-nam-2025-va-giai-phap-trong-tam-nam-2026-17059.html",
+            "status": 200,
+            "valid": true,
+            "context": "2026** – TAPCHINGANHANG.GOV.VN (28 / 02 / 2026) – https://tapchinganhang.gov.vn/dau-an-thi-truong-chung-khoan-viet-nam-nam-2025-va-giai-phap-trong-tam-nam-2026-17059.html"
+          },
+          {
+            "url": "https://vneconomy.vn/thi-truong-chung-khoan-viet-nam-2025-va-trien-vong-2026.htm",
+            "status": 200,
+            "valid": true,
+            "context": "iển vọng 2026** – VNECONOMY.VN (09 / 05 / 2026) – https://vneconomy.vn/thi-truong-chung-khoan-viet-nam-2025-va-trien-vong-2026.htm"
+          },
+          {
+            "url": "https://thoibaotaichinhvietnam.vn/thi-truong-chung-khoan-viet-nam-nam-2025-tao-nen-tang-cho-giai-doan-phat-trien-moi-188812.html**Tổng",
+            "status": 0,
+            "valid": false,
+            "error": "'ascii' codec can't encode character '\\u1ed5' in position 103: ordinal not in range(128)",
+            "context": "ới** – THOIBAO TAICHINHVIETNAM (15 / 12 / 2025) – https://thoibaotaichinhvietnam.vn/thi-truong-chung-khoan-viet-nam-nam-2025-tao-nen-tang-cho-giai-doan-phat-trien-moi-188812.html**Tổng"
+          },
+          {
+            "url": "https://thoibaotaichinhvietnam.vn/thi-truong-chung-khoan-viet-nam-nam-2025-tao-nen-tang-cho-giai-doan-phat-trien-moi-188812.html",
+            "status": 200,
+            "valid": true,
+            "context": "ới** – THOIBAO TAICHINHVIETNAM (15 / 12 / 2025) – https://thoibaotaichinhvietnam.vn/thi-truong-chung-khoan-viet-nam-nam-2025-tao-nen-tang-cho-giai-doan-phat-trien-moi-188812.html"
+          }
+        ],
+        "score": 40,
+        "verdict": "FAIL",
+        "scores": {
+          "accuracy": 8,
+          "completeness": 12,
+          "sources": 5,
+          "structure": 15
+        },
+        "issues": [
+          "Nhiều số liệu không được xác thực từ nguồn thực tế, các trích dẫn nguồn không có chi tiết cụ thể (không có dòng L1-L2 thực tế)",
+          "Một số thông tin như tỷ lệ vốn hoá của 5 công ty lớn và dự báo VN‑Index 2026 thiếu căn cứ rõ ràng",
+          "Liên kết nguồn được liệt kê nhưng không được trích dẫn cụ thể trong bảng, gây khó kiểm chứng"
+        ],
+        "suggestions": [
+          "Cung cấp số liệu dựa trên báo cáo thực tế, kèm theo trích dẫn chi tiết (tên báo cáo, năm, trang)",
+          "Sử dụng nguồn tin cậy như báo cáo của SSC, HOSE, Bloomberg hoặc các ngân hàng đầu tư và trích dẫn cụ thể",
+          "Mở rộng nội dung để bao quát đầy đủ các yếu tố kỳ vọng: khối lượng giao dịch, P/E trung bình, luồng vốn FDI, chính sách tiền tệ, rủi ro"
+        ],
+        "metrics": {
+          "latency_ms": 87106,
+          "token_in": 15,
+          "token_out": 2062,
+          "ram_mb": "3.35 MB",
+          "cpu_load": "8 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q2_comparison",
+        "query": "So sánh tổng tài sản HDBank và ACB trong 3 năm gần đây",
+        "category": "comparison",
+        "response_preview": "**So sánh tổng tài sản HDBank và ACB (2023‑2025)**  \n\n| Năm | Tổng tài sản HDBank | Tổng tài sản ACB | Nguồn |\n|-----|--------------------|------------------|------|\n| **2023** | **≈ 739 000 tỷ đồng** (tăng 6 % so với 2022) | **≈ 860 000 tỷ đồng** (tăng 5 % so với 2022) | 【1†L1-L2】 |\n| **2024** | **697 366 tỷ đồng** (tăng 15,8 % so với 2023) – số liệu được công bố trong báo cáo tài chính năm 2024 của HDBank. | **≈ 950 000 tỷ đồng** (tăng 10 % so với 2023) – ước tính từ báo cáo tài chính năm 2024",
+        "response_length": 4980,
+        "links_count": 3,
+        "link_results": [
+          {
+            "url": "https://cafef.vn/cap-nhat-sang-30-1-20-ngan-hang-da-cong-bo-loi-nhuan-nam-2025-hdbank-lot-top-3-ngan-hang-tu-nhan-lai-lon-nhat-188260130093838012.chn",
+            "status": 200,
+            "valid": true,
+            "context": "2025, HDBank lọt …” – CaféF** (30 / 01 / 2026) – https://cafef.vn/cap-nhat-sang-30-1-20-ngan-hang-da-cong-bo-loi-nhuan-nam-2025-hdbank-lot-top-3-ngan-hang-tu-nhan-lai-lon-nhat-188260130093838012.chn"
+          },
+          {
+            "url": "https://acb.com.vn/ve-chung-toi/acb-vuot-moc-1-trieu-ty-dong-tong-tai-san-duy-tri-no-xau-o-muc-thap-nhat-he-thong.**So",
+            "status": 404,
+            "valid": false,
+            "context": "mốc 1 triệu tỷ đồng tổng tài sản** – ACB.com.vn – https://acb.com.vn/ve-chung-toi/acb-vuot-moc-1-trieu-ty-dong-tong-tai-san-duy-tri-no-xau-o-muc-thap-nhat-he-thong.**So"
+          },
+          {
+            "url": "https://acb.com.vn/ve-chung-toi/acb-vuot-moc-1-trieu-ty-dong-tong-tai-san-duy-tri-no-xau-o-muc-thap-nhat-he-thong",
+            "status": 404,
+            "valid": false,
+            "context": "mốc 1 triệu tỷ đồng tổng tài sản** – ACB.com.vn – https://acb.com.vn/ve-chung-toi/acb-vuot-moc-1-trieu-ty-dong-tong-tai-san-duy-tri-no-xau-o-muc-thap-nhat-he-thong."
+          }
+        ],
+        "score": 60,
+        "verdict": "FAIL",
+        "scores": {
+          "accuracy": 15,
+          "completeness": 15,
+          "sources": 10,
+          "structure": 20
+        },
+        "issues": [
+          "Thông tin số liệu tài sản không được trích dẫn rõ ràng và có vẻ không chính xác (ví dụ: số liệu 2024, 2025 chưa được xác nhận từ báo cáo chính thức);",
+          "Các nguồn được liệt kê không đầy đủ và không liên quan trực tiếp đến dữ liệu được trình bày;",
+          "Không có trích dẫn cụ thể (địa chỉ URL, ngày công bố) cho các con số trong bảng;",
+          "Không đề cập đầy đủ các yếu tố kỳ vọng như tỷ lệ nợ xấu, cấu trúc tài sản, hoặc các chỉ số hiệu suất khác;",
+          "Một số con số được làm tròn và không có giải thích về phương pháp tính;",
+          "Không có phần phân tích sâu về xu hướng và nguyên nhân của sự thay đổi;",
+          "Không có định dạng bảng chuẩn (cột tiêu đề, dữ liệu, nguồn) trong văn bản;",
+          "Không có phần tóm tắt ngắn gọn và rõ ràng;",
+          "Không có phần kết luận mạnh mẽ và có dẫn chứng;",
+          "Không có phần đề xuất hành động hoặc câu hỏi mở cho người đọc."
+        ],
+        "suggestions": [
+          "Cung cấp dữ liệu chính xác từ báo cáo tài chính của HDBank và ACB (định dạng bảng với nguồn cụ thể cho từng năm);",
+          "Trích dẫn trực tiếp các trang web hoặc tài liệu PDF của ngân hàng, bao gồm ngày công bố và đường link đầy đủ;",
+          "Bao gồm các chỉ số bổ sung như tỷ lệ nợ xấu, vốn chủ sở hữu, lợi nhuận ròng để làm phong phú nội dung;",
+          "Sử dụng định dạng bảng chuẩn với tiêu đề cột rõ ràng và nguồn dữ liệu ngay dưới bảng;",
+          "Viết phần tóm tắt ngắn gọn, nêu bật điểm chính và xu hướng;",
+          "Kết luận nên đưa ra nhận định dựa trên dữ liệu và đề xuất các câu hỏi tiếp theo;",
+          "Kiểm tra lại tính chính xác của các con số, tránh làm tròn quá mức hoặc sử dụng dữ liệu chưa được xác nhận;",
+          "Cung cấp một phần “Phương pháp” giải thích cách tính các con số;",
+          "Đảm bảo rằng tất cả các nguồn đều là trang web chính thức của ngân hàng hoặc các cơ quan tài chính uy tín;",
+          "Sử dụng ngôn ngữ chuyên nghiệp, tránh các từ ngữ mơ hồ và đảm bảo tính logic trong trình bày."
+        ],
+        "metrics": {
+          "latency_ms": 69554,
+          "token_in": 18,
+          "token_out": 1564,
+          "ram_mb": "2.91 MB",
+          "cpu_load": "7 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q3_risk",
+        "query": "Chi phí dự phòng rủi ro tín dụng của HDBank năm 2024 là bao nhiêu?",
+        "category": "specific_data",
+        "response_preview": "**Chi phí dự phòng rủi ro tín dụng (CDR) của HDBank năm 2024**\n\n- **Quý I/2024:** 1 270 tỷ đồng (tăng 33 % so với cùng kỳ năm trước)【3†L1-L4】  \n- **Cả năm 2024 (ước tính):** 4 500 – 5 000 tỷ đồng (dựa trên xu hướng tăng 33 %/quý và dữ liệu thực tế của quý I)【tóm tắt ngữ cảnh hệ thống trước đây】  \n\n> *Lưu ý: Số liệu năm toàn năm được ước tính dựa trên xu hướng quý I và không có báo cáo tài chính toàn năm đã công bố. Khi báo cáo tài chính năm 2024 được công bố, con số sẽ được cập nhật lại.*  \n\n**N",
+        "response_length": 1848,
+        "links_count": 1,
+        "link_results": [
+          {
+            "url": "https://etime.danviet.vn/tang-manh-du-phong-rui-ro-tin-dung-hdbank-van-bao-lai-tang-47-len-hon-4000-ty-dong-20240501180705904-d118363.html",
+            "status": 403,
+            "valid": false,
+            "context": "tăng 47% lên hơn 4.000 tỷ đồng”** (02/05/2024) – https://etime.danviet.vn/tang-manh-du-phong-rui-ro-tin-dung-hdbank-van-bao-lai-tang-47-len-hon-4000-ty-dong-20240501180705904-d118363.html"
+          }
+        ],
+        "score": 100,
+        "verdict": "PASS",
+        "scores": {
+          "accuracy": 25,
+          "completeness": 25,
+          "sources": 25,
+          "structure": 25
+        },
+        "issues": [],
+        "suggestions": [],
+        "metrics": {
+          "latency_ms": 49465,
+          "token_in": 21,
+          "token_out": 654,
+          "ram_mb": "4.39 MB",
+          "cpu_load": "7 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q4_sector",
+        "query": "Triển vọng ngành ngân hàng Việt Nam năm 2025",
+        "category": "sector_outlook",
+        "response_preview": "We have article but need 2025 outlook. Use snippet. Probably enough.**Triển vọng ngành ngân hàng Việt Nam năm 2025**\n\n| Nội dung | Chi tiết | Nguồn |\n|----------|----------|------|\n| **Tăng trưởng tín dụng** | Dự kiến tăng **≈ 17 %** so với năm 2024, nhờ nhu cầu tiêu dùng mạnh, đầu tư công và mở rộng tín dụng doanh nghiệp. | 【1†L1-L3】 |\n| **Lợi nhuận (PBT)** | Các ngân hàng lớn kỳ vọng tăng **17 %‑20 %** so với 2024, với lợi nhuận trước thuế (PBT) dự kiến đạt trên **150 tỷ đồng** cho các ngân hà",
+        "response_length": 7056,
+        "links_count": 1,
+        "link_results": [
+          {
+            "url": "https://thitruongtaichinhtiente.vn/tinh-hinh-hoat-dong-nganh-ngan-hang-viet-nam-nam-2025-trien-vong-nam-2026-va-mot-so-kien-nghi-77830.html",
+            "status": 200,
+            "valid": true,
+            "context": "ng năm 2026 và một số kiến nghị”** (12/06/2026) – https://thitruongtaichinhtiente.vn/tinh-hinh-hoat-dong-nganh-ngan-hang-viet-nam-nam-2025-trien-vong-nam-2026-va-mot-so-kien-nghi-77830.html"
+          }
+        ],
+        "score": 55,
+        "verdict": "FAIL",
+        "scores": {
+          "accuracy": 12,
+          "completeness": 20,
+          "sources": 5,
+          "structure": 18
+        },
+        "issues": [
+          "Nhiều dữ liệu không có bằng chứng cụ thể, các trích dẫn [{1†L1-L3}] không thực tế",
+          "Các con số dự báo thiếu nguồn gốc rõ ràng, gây nghi ngờ về độ chính xác",
+          "Liên kết nguồn duy nhất không được trích dẫn chi tiết trong nội dung"
+        ],
+        "suggestions": [
+          "Cung cấp các số liệu dự báo kèm theo năm, tổ chức nghiên cứu hoặc báo cáo tài chính thực tế",
+          "Sử dụng trích dẫn chuẩn (tên báo, ngày, trang) thay cho các placeholder không tồn tại",
+          "Mở rộng phần rủi ro và cơ hội, bao gồm các chỉ số như ROE, CAR, và xu hướng tài chính cụ thể của các ngân hàng lớn"
+        ],
+        "metrics": {
+          "latency_ms": 105430,
+          "token_in": 12,
+          "token_out": 2289,
+          "ram_mb": "3.88 MB",
+          "cpu_load": "8 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q5_concept",
+        "query": "Giải thích khái niệm P/E ratio và cách sử dụng trong định giá cổ phiếu",
+        "category": "concept_explanation",
+        "response_preview": "Trong lĩnh vực tài chính, **P/E (Price to Earnings Ratio)** – hay Hệ số giá trên thu nhập – là một trong những công cụ cơ bản và phổ biến nhất để nhà đầu tư đánh giá xem một cổ phiếu đang được định giá \"đắt\" hay \"rẻ\" so với lợi nhuận mà nó tạo ra.\n\n### 1. Khái niệm P/E Ratio\nP/E được tính bằng cách lấy giá thị trường của một cổ phiếu chia cho thu nhập trên mỗi cổ phiếu (EPS).\n\n**Công thức:**\n$$P/E = \\frac{\\text{Giá thị trường mỗi cổ phiếu (Price)}}{\\text{Thu nhập trên mỗi cổ phiếu (EPS)}}$$\n\n*  ",
+        "response_length": 6964,
+        "links_count": 0,
+        "link_results": [],
+        "score": 63,
+        "verdict": "FAIL",
+        "scores": {
+          "accuracy": 22,
+          "completeness": 18,
+          "sources": 0,
+          "structure": 23
+        },
+        "issues": [
+          "Không cung cấp nguồn tham khảo nào, giảm điểm nguồn đáng tin cậy.",
+          "Nội dung chưa đề cập đầy đủ các khía cạnh quan trọng của P/E như P/E dự báo (forward P/E), P/E của công ty không có lợi nhuận (negative EPS) và các hạn chế khác.",
+          "Một số phần bị cắt ngắn, câu trả lời chưa hoàn thiện (ví dụ phần về ngành nghề có chu kỳ bị dừng giữa chừng)."
+        ],
+        "suggestions": [
+          "Thêm các nguồn tham khảo uy tín như sách giáo trình tài chính, báo cáo của các công ty chứng khoán hoặc trang web tài chính (Investopedia, Bloomberg).",
+          "Mở rộng phần giải thích để bao gồm forward P/E, cách xử lý EPS âm và các hạn chế của P/E trong các ngành chu kỳ.",
+          "Hoàn thiện phần kết luận và các lưu ý còn lại để trả lời không bị gián đoạn."
+        ],
+        "metrics": {
+          "latency_ms": 44222,
+          "token_in": 21,
+          "token_out": 2224,
+          "ram_mb": "4.18 MB",
+          "cpu_load": "6 Goroutines (Active)"
+        }
+      }
+    ],
+    "all_passed": false
+  },
+  {
+    "iteration": 5,
+    "timestamp": "2026-06-14T10:44:27.865964",
+    "average_score": 67.0,
+    "pass_rate": "3/5",
+    "link_validity": "10/18",
+    "results": [
+      {
+        "id": "q1_fundamental",
+        "query": "Tổng quan về thị trường chứng khoán Việt Nam năm 2025",
+        "category": "market_overview",
+        "response_preview": "We have search results. Need to provide overview.**Tổng quan thị trường chứng khoán Việt Nam năm 2025**  \n*(Các con số được trích dẫn từ các báo cáo và tin tức đư���c công bố cuối năm 2025 / đầu năm 2026, nên phản ánh tình hình thực tế của năm 2025)*  \n\n| Chỉ số / Khía cạnh | Dữ liệu 2025 | So sánh / Xu hướng | Nguồn |\n|--------------------|--------------|--------------------|-------|\n| **VN-Index** | **1 784,49 điểm** | +20 % so với 2024 (1 470,05 điểm) | [VNEconomy, 09/05/2026] |\n| **T��ng kim",
+        "response_length": 8035,
+        "links_count": 4,
+        "link_results": [
+          {
+            "url": "https://vneconomy.vn/thi-truong-chung-khoan-viet-nam-2025-va-trien-vong-2026.htm",
+            "status": 200,
+            "valid": true,
+            "context": "Việt Nam 2025 và triển vọng 2026” (09/05/2026) – https://vneconomy.vn/thi-truong-chung-khoan-viet-nam-2025-va-trien-vong-2026.htm"
+          },
+          {
+            "url": "https://nhandan.vn/thi-truong-chung-khoan-2025-buoc-ngoat-nang-hang-va-nhung-dau-an-tieu-bieu-post933469.html",
+            "status": 200,
+            "valid": true,
+            "context": "hạng và những dấu hiệu tiêu biểu” (27/12/2025) – https://nhandan.vn/thi-truong-chung-khoan-2025-buoc-ngoat-nang-hang-va-nhung-dau-an-tieu-bieu-post933469.html"
+          },
+          {
+            "url": "https://tapchinganhang.gov.vn/dau-an-thi-truong-chung-khoan-viet-nam-nam-2025-va-giai-phap-trong-tam-nam-2026-17059.htmlWe",
+            "status": 200,
+            "valid": true,
+            "context": "ờng chứng khoán Việt Nam năm 2025” (28/02/2026) – https://tapchinganhang.gov.vn/dau-an-thi-truong-chung-khoan-viet-nam-nam-2025-va-giai-phap-trong-tam-nam-2026-17059.htmlWe"
+          },
+          {
+            "url": "https://tapchinganhang.gov.vn/dau-an-thi-truong-chung-khoan-viet-nam-nam-2025-va-giai-phap-trong-tam-nam-2026-17059.html",
+            "status": 200,
+            "valid": true,
+            "context": "ờng chứng khoán Việt Nam năm 2025” (28/02/2026) – https://tapchinganhang.gov.vn/dau-an-thi-truong-chung-khoan-viet-nam-nam-2025-va-giai-phap-trong-tam-nam-2026-17059.html"
+          }
+        ],
+        "score": 65,
+        "verdict": "PASS",
+        "scores": {
+          "accuracy": 10,
+          "completeness": 15,
+          "sources": 20,
+          "structure": 20
+        },
+        "issues": [
+          "Thông tin số liệu được trích dẫn như “được công bố cuối năm 2025 / đầu năm 2026” nhưng không có bằng chứng xác thực; dữ liệu có thể chưa được kiểm chứng, dẫn đến rủi ro sai lệch.",
+          "Câu trả lời chưa đề cập đầy đủ các yếu tố kỳ vọng như xu hướng khối lượng giao dịch, mức độ thanh khoản, tác động của chính sách tiền tệ, và các chỉ số rủi ro như NPL, tỷ lệ nợ xấu."
+        ],
+        "suggestions": [],
+        "metrics": {
+          "latency_ms": 92339,
+          "token_in": 15,
+          "token_out": 2522,
+          "ram_mb": "4.65 MB",
+          "cpu_load": "8 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q2_comparison",
+        "query": "So sánh tổng tài sản HDBank và ACB trong 3 năm gần đây",
+        "category": "comparison",
+        "response_preview": "We have data. Need overview market 2025. Use gathered info.**Tổng quan thị trường chứng khoán Việt Nam năm 2025**\n\n---\n\n### 1. Tổng quan chỉ số và khối lượng giao dịch\n| Chỉ số | Mức đóng cửa năm 2025* | Biến động so với cuối 2024 | Nguồn |\n|--------|----------------------|----------------------------|------|\n| **VN‑Index** | **1 784,49 điểm** | +20 % | [1] |\n| **Khối lượng giao dịch trung bình** | **15 000 tỷ đồng/phiên** | +26,8 % | [1] |\n\n\\*Thị trường đã đóng cửa vào ngày 31 /12/2025; dữ liệu",
+        "response_length": 13766,
+        "links_count": 9,
+        "link_results": [
+          {
+            "url": "https://www.bloomberg.com/vietnam-equity-review-2025",
+            "status": 403,
+            "valid": false,
+            "context": "**Bloomberg Vietnam Equity Market Review 2025** – https://www.bloomberg.com/vietnam-equity-review-2025"
+          },
+          {
+            "url": "https://www.hsx.vn/vn-index-constituents-2025",
+            "status": 200,
+            "valid": true,
+            "context": "01‑28)  \n2. **VN‑Index Constituents Data 2025** – https://www.hsx.vn/vn-index-constituents-2025"
+          },
+          {
+            "url": "https://www.imf.org/en/Countries/VNM",
+            "status": 403,
+            "valid": false,
+            "context": ")  \n3. **IMF World Economic Outlook – Vietnam** – https://www.imf.org/en/Countries/VNM"
+          },
+          {
+            "url": "https://www.pwc.com/vn/en/economic-outlook-2025",
+            "status": 404,
+            "valid": false,
+            "context": "‑10)  \n4. **PwC Vietnam Economic Outlook 2025** – https://www.pwc.com/vn/en/economic-outlook-2025"
+          },
+          {
+            "url": "https://www.sbv.gov.vn/capital-flow-summary-2025",
+            "status": 404,
+            "valid": false,
+            "context": "tal Flow Summary – Vietnam Equity Market 2025** – https://www.sbv.gov.vn/capital-flow-summary-2025"
+          },
+          {
+            "url": "https://www.hsx.vn/liquidity-report-2025",
+            "status": 200,
+            "valid": true,
+            "context": "5)  \n6. **Vietnam Stock Market Liquidity 2025** – https://www.hsx.vn/liquidity-report-2025"
+          },
+          {
+            "url": "https://home.kpmg/vn/en/home/insights/fintech-2025",
+            "status": 404,
+            "valid": false,
+            "context": "0)  \n7. **KPMG Vietnam FinTech Landscape 2025** – https://home.kpmg/vn/en/home/insights/fintech-2025"
+          },
+          {
+            "url": "https://www.sbv.gov.vn/regulatory-update-2025",
+            "status": 404,
+            "valid": false,
+            "context": "redit Risk Management** – Ngân hàng Nhà nước VN – https://www.sbv.gov.vn/regulatory-update-2025"
+          },
+          {
+            "url": "https://www.fitchratings.com/vietnam-macro-2025",
+            "status": 200,
+            "valid": true,
+            "context": "9. **Fitch Ratings Vietnam Macro Outlook 2025** – https://www.fitchratings.com/vietnam-macro-2025"
+          }
+        ],
+        "score": 25,
+        "verdict": "FAIL",
+        "scores": {
+          "accuracy": 5,
+          "completeness": 5,
+          "sources": 5,
+          "structure": 10
+        },
+        "issues": [
+          "Câu trả lời không đề cập tới tổng tài sản của HDBank và ACB trong 3 năm gần đây, trái với yêu cầu câu hỏi.",
+          "Thông tin cung cấp liên quan tới thị trường chứng khoán năm 2025, không liên quan tới dữ liệu tài chính của hai ngân hàng.",
+          "Mặc dù có liệt kê nguồn, các nguồn không hỗ trợ cho câu hỏi về tổng tài sản của HDBank và ACB.",
+          "Độ chính xác thấp vì nội dung không phản ánh dữ liệu thực tế của hai ngân hàng."
+        ],
+        "suggestions": [
+          "Cung cấp bảng so sánh tổng tài sản (có thể là tổng tài sản báo cáo tài chính) của HDBank và ACB cho các năm 2021, 2022, 2023 (hoặc 2022‑2024 tùy thời gian yêu cầu).",
+          "Trích dẫn nguồn tin cậy như báo cáo thường niên của ngân hàng, báo cáo tài chính đã được công bố trên website của các ngân hàng hoặc trên các trang regulator (SSC, HOSE).",
+          "Đảm bảo câu trả lời tập trung vào yêu cầu so sánh, tránh đưa thông tin không liên quan đến chủ đề.",
+          "Sử dụng cấu trúc bảng để so sánh rõ ràng, kèm chú thích nguồn cho từng số liệu."
+        ],
+        "metrics": {
+          "latency_ms": 213094,
+          "token_in": 18,
+          "token_out": 4642,
+          "ram_mb": "3.14 MB",
+          "cpu_load": "6 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q3_risk",
+        "query": "Chi phí dự phòng rủi ro tín dụng của HDBank năm 2024 là bao nhiêu?",
+        "category": "specific_data",
+        "response_preview": "We have snippet saying chi phí dự phòng tăng 33% but need amount. Likely 1.270 tỷ? earlier summary said 1.270 tỷ Q1 and total 4.5‑5.000 tỷ. Use that. Cite.**Chi phí dự phòng rủi ro tín dụng của HDBank năm 2024**\n\n| Khoản mục | Số tiền (tỷ đồng) | Ghi chú |\n|-----------|-------------------|----------|\n| **Chi phí dự phòng rủi ro tín dụng (cả năm 2024)** | **≈ 4 500 – 5 000 tỷ đồng** | Tăng **33 %** so với cùng kỳ năm 2023; trong Q1/2024 chi phí dự phòng đã đạt **1 270 tỷ đồng** [1] |\n| **Chi phí ",
+        "response_length": 3323,
+        "links_count": 1,
+        "link_results": [
+          {
+            "url": "https://etime.danviet.vn/tang-manh-du-phong-rui-ro-tin-dung-hdbank-van-bao-lai-tang-47-len-hon-4000-ty-dong-20240501180705904-d118363.html",
+            "status": 403,
+            "valid": false,
+            "context": "vẫn báo lãi tăng 47 % lên hơn 4.000 tỷ đồng”** – https://etime.danviet.vn/tang-manh-du-phong-rui-ro-tin-dung-hdbank-van-bao-lai-tang-47-len-hon-4000-ty-dong-20240501180705904-d118363.html"
+          }
+        ],
+        "score": 85,
+        "verdict": "PASS",
+        "scores": {
+          "accuracy": 20,
+          "completeness": 22,
+          "sources": 20,
+          "structure": 23
+        },
+        "issues": [
+          "Câu trả lời chỉ đưa ra khoảng ước tính (4,5‑5.0 nghìn tỷ) mà không nêu số liệu chính xác nếu có"
+        ],
+        "suggestions": [
+          "Nếu có số liệu cụ thể cho cả năm, nên nêu rõ; nếu không, nên ghi chú rằng đây là ước tính dựa trên thông tin báo cáo quý và dự báo"
+        ],
+        "metrics": {
+          "latency_ms": 111126,
+          "token_in": 21,
+          "token_out": 1127,
+          "ram_mb": "4.02 MB",
+          "cpu_load": "8 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q4_sector",
+        "query": "Triển vọng ngành ngân hàng Việt Nam năm 2025",
+        "category": "sector_outlook",
+        "response_preview": "## Triển vọng ngành ngân hàng Việt Nam năm 2025  \n\n### 1. Tổng quan vĩ mô & môi trường kinh doanh  \n| Yếu tố | Nội dung | Nguồn |\n|--------|----------|-------|\n| **Tăng trưởng GDP** | Dự báo 2025: **7,2 % – 7,5 %** (IMF, SSI) – nền tảng cho nhu cầu tín dụng và tiêu dùng. | [1] |\n| **VN‑Index** | Đóng cửa 2025: **1.784,49 điểm** (+20 % YoY). Thị trường chứng khoán hỗ trợ huy động vốn cho ngân hàng. | [2] |\n| **Giá trị giao dịch trung bình** | **15.000 tỷ đồng/phiên** (+26,8 % YoY) – cho thấy than",
+        "response_length": 12052,
+        "links_count": 4,
+        "link_results": [
+          {
+            "url": "https://hdbs.vn/wp-content/uploads/2025/12/HDS_Nganh-Ngan-hang-9-thang-nam-2025-va-Trien-vong.pdf",
+            "status": 200,
+            "valid": true,
+            "context": "ành Ngân hàng 9 tháng năm 2025 và Triển vọng”** – https://hdbs.vn/wp-content/uploads/2025/12/HDS_Nganh-Ngan-hang-9-thang-nam-2025-va-Trien-vong.pdf"
+          },
+          {
+            "url": "https://finance.vietstock.vn/bao-cao-phan-tich/14710/bao-cao-nganh-ngan-hang-2025-trien-vong-loi-nhuan-tang-truong-tich-cuc-.htm",
+            "status": 404,
+            "valid": false,
+            "context": "5: TRIỂN VỌNG LỢI NHUẬN TĂNG TRƯỞNG TÍCH CỰC”** – https://finance.vietstock.vn/bao-cao-phan-tich/14710/bao-cao-nganh-ngan-hang-2025-trien-vong-loi-nhuan-tang-truong-tich-cuc-.htm"
+          },
+          {
+            "url": "https://vncsi.com.vn/dien-bien-va-trien-vong-nganh-ngan-hang-/",
+            "status": 200,
+            "valid": true,
+            "context": "triển vọng ngành Ngân hàng nửa đầu năm 2025”** – https://vncsi.com.vn/dien-bien-va-trien-vong-nganh-ngan-hang-/"
+          },
+          {
+            "url": "https://www.hsx.vn",
+            "status": 200,
+            "valid": true,
+            "context": "Giao dịch chứng khoán Hà Nội – VN‑Index 2025** – https://www.hsx.vn"
+          }
+        ],
+        "score": 95,
+        "verdict": "PASS",
+        "scores": {
+          "accuracy": 24,
+          "completeness": 23,
+          "sources": 25,
+          "structure": 23
+        },
+        "issues": [
+          "Thông tin về tăng trưởng GDP và VN-Index có thể cần được cập nhật thêm chi tiết"
+        ],
+        "suggestions": [
+          "Cần thêm thông tin về các chính sách mới của chính phủ ảnh hưởng đến ngành ngân hàng."
+        ],
+        "metrics": {
+          "latency_ms": 125239,
+          "token_in": 12,
+          "token_out": 3794,
+          "ram_mb": "2.86 MB",
+          "cpu_load": "6 Goroutines (Active)"
+        }
+      },
+      {
+        "id": "q5_concept",
+        "query": "Giải thích khái niệm P/E ratio và cách sử dụng trong định giá cổ phiếu",
+        "category": "concept_explanation",
+        "response_preview": "Khái niệm **P/E Ratio (Price-to-Earnings Ratio)** là một trong những chỉ số cơ bản và quan trọng nhất trong phân tích tài chính để đánh giá mức độ đắt/rẻ của một cổ phiếu.\n\n### 1. P/E Ratio là gì?\n**P/E (Hệ số giá trên thu nhập)** là tỷ lệ giữa giá thị trường của một cổ phiếu so với lợi nhuận trên mỗi cổ phiếu (EPS).\n\n**Công thức tính:**\n*   **P (Price):** Giá thị trường hiện tại của 1 cổ phiếu.\n*   **E (Earnings per Share - EPS):** Lợi nhuận sau thuế của doanh nghiệp trên mỗi cổ phiếu trong 12 ",
+        "response_length": 6434,
+        "links_count": 0,
+        "link_results": [],
+        "score": 65,
+        "verdict": "FAIL",
+        "scores": {
+          "accuracy": 22,
+          "completeness": 20,
+          "sources": 0,
+          "structure": 23
+        },
+        "issues": [
+          "Không cung cấp bất kỳ nguồn tham khảo nào, làm giảm độ tin cậy.",
+          "Chưa đề cập đến các loại P/E khác như forward P/E hay trailing P/E.",
+          "Thiếu phân tích về tính chu kỳ của ngành và ảnh hưởng tới P/E.",
+          "Mô tả PEG chưa giải thích cách tính tốc độ tăng trưởng và các hạn chế của PEG."
+        ],
+        "suggestions": [
+          "Thêm các nguồn tham khảo uy tín (ví dụ: Investopedia, CFA Institute, báo cáo tài chính công ty).",
+          "Mở rộng phần giải thích để bao gồm forward P/E, trailing P/E và cách lựa chọn chúng.",
+          "Nhắc tới yếu tố chu kỳ ngành và cách điều chỉnh P/E cho các ngành có lợi nhuận biến động.",
+          "Cung cấp công thức chi tiết và ví dụ thực tế cho PEG, đồng thời nêu rõ các hạn chế khi sử dụng PEG."
+        ],
+        "metrics": {
+          "latency_ms": 42735,
+          "token_in": 21,
+          "token_out": 2035,
+          "ram_mb": "3.50 MB",
+          "cpu_load": "6 Goroutines (Active)"
+        }
+      }
+    ],
+    "all_passed": false
+  }
+]
