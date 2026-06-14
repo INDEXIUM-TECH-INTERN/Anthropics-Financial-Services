@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Indexium — AI Financial Agent</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -12,8 +13,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw444OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
-  <script type="module" crossorigin src="/assets/main-BXXwY79V.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-BHqKRPAr.css">
+  <script type="module" crossorigin src="/assets/main-Duprf4wZ.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-CmxIItKX.css">
 </head>
 <body>
 
@@ -26,7 +27,7 @@
     </div>
 
     <!-- ═══ Left Sidebar ═══ -->
-    <aside class="sidebar-left glass-panel" id="conversations-sidebar">
+    <aside class="sidebar-left glass-panel" id="conversations-sidebar" aria-label="Danh sách cuộc trò chuyện">
         <div class="sidebar-brand">
             <div class="sidebar-brand-inner">
                 <div class="brand-mark">IX</div>
@@ -110,7 +111,7 @@
     </main>
 
     <!-- ═══ Thinking Panel (slide-over) ═══ -->
-    <aside class="thinking-panel glass-panel hidden" id="thinking-panel">
+    <aside class="thinking-panel glass-panel hidden" id="thinking-panel" aria-label="Bảng suy nghĩ AI">
         <div class="thinking-panel-header">
             <div class="thinking-panel-title">💡 Suy nghĩ AI</div>
             <button class="thinking-panel-close" id="close-thinking" title="Đóng">✕</button>
@@ -128,8 +129,10 @@
     <div class="modal-content glass-panel">
         <div class="modal-header"><h2>Cài đặt</h2><button class="modal-close" id="close-settings">×</button></div>
         <div class="modal-body">
-            <div><label class="form-label" for="gemini-key-input">Gemini API Key</label><input type="password" class="form-input" id="gemini-key-input" placeholder="AIza..."></div>
-            <div><label class="form-label" for="or-keys-input">OpenRouter API Keys</label><textarea class="form-input form-textarea" id="or-keys-input" placeholder="sk-or-v1-..."></textarea><div class="form-hint">Các khóa sẽ được luân phiên tự động khi gặp giới hạn.</div></div>
+            <form class="modal-form" onsubmit="return false;">
+                <div><label class="form-label" for="gemini-key-input">Gemini API Key</label><input type="password" class="form-input" id="gemini-key-input" placeholder="AIza..." autocomplete="off"></div>
+                <div><label class="form-label" for="or-keys-input">OpenRouter API Keys</label><textarea class="form-input form-textarea" id="or-keys-input" placeholder="sk-or-v1-..."></textarea><div class="form-hint">Các khóa sẽ được luân phiên tự động khi gặp giới hạn.</div></div>
+            </form>
         </div>
         <div class="modal-footer"><button class="btn btn-ghost" id="close-settings-btn">Hủy</button><button class="btn btn-primary" id="save-settings-btn">Lưu cấu hình</button></div>
     </div>

@@ -1,0 +1,306 @@
+/* ═══════════════════════════════════════════════════════════
+   COMPONENTS — Skip Link, Toast, Streaming Cursor, Premium Code Block
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Skip Link (Accessibility) ── */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 16px;
+  z-index: 99999;
+  padding: 10px 20px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  text-decoration: none;
+  transition: top 0.2s ease;
+}
+.skip-link:focus {
+  top: 0;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── Toast Container ── */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-radius: var(--radius-full);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: var(--shadow-float);
+  opacity: 0;
+  transform: translateY(12px) scale(0.95);
+  transition: all 0.3s var(--transition-slow);
+  pointer-events: auto;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.toast-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.toast-hiding {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.95);
+}
+
+.toast-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.toast-success { border-color: rgba(16, 185, 129, 0.3); }
+.toast-success .toast-icon { color: var(--success); }
+
+.toast-error { border-color: rgba(248, 113, 113, 0.3); }
+.toast-error .toast-icon { color: var(--danger); }
+
+.toast-info { border-color: rgba(96, 165, 250, 0.3); }
+.toast-info .toast-icon { color: var(--accent); }
+
+.toast-warning { border-color: rgba(251, 191, 36, 0.3); }
+.toast-warning .toast-icon { color: var(--warning); }
+
+/* ── Streaming Cursor ── */
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.2em;
+  background: var(--accent);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: cursorBlink 1s step-end infinite;
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ── Premium Code Block ── */
+.code-block-container {
+  margin: 12px 0;
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+}
+
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.code-block-lang {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.code-block-copy-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.code-block-copy-btn:hover {
+  background: var(--bg-hover);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.code-block-container pre {
+  margin: 0;
+  padding: 16px;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+}
+
+/* ── Message Actions (always visible on touch) ── */
+@media (hover: none) and (pointer: coarse) {
+  .msg-actions {
+    opacity: 1 !important;
+  }
+}
+
+/* ── Icon Button ── */
+.icon-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.icon-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* ── Slash Command Menu ── */
+.slash-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-float);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.slash-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.slash-menu-item:last-child {
+  border-bottom: none;
+}
+
+.slash-menu-item:hover,
+.slash-menu-item.active {
+  background: var(--bg-hover);
+}
+
+.slash-menu-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--accent-muted);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.slash-menu-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.slash-menu-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.slash-menu-desc {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* ── Pin Button on Conversation Items ── */
+.conv-item-pin {
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.conv-item:hover .conv-item-pin,
+.conv-item.pinned .conv-item-pin {
+  opacity: 1;
+}
+
+.conv-item.pinned .conv-item-pin {
+  color: var(--accent);
+}
+
+.conv-item.pinned {
+  border-left: 2px solid var(--accent);
+}
+
+/* ── Stop Generation Progress ── */
+.stop-progress {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: conic-gradient(var(--danger) var(--progress, 0%), transparent 0%);
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+/* ── Responsive: Mobile < 480px ── */
+@media (max-width: 479px) {
+  .toast-container {
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    transform: none;
+  }
+
+  .toast {
+    width: 100%;
+  }
+
+  .code-block-header {
+    padding: 6px 10px;
+  }
+
+  .code-block-container pre {
+    padding: 12px;
+  }
+}
+
+/* ── Responsive: Tablet < 768px ── */
+@media (max-width: 767px) {
+  .slash-menu {
+    left: -8px;
+    right: -8px;
+  }
+}
