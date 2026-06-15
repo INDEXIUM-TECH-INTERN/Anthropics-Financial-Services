@@ -13,6 +13,8 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 )
 
+const maxMemSessions = 1000
+
 // simple in-memory fallback when Redis is not available
 var (
 	memSessions = make(map[string]*ChatSession)
@@ -45,6 +47,18 @@ func SaveSession(sess *ChatSession) error {
 
 	if redis.Client == nil {
 		memMu.Lock()
+		if len(memSessions) >= maxMemSessions {
+			// Evict oldest session
+			var oldestID string
+			var oldestTime time.Time
+			for id, s := range memSessions {
+				if oldestID == "" || s.UpdatedAt.Before(oldestTime) {
+					oldestID = id
+					oldestTime = s.UpdatedAt
+				}
+			}
+			delete(memSessions, oldestID)
+		}
 		memSessions[sess.ID] = sess
 		memMu.Unlock()
 		return nil
@@ -59,7 +73,7 @@ func SaveSession(sess *ChatSession) error {
 	defer cancel()
 
 	pipe := redis.Client.Pipeline()
-	pipe.Set(ctx, sessionKey(sess.ID), data, 0)
+	pipe.Set(ctx, sessionKey(sess.ID), data, 24*time.Hour)
 	pipe.SAdd(ctx, listKey(), sess.ID)
 	_, err = pipe.Exec(ctx)
 	return err
