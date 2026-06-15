@@ -289,11 +289,12 @@ func (o *Orchestrator) runConversationLoopInternal(ctx context.Context) (string,
 			return "", err
 		}
 
-		// === BƯỚC 4: Append response + handle tool calls (write lock) ===
+		// === BƯỚC 4: Append response (write lock), then handle tool calls (outside lock) ===
 		o.agent.mu.Lock()
 		o.agent.conversation.ContextWindow.History = append(o.agent.conversation.ContextWindow.History, aiMessage)
-		hasToolCall := o.agent.dispatcher.HandleToolCalls(aiMessage)
 		o.agent.mu.Unlock()
+
+		hasToolCall := o.agent.dispatcher.HandleToolCalls(aiMessage)
 
 		o.agent.mu.Lock()
 		if o.agent.handoffPlan != nil {
@@ -324,7 +325,7 @@ func extractHistoryTexts(msgs []messaging.Message) []string {
 }
 
 func extractResponseText(aiMessage messaging.Message) string {
-	return aiMessage.Content
+	return strings.TrimSpace(stripThinkingTags(aiMessage.Content))
 }
 
 // getEnvInt đọc biến môi trường dạng int, fallback nếu không có hoặc lỗi
