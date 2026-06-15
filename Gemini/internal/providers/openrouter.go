@@ -225,6 +225,7 @@ func (p *OpenRouterProvider) generateWithModel(ctx context.Context, req messagin
 	for _, tc := range orMsg.ToolCalls {
 		var args map[string]interface{}
 		if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
+			fmt.Printf("[OpenRouter] Dropping tool call %s (%s): malformed JSON args: %v\n", tc.Function.Name, tc.ID, err)
 			continue
 		}
 		responseMsg.ToolCalls = append(responseMsg.ToolCalls, messaging.ToolCall{
