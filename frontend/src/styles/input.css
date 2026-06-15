@@ -4,8 +4,11 @@
 
 /* ── Container (class="input-area" in HTML) ── */
 .input-area {
-  padding: 0 24px 16px;
+  padding: 0 24px 24px;
   position: relative;
+  max-width: 828px; /* 780px content + 48px padding to align with .chat-content */
+  margin: 0 auto;
+  width: 100%;
 }
 
 /* ── Attachments Preview ── */
@@ -112,10 +115,10 @@
 /* ── Textarea ── */
 #chat-input {
   flex: 1 1 auto;
-  min-height: 24px;
+  min-height: 36px;
   max-height: 160px;
   resize: none;
-  padding: 8px 4px;
+  padding: 7.5px 8px;
   background: transparent;
   border: none;
   color: var(--text-primary);

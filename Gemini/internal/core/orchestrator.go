@@ -160,7 +160,7 @@ func (o *Orchestrator) streamFinalResponse(ctx context.Context, onChunk func(str
 				}
 			}()
 			err := o.agent.GetProvider().GenerateStream(ctx, req, func(sc providers.StreamChunk) {
-				if sc.Text != "" {
+				if !sc.Done && sc.Text != "" {
 					fullText.WriteString(sc.Text)
 				}
 				if len(sc.ToolCalls) > 0 {
@@ -175,7 +175,7 @@ func (o *Orchestrator) streamFinalResponse(ctx context.Context, onChunk func(str
 			if err != nil {
 				return err
 			}
-		case <-time.After(10 * time.Minute):
+		case <-time.After(time.Duration(getEnvInt("STREAM_TIMEOUT_SECONDS", 600)) * time.Second):
 			return fmt.Errorf("streaming timeout")
 		}
 
@@ -188,8 +188,9 @@ func (o *Orchestrator) streamFinalResponse(ctx context.Context, onChunk func(str
 		}
 		o.agent.mu.Lock()
 		o.agent.conversation.ContextWindow.History = append(o.agent.conversation.ContextWindow.History, msg)
-		hasToolCall := o.agent.dispatcher.HandleToolCalls(msg)
 		o.agent.mu.Unlock()
+
+		hasToolCall := o.agent.dispatcher.HandleToolCalls(msg)
 
 		// Send only the final response to client (skip thinking/tool-call preamble)
 		if !hasToolCall && finalText != "" {

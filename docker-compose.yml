@@ -1,0 +1,48 @@
+services:
+  # ---- Redis (session store + cache) ----
+  redis:
+    image: redis:7-alpine
+    container_name: testai-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ---- Go Backend (Gemini CLI server) ----
+  backend:
+    build:
+      context: ./Gemini
+      dockerfile: Dockerfile
+    container_name: testai-backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./Gemini/.env
+    environment:
+      - PORT=8080
+      - REDIS_ADDR=redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---- Frontend (Vite SPA served by Nginx) ----
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: testai-frontend
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  redis-data:

@@ -39,18 +39,15 @@ export interface ChatPage {
 
 export function createChatPage(): ChatPage {
   // ═══ API & SSE ═══
-  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  const backends: Record<string, string> = {
-    gemini: isLocalhost ? 'http://localhost:8080' : window.location.origin,
-    claude: 'http://localhost:8081',
-  };
-  let currentBaseUrl = backends.gemini!;
+  // Use relative URLs - Nginx will proxy /api/* to backend
+  let currentBaseUrl = window.location.origin;
   let api = new ApiClient(currentBaseUrl);
   const sseManager = new SSEManager();
   let abortController: AbortController | null = null;
   let pendingAttachments: File[] = [];
   let currentBotContentEl: HTMLElement | null = null;
   let currentBotFooterEl: HTMLElement | null = null;
+  let currentThinkingCard: HTMLElement | null = null;
   let fullText = '';
 
   // ═══ DEBOUNCED RENDER ═══
@@ -98,7 +95,7 @@ export function createChatPage(): ChatPage {
   const togglePipeline = $('toggle-pipeline');
   const closePipeline = $('close-pipeline');
   const themeToggle = $('theme-toggle');
-  const newChatBtn = $('newChat-btn');
+  const newChatBtn = $('new-chat-btn');
   const shortcutsPanel = $('shortcuts-panel');
   const closeShortcuts = $('close-shortcuts');
   const metricsModal = $('metrics-modal');
@@ -168,6 +165,124 @@ export function createChatPage(): ChatPage {
     if (type === 'tool_executed') {
       setPipeline({ tool: metadata.tool || payload, toolStatus: 'active' });
     }
+
+    // Map to inline thinking step
+    if (currentThinkingCard) {
+      let label = 'Hệ thống';
+      let icon = '•';
+      let isStep = false;
+
+      if (type === 'process') {
+        isStep = true;
+        if (payload.includes('phân tích') || payload.includes('chọn Agent')) {
+          label = 'Phân tích định hướng';
+          icon = '🧭';
+        } else if (payload.includes('Khởi tạo')) {
+          label = 'Khởi tạo';
+          icon = '🚀';
+        } else {
+          label = 'Xử lý';
+          icon = '⚙️';
+        }
+      } else if (type === 'agent_selected') {
+        isStep = true;
+        label = 'Chọn Agent';
+        icon = '👤';
+      } else if (type === 'skill_loaded') {
+        isStep = true;
+        label = 'Nạp Skill';
+        icon = '📚';
+      } else if (type === 'tool') {
+        isStep = true;
+        label = 'Tra cứu';
+        icon = '🔍';
+      } else if (type === 'tool_executed') {
+        isStep = true;
+        label = 'Gọi Tool';
+        icon = '⚡';
+      } else if (type === 'success') {
+        isStep = true;
+        label = 'Hoàn tất bước';
+        icon = '✓';
+      } else if (type === 'error') {
+        isStep = true;
+        label = 'Lỗi';
+        icon = '❌';
+      }
+
+      if (isStep) {
+        addThinkingStep(label, payload, icon);
+      }
+    }
+  }
+
+  function getThinkingStatusText(label: string, payload: string): string {
+    const p = payload.toLowerCase();
+    if (p.includes('chọn agent') || p.includes('agent tối ưu')) {
+      return 'Đang chọn Agent...';
+    }
+    if (p.includes('nạp cấu hình cho agent')) {
+      return 'Đang chuyển giao Agent...';
+    }
+    if (p.includes('nạp skill')) {
+      return 'Đang nạp Skill...';
+    }
+    if (p.includes('google') || p.includes('tavily') || p.includes('tìm kiếm')) {
+      return 'Đang tìm kiếm thông tin...';
+    }
+    if (p.includes('đọc nội dung từ')) {
+      return 'Đang đọc nội dung trang web...';
+    }
+    if (p.includes('tính toán')) {
+      return 'Đang thực hiện tính toán...';
+    }
+    if (p.includes('tệp nội bộ')) {
+      return 'Đang đọc tài liệu hệ thống...';
+    }
+    if (p.includes('tóm tắt context')) {
+      return 'Đang tóm tắt ngữ cảnh...';
+    }
+    if (p.includes('khởi tạo cuộc hội thoại')) {
+      return 'Đang khởi tạo phiên làm việc...';
+    }
+    
+    if (label === 'Chọn Agent') return 'Đang chọn Agent...';
+    if (label === 'Nạp Skill') return 'Đang nạp Skill...';
+    if (label === 'Tra cứu') return 'Đang tra cứu dữ liệu...';
+    if (label === 'Gọi Tool') return 'Đang chạy công cụ...';
+    if (label === 'Phân tích định hướng') return 'Đang phân tích định hướng...';
+    
+    return 'AI đang suy nghĩ...';
+  }
+
+  function addThinkingStep(label: string, text: string, _icon = '•') {
+    if (!currentThinkingCard) return;
+    const stepsContainer = currentThinkingCard.querySelector('.thinking-steps');
+    if (!stepsContainer) return;
+
+    // Mark previous steps as done
+    stepsContainer.querySelectorAll('.thinking-step.active').forEach((step) => {
+      step.classList.remove('active');
+      step.classList.add('done');
+    });
+
+    const step = document.createElement('div');
+    step.className = 'thinking-step active';
+    step.innerHTML = `
+      <div class="thinking-step-content">
+        <div class="thinking-step-label">${escHtml(label)}</div>
+        <div class="thinking-step-text">${escHtml(text.length > 60 ? text.slice(0, 60) + '…' : text)}</div>
+      </div>
+    `;
+    stepsContainer.appendChild(step);
+
+    // Update status text on the summary header dynamically
+    const summaryText = currentThinkingCard.querySelector('.thinking-summary-text');
+    if (summaryText) {
+      summaryText.textContent = getThinkingStatusText(label, text);
+    }
+
+    chatWidget.scrollToBottom();
   }
 
   // ═══ LOG ═══
@@ -310,26 +425,45 @@ export function createChatPage(): ChatPage {
 
     if (chatInput) {
       chatInput.value = '';
-      chatInput.style.height = '24px';
+      chatInput.style.height = '36px';
     }
 
     setGenerating(true);
     updateSendButtonState();
 
-    const thinkingCard = document.createElement('div');
-    thinkingCard.className = 'thinking-card';
-    chatContent?.appendChild(thinkingCard);
+    const startTime = Date.now();
+    const { el: botMsgEl, content, footer } = chatWidget.appendStreamingBotMessage();
+    currentBotContentEl = content;
+    currentBotFooterEl = footer;
+
+    // Create collapsible thinking details block inside the bot message bubble at the top
+    const thinkingDetails = document.createElement('details');
+    thinkingDetails.className = 'thinking-details';
+    thinkingDetails.open = true;
+
+    const summary = document.createElement('summary');
+    summary.className = 'thinking-summary';
+    summary.innerHTML = `
+      <span class="thinking-summary-icon"><div class="thinking-spinner"></div></span>
+      <span class="thinking-summary-text">Đang suy nghĩ...</span>
+    `;
+    thinkingDetails.appendChild(summary);
+
+    const stepsContainer = document.createElement('div');
+    stepsContainer.className = 'thinking-steps';
+    thinkingDetails.appendChild(stepsContainer);
+
+    const msgBody = botMsgEl.querySelector('.msg-body');
+    if (msgBody && content) {
+      msgBody.insertBefore(thinkingDetails, content);
+    }
+    currentThinkingCard = thinkingDetails;
 
     const typingEl = document.createElement('div');
     typingEl.className = 'typing-indicator';
     typingEl.innerHTML = '<span></span><span></span><span></span>';
     typingEl.style.padding = '4px 0';
     chatContent?.appendChild(typingEl);
-
-    const startTime = Date.now();
-    const { content, footer } = chatWidget.appendStreamingBotMessage();
-    currentBotContentEl = content;
-    currentBotFooterEl = footer;
 
     abortController = new AbortController();
 
@@ -347,11 +481,35 @@ export function createChatPage(): ChatPage {
         abortController.signal,
         (tok) => {
           if (typingEl.parentNode) typingEl.remove();
+
+          // Auto-collapse thinking details when final response text starts streaming
+          if (currentThinkingCard && currentThinkingCard.hasAttribute('open')) {
+            currentThinkingCard.removeAttribute('open');
+            const iconEl = currentThinkingCard.querySelector('.thinking-spinner');
+            if (iconEl) iconEl.remove();
+            const summaryText = currentThinkingCard.querySelector('.thinking-summary-text');
+            if (summaryText) {
+              const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+              summaryText.textContent = `Đã suy nghĩ trong ${elapsed}s`;
+            }
+          }
+
           fullText += tok;
           scheduleRender();
         },
         (met) => {
-          thinkingCard.remove();
+          if (currentThinkingCard) {
+            currentThinkingCard.removeAttribute('open');
+            const iconEl = currentThinkingCard.querySelector('.thinking-spinner');
+            if (iconEl) iconEl.remove();
+            const summaryText = currentThinkingCard.querySelector('.thinking-summary-text');
+            if (summaryText) {
+              const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+              summaryText.textContent = `Đã suy nghĩ trong ${elapsed}s`;
+            }
+            currentThinkingCard = null;
+          }
+
           // Final render to ensure all accumulated text is displayed
           if (currentBotContentEl) {
             currentBotContentEl.innerHTML = renderMarkdown(fullText);
@@ -373,7 +531,15 @@ export function createChatPage(): ChatPage {
       currentBotContentEl = null;
       currentBotFooterEl = null;
     } catch (error) {
-      thinkingCard.remove();
+      if (currentThinkingCard) {
+        currentThinkingCard.removeAttribute('open');
+        const iconEl = currentThinkingCard.querySelector('.thinking-spinner');
+        if (iconEl) iconEl.remove();
+        const summaryText = currentThinkingCard.querySelector('.thinking-summary-text') as HTMLElement | null;
+        if (summaryText) summaryText.textContent = 'Lỗi';
+        currentThinkingCard = null;
+      }
+
       if (typingEl.parentNode) typingEl.remove();
       setGenerating(false);
       updateSendButtonState();
@@ -396,6 +562,14 @@ export function createChatPage(): ChatPage {
     if (abortController) {
       abortController.abort();
       abortController = null;
+    }
+    if (currentThinkingCard) {
+      currentThinkingCard.removeAttribute('open');
+      const iconEl = currentThinkingCard.querySelector('.thinking-spinner');
+      if (iconEl) iconEl.remove();
+      const summaryText = currentThinkingCard.querySelector('.thinking-summary-text');
+      if (summaryText) summaryText.textContent = 'Đã dừng';
+      currentThinkingCard = null;
     }
     setGenerating(false);
     updateSendButtonState();
@@ -456,7 +630,7 @@ export function createChatPage(): ChatPage {
     });
 
     chatInput?.addEventListener('input', function (this: HTMLTextAreaElement) {
-      this.style.height = '24px';
+      this.style.height = '36px';
       this.style.height = `${Math.min(this.scrollHeight, 160)}px`;
     });
 
@@ -537,7 +711,9 @@ export function createChatPage(): ChatPage {
     // Backend
     backendSelect?.addEventListener('change', (e) => {
       const b = (e.target as HTMLSelectElement).value;
-      currentBaseUrl = backends[b] ?? backends.gemini!;
+      // For now, we only have one backend in Docker setup (Gemini on port 8080 via proxy)
+      // In the future, this could map to different backend services
+      currentBaseUrl = window.location.origin;
       api = new ApiClient(currentBaseUrl);
       sseManager.connect(currentBaseUrl, {
         onMessage: (d) => handleSSEMessage(d),

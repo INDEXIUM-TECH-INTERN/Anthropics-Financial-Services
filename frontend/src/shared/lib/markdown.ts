@@ -98,7 +98,20 @@ export function renderMarkdown(text: string): string {
       'del',
       'input',
     ],
-    ALLOWED_ATTR: ['href', 'class', 'src', 'alt', 'title', 'target', 'rel', 'checked', 'type', 'disabled', 'data-card-type', 'data-card-code'],
+    ALLOWED_ATTR: [
+      'href',
+      'class',
+      'src',
+      'alt',
+      'title',
+      'target',
+      'rel',
+      'checked',
+      'type',
+      'disabled',
+      'data-card-type',
+      'data-card-code',
+    ],
   });
   return cleanHtml;
 }
@@ -107,6 +120,47 @@ export function highlightCode(el: HTMLElement): void {
 }
 export function extractUrls(text: string): string[] {
   return [...new Set(text.match(/https?:\/\/[^\s\)\]]+/g) || [])];
+}
+
+// ═══ Retry Utility ═══
+
+export interface RetryOptions {
+  maxRetries?: number;
+  initialDelay?: number;
+  maxDelay?: number;
+  backoffFactor?: number;
+}
+
+export async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  options: RetryOptions = {}
+): Promise<T> {
+  const {
+    maxRetries = 3,
+    initialDelay = 1000,
+    maxDelay = 30000,
+    backoffFactor = 2,
+  } = options;
+
+  let lastError: Error;
+  let delay = initialDelay;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+
+      if (attempt === maxRetries) {
+        break;
+      }
+
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay = Math.min(delay * backoffFactor, maxDelay);
+    }
+  }
+
+  throw lastError!;
 }
 
 // ═══ Entity Detection ═══

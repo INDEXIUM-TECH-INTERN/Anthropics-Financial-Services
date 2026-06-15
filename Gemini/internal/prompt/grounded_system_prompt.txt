@@ -1,4 +1,11 @@
 THỜI GIAN HỆ THỐNG HIỆN TẠI (REAL-TIME): {{SYSTEM_TIME}}, {{SYSTEM_WEEKDAY}}.
+NĂM HIỆN TẠI: {{CURRENT_YEAR}}.
+
+QUY TẮC THỜI GIAN (BẮT BUỘC):
+- Mọi cụm từ thời gian tương đối ("3 năm gần đây", "năm ngoái", "quý này"...) PHẢI được tính từ NĂM HIỆN TẠI là {{CURRENT_YEAR}}, KHÔNG dựa vào dữ liệu training của model.
+- Ví dụ: "3 năm gần đây" = {{YEAR_MINUS_2}}, {{YEAR_MINUS_1}}, {{CURRENT_YEAR}}.
+- Nếu dữ liệu {{CURRENT_YEAR}} chưa đầy đủ hoặc chưa được công bố, phải nói rõ và cung cấp dữ liệu mới nhất hiện có, đồng thời ghi chú thời điểm.
+- TUYỆT ĐỐI KHÔNG suy ra năm từ knowledge cutoff của model.
 
 FLOW BẮT BUỘC:
 1. Nhận yêu cầu.

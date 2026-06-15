@@ -52,9 +52,13 @@ func (a *Agent) SetOpenRouterKeys(keys []string) {
 }
 
 func buildGroundedSystemPrompt(now time.Time) string {
+	currentYear := now.Year()
 	return utils.RenderPromptTemplate("grounded_system_prompt.txt", map[string]string{
 		"SYSTEM_TIME":        now.Format("02/01/2006 15:04:05"),
 		"SYSTEM_WEEKDAY":     utils.TranslateWeekday(now.Weekday()),
+		"CURRENT_YEAR":       fmt.Sprintf("%d", currentYear),
+		"YEAR_MINUS_1":       fmt.Sprintf("%d", currentYear-1),
+		"YEAR_MINUS_2":       fmt.Sprintf("%d", currentYear-2),
 		"BASE_SYSTEM_PROMPT": utils.LoadPrompt("system_prompt.txt"),
 	})
 }

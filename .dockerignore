@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+
+# Node
+frontend/node_modules
+frontend/dist
+
+# Go
+Gemini/vendor
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env (sensitive — chỉ dùng mount, không copy vào image)
+Gemini/.env
+
+# Docs
+docs/
+*.md
+LICENSE
+
+# Tests (không cần trong image)
+**/*_test.go
+frontend/src/**/*.test.ts
+frontend/src/shared/testing/
