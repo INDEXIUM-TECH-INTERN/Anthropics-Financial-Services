@@ -181,6 +181,10 @@ func (d *Dispatcher) HandleToolCalls(aiMessage messaging.Message) bool {
 		})
 
 		result := d.dispatchToolCall(&toolCall)
+		// Normalize error responses for consistent LLM interpretation
+		if strings.HasPrefix(result, "Error: ") {
+			result = "[TOOL_ERROR] " + strings.TrimPrefix(result, "Error: ")
+		}
 		d.appendFunctionResponse(&toolCall, result)
 	}
 	return true
