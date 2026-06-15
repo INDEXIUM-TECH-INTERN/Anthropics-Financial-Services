@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"gemini-cli/internal/tools/market"
 	"gemini-cli/internal/tools/registry"
@@ -191,4 +192,15 @@ func LoadDocumentWithMetadata(docType, name string) LoadedDocument {
 
 func GetRoutingGuide() string {
 	return registry.GetRoutingGuide()
+}
+
+// Time validation utilities - placeholder for future implementation
+func ValidateAndFixTimeRanges(text string) string {
+	// TODO: Implement time validation
+	return text
+}
+
+func GetCurrentTimeInfo() string {
+	// TODO: Implement current time info
+	return "Thời gian hiện tại: " + time.Now().Format("02/01/2006 15:04:05")
 }

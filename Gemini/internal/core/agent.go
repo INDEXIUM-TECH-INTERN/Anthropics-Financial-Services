@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -19,29 +20,77 @@ import (
 // The mutex serializes both HTTP request processing and internal state access,
 // eliminating the previous deadlock risk from nested mu + requestMu locking.
 type Agent struct {
-	mu           sync.RWMutex
-	pm           *ProviderManager
-	systemPrompt string
-	userInput    string
-	handoffPlan  *RoutePlan
-	conversation *Conversation
-	orchestrator *Orchestrator
-	dispatcher   *Dispatcher
+	mu                   sync.RWMutex
+	pm                   *ProviderManager
+	systemPrompt         string
+	userInput            string
+	handoffPlan          *RoutePlan
+	conversation         *Conversation
+	orchestrator         *Orchestrator
+	dispatcher           *Dispatcher
+	lastSystemPromptUpdate time.Time
 }
 
 func NewAgent() *Agent {
 	utils.LoadEnv()
 
 	a := &Agent{
-		pm:           NewProviderManager(),
-		systemPrompt: buildGroundedSystemPrompt(time.Now()),
-		conversation: NewConversation("default"),
+		pm:                   NewProviderManager(),
+		systemPrompt:         buildGroundedSystemPrompt(time.Now()),
+		conversation:         NewConversation("default"),
+		lastSystemPromptUpdate: time.Now(),
 	}
 
 	a.orchestrator = NewOrchestrator(a)
 	a.dispatcher = NewDispatcher(a)
 
+	// Bắt đầu background routine cập nhật system prompt
+	go a.startSystemPromptUpdater()
+
 	return a
+}
+
+// CheckTimeKnowledgeIssues kiểm tra và cảnh báo các vấn đề về thời gian
+func (a *Agent) CheckTimeKnowledgeIssues(text string) string {
+	now := time.Now()
+	currentYear := now.Year()
+
+	// Nếu text chứa các năm cụ thể và currentYear > 2024
+	if currentYear > 2024 {
+		yearMatches := regexp.MustCompile(`\b2024\b`).FindAllString(text, -1)
+		if len(yearMatches) > 0 {
+			return fmt.Sprintf("*Lưu ý: Dữ liệu năm 2024 có thể không còn mới nhất. Hiện tại là năm %d. Vui lòng xác nhận với nguồn dữ liệu mới nhất.*\n\n", currentYear)
+		}
+	}
+
+	return ""
+}
+
+// EnsureFreshSystemPrompt đảm bảo system prompt luôn cập nhật nhất
+// Nên được gọi trước mỗi lần gọi LLM
+func (a *Agent) EnsureFreshSystemPrompt() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	// Cập nhật nếu system prompt cũ hơn 1 giờ
+	now := time.Now()
+	if now.Sub(a.lastSystemPromptUpdate) >= time.Hour {
+		a.systemPrompt = buildGroundedSystemPrompt(now)
+		a.lastSystemPromptUpdate = now
+	}
+}
+
+// startSystemPromptUpdater chạy routine background để cập nhật định kỳ
+func (a *Agent) startSystemPromptUpdater() {
+	ticker := time.NewTicker(30 * time.Minute) // Cập nhật mỗi 30 phút
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			a.EnsureFreshSystemPrompt()
+		}
+	}
 }
 
 // SetOpenRouterKeys updates the provider chain at runtime with new OpenRouter keys.
@@ -53,12 +102,13 @@ func (a *Agent) SetOpenRouterKeys(keys []string) {
 
 func buildGroundedSystemPrompt(now time.Time) string {
 	currentYear := now.Year()
-	return utils.RenderPromptTemplate("grounded_system_prompt.txt", map[string]string{
+	return utils.RenderPromptTemplate("enhanced_time_prompt.txt", map[string]string{
 		"SYSTEM_TIME":        now.Format("02/01/2006 15:04:05"),
 		"SYSTEM_WEEKDAY":     utils.TranslateWeekday(now.Weekday()),
 		"CURRENT_YEAR":       fmt.Sprintf("%d", currentYear),
 		"YEAR_MINUS_1":       fmt.Sprintf("%d", currentYear-1),
 		"YEAR_MINUS_2":       fmt.Sprintf("%d", currentYear-2),
+		"YEAR_MINUS_3":       fmt.Sprintf("%d", currentYear-3),
 		"BASE_SYSTEM_PROMPT": utils.LoadPrompt("system_prompt.txt"),
 	})
 }
@@ -92,12 +142,16 @@ func (a *Agent) Start() {
 // ProcessMessage processes a user message and returns the AI response.
 // Locking is managed internally by the orchestrator for minimal critical sections.
 func (a *Agent) ProcessMessage(ctx context.Context, userInput string, atts []messaging.Attachment) (string, error) {
+	// Đảm bảo system prompt luôn mới nhất
+	a.EnsureFreshSystemPrompt()
 	return a.orchestrator.ProcessMessage(ctx, userInput, atts)
 }
 
 // ProcessMessageStream processes a message and streams tokens via onChunk.
 // Locking is managed internally by the orchestrator for minimal critical sections.
 func (a *Agent) ProcessMessageStream(ctx context.Context, userInput string, atts []messaging.Attachment, onChunk func(string, bool)) error {
+	// Đảm bảo system prompt luôn mới nhất
+	a.EnsureFreshSystemPrompt()
 	return a.orchestrator.ProcessMessageStream(ctx, userInput, atts, onChunk)
 }
 
