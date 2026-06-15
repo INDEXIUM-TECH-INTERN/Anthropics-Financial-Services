@@ -89,12 +89,12 @@ func (p *GeminiProvider) Generate(ctx context.Context, req messaging.Request) (m
 			})
 		}
 		for _, tr := range msg.ToolResponses {
+			// Tool responses are already normalized to valid JSON by the dispatcher.
 			var toolOutput map[string]interface{}
-			// Try to unmarshal the content as JSON, if not, treat as text.
 			if err := json.Unmarshal([]byte(tr.Content), &toolOutput); err != nil {
+				// Fallback: shouldn't happen since dispatcher normalizes, but handle gracefully
 				toolOutput = map[string]interface{}{"content": tr.Content}
 			}
-
 			parts = append(parts, models.GeminiPart{
 				FunctionResponse: &models.GeminiFunctionResponse{
 					Name:     tr.Name,
@@ -288,6 +288,7 @@ func (p *GeminiProvider) GenerateStream(ctx context.Context, req messaging.Reque
 			})
 		}
 		for _, tr := range msg.ToolResponses {
+			// Tool responses are already normalized to valid JSON by the dispatcher.
 			var toolOutput map[string]interface{}
 			if err := json.Unmarshal([]byte(tr.Content), &toolOutput); err != nil {
 				toolOutput = map[string]interface{}{"content": tr.Content}
@@ -391,6 +392,10 @@ func (p *GeminiProvider) GenerateStream(ctx context.Context, req messaging.Reque
 				})
 			}
 		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("gemini stream scanner error: %w", err)
 	}
 
 	onChunk(StreamChunk{Done: true, Text: fullText.String(), ToolCalls: accumulatedToolCalls})

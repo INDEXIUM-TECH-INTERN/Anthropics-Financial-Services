@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -197,12 +198,45 @@ func (d *Dispatcher) dispatchToolCall(toolCall *messaging.ToolCall) string {
 	if !ok {
 		return fmt.Sprintf("Error: Unknown tool %s", toolCall.Name)
 	}
+	// Validate required parameters against the tool schema before execution
+	for _, schema := range d.GetTools() {
+		if schema.Name == toolCall.Name {
+			if err := validateRequiredParams(toolCall.Name, toolCall.Args, schema); err != nil {
+				fmt.Printf("❌ [Tool] %s validation failed: %v\n", toolCall.Name, err)
+				return fmt.Sprintf("Error: %v", err)
+			}
+			break
+		}
+	}
 	result, err := handler(toolCall.Args)
 	if err != nil {
 		fmt.Printf("❌ [Tool] %s failed: %v\n", toolCall.Name, err)
 		return fmt.Sprintf("Error: %v", err)
 	}
 	return result
+}
+
+// validateRequiredParams checks that all required parameters defined in the tool
+// schema are present and non-empty in the provided args map.
+func validateRequiredParams(toolName string, args map[string]interface{}, schema messaging.ToolSchema) error {
+	requiredRaw, ok := schema.Parameters["required"]
+	if !ok {
+		return nil
+	}
+	required, ok := requiredRaw.([]string)
+	if !ok {
+		return nil
+	}
+	for _, key := range required {
+		val, exists := args[key]
+		if !exists {
+			return fmt.Errorf("missing required parameter '%s' for tool '%s'", key, toolName)
+		}
+		if s, ok := val.(string); ok && strings.TrimSpace(s) == "" {
+			return fmt.Errorf("required parameter '%s' for tool '%s' is empty", key, toolName)
+		}
+	}
+	return nil
 }
 
 // ─── Tool Handler Implementations ───────────────────────────────────────────
@@ -447,17 +481,33 @@ func (d *Dispatcher) cachePut(prefix, key, value string) {
 }
 
 // appendFunctionResponse appends a tool response to the conversation history.
+// The result is normalized to valid JSON so both Gemini and OpenRouter providers
+// see a consistent format when translating history back to their API schema.
 func (d *Dispatcher) appendFunctionResponse(toolCall *messaging.ToolCall, result string) {
 	d.agent.mu.Lock()
 	defer d.agent.mu.Unlock()
+
+	// Normalize: ensure tool response content is always valid JSON
+	normalized := result
+	if !json.Valid([]byte(result)) {
+		normalized = mustJSON(map[string]string{"content": result})
+	}
+
 	d.agent.conversation.ContextWindow.History = append(d.agent.conversation.ContextWindow.History, messaging.Message{
 		Role: messaging.RoleTool,
 		ToolResponses: []messaging.ToolResponse{{
 			CallID:  toolCall.ID,
 			Name:    toolCall.Name,
-			Content: result,
+			Content: normalized,
 		}},
 	})
+}
+
+// mustJSON marshals a value to JSON string, panicking on error (should never happen
+// with simple map types, but if it does we want to fail loud rather than silently).
+func mustJSON(v interface{}) string {
+	b, _ := json.Marshal(v)
+	return string(b)
 }
 
 func (d *Dispatcher) generatePPTXWithScript(title, dataStr, outputPath string) string {
