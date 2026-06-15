@@ -142,13 +142,19 @@ func (cw *ContextWindow) SummarizeOldest(
 		return "", nil
 	}
 
-	// Lấy phần cần tóm tắt (từ đầu đến trước keepRecent)
+	// Lấy phần cần tóm tắt (từ lastSummarizedIdx đến trước keepRecent)
 	endIdx := len(cw.History) - keepRecent
 	if endIdx <= 0 {
 		return "", nil
 	}
 
-	oldMessages := cw.History[:endIdx]
+	startIdx := cw.lastSummarizedIdx
+	if startIdx >= endIdx {
+		// Nothing new to summarize
+		return cw.MemorySummary, nil
+	}
+
+	oldMessages := cw.History[startIdx:endIdx]
 
 	// Chuyển thành text để tóm tắt
 	var sb strings.Builder
