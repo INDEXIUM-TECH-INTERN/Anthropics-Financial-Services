@@ -10,12 +10,12 @@ import (
 
 // MockProvider is a test double for Provider interface.
 type MockProvider struct {
-	Responses []messaging.Message
-	Texts     []string
-	StreamChunks []StreamChunk
-	CallCount int
-	GenerateErr error
-	GenerateTextErr error
+	Responses        []messaging.Message
+	Texts            []string
+	StreamChunks     []StreamChunk
+	CallCount        int
+	GenerateErr      error
+	GenerateTextErr  error
 	GenerateStreamErr error
 }
 
@@ -36,8 +36,8 @@ func (m *MockProvider) Generate(ctx context.Context, req messaging.Request) (mes
 		return messaging.Message{}, m.GenerateErr
 	}
 	idx := m.CallCount
+	m.CallCount++
 	if idx < len(m.Responses) {
-		m.CallCount++
 		return m.Responses[idx], nil
 	}
 	return messaging.Message{
