@@ -271,6 +271,10 @@ func (d *Dispatcher) handleFinancialScrape(args handlers.Args) (string, error) {
 	}
 
 	result := tools.ScrapeWeb(url)
+	const maxScrapeResultChars = 50000 // ~50KB of text
+	if len(result) > maxScrapeResultChars {
+		result = result[:maxScrapeResultChars] + "\n\n[Content truncated due to size limits. Use read_local_file for full content.]"
+	}
 	if result != "" && !strings.HasPrefix(result, "Lỗi") && !strings.HasPrefix(result, "Error") {
 		d.cachePut("scrape", url, result)
 	}
