@@ -12,6 +12,8 @@ import (
 	"gemini-cli/internal/pubsub"
 )
 
+const maxAttemptsPerRequest = 5
+
 // retryDelay sleeps for base * 2^attempt + jitter milliseconds (capped at 5s).
 func retryDelay(attempt int) {
 	base := 500 * time.Millisecond
@@ -30,6 +32,7 @@ type MultiProvider struct {
 	currentIdx       int
 	primaryFailures  int     // số lần primary fail liên tiếp
 	skipPrimaryUntil int     // skip primary cho N lần gọi tới (để tránh quota)
+	attempts         int     // tổng số attempts trong request hiện tại
 }
 
 func NewMultiProvider(primary Provider, fallbacks []Provider) *MultiProvider {
@@ -45,7 +48,13 @@ func (m *MultiProvider) GenerateText(systemPrompt, userPrompt string) (string, e
 	if skipPrimary {
 		m.skipPrimaryUntil--
 	}
+	m.attempts++
+	attempts := m.attempts
 	m.mu.Unlock()
+
+	if attempts > maxAttemptsPerRequest {
+		return "", fmt.Errorf("exceeded maximum provider attempts (%d) for this request", maxAttemptsPerRequest)
+	}
 
 	if skipPrimary && len(m.fallbacks) > 0 {
 		raw, err := m.tryFallbacksOnlyText(systemPrompt, userPrompt)
@@ -124,7 +133,13 @@ func (m *MultiProvider) Generate(ctx context.Context, req messaging.Request) (me
 	if skipPrimary {
 		m.skipPrimaryUntil--
 	}
+	m.attempts++
+	attempts := m.attempts
 	m.mu.Unlock()
+
+	if attempts > maxAttemptsPerRequest {
+		return messaging.Message{}, fmt.Errorf("exceeded maximum provider attempts (%d) for this request", maxAttemptsPerRequest)
+	}
 
 	// Nếu đang skip primary do quota gần đây → dùng fallback ngay
 	if skipPrimary && len(m.fallbacks) > 0 {
