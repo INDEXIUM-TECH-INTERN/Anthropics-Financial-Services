@@ -2,7 +2,7 @@
 
 > All configuration is via environment variables. Copy `Gemini/.env.example` to `Gemini/.env` and fill in your values.
 
-<!-- AUTO-GENERATED: env vars from source code — regenerate with /ecc:update-docs -->
+<!-- AUTO-GENERATED: env vars from .env.example — regenerate with /ecc:update-docs -->
 
 ## Required Variables
 
@@ -11,19 +11,19 @@
 | `GEMINI_API_KEY` | Yes* | Google Gemini API key (primary provider) | `AIzaSy...` |
 | `OPENROUTER_API_KEY` | Yes* | OpenRouter API key (fallback provider) | `sk-or-v1-...` |
 
-> *At least one of `GEMINI_API_KEY` or `OPENROUTER_API_KEY` must be set. If only OpenRouter is available, set `USE_OPENROUTER_ONLY=1`.
+> *At least one of `GEMINI_API_KEY` hoặc `OPENROUTER_API_KEY` phải được set. Nếu chỉ có OpenRouter, set `USE_OPENROUTER_ONLY=1`.
 
 ## Provider Configuration
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `GEMINI_MODEL` | No | `gemini-flash-latest` | Gemini model name |
+| `GEMINI_MODEL` | No | `gemini-3.1-flash-lite` | Gemini model name |
 | `OPENROUTER_MODEL` | No | `meta-llama/llama-3.3-70b-instruct:free` | OpenRouter model name |
-| `USE_OPENROUTER_ONLY` | No | `0` | Set to `1` to skip Gemini and use OpenRouter as primary |
+| `USE_OPENROUTER_ONLY` | No | `0` | Set to `1` để skip Gemini và dùng OpenRouter làm primary |
 
 ## Multi-Key Failover
 
-Multiple API keys can be configured for automatic failover when rate limits are hit:
+Multiple API keys có thể được cấu hình cho automatic failover khi rate limits bị hit:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
@@ -31,6 +31,7 @@ Multiple API keys can be configured for automatic failover when rate limits are 
 | `GEMINI_API_KEY_3` | No | Third Gemini key (failover) |
 | `GEMINI_API_KEY_4` | No | Fourth Gemini key (failover) |
 | `GEMINI_API_KEY_5` | No | Fifth Gemini key (failover) |
+| `GEMINI_API_KEY_6` | No | Sixth Gemini key (failover) |
 | `OPENROUTER_API_KEY_2` | No | Second OpenRouter key (failover) |
 | `OPENROUTER_API_KEY_3` | No | Third OpenRouter key (failover) |
 | `OPENROUTER_API_KEY_4` | No | Fourth OpenRouter key (failover) |
@@ -41,7 +42,9 @@ Multiple API keys can be configured for automatic failover when rate limits are 
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
 | `SERPAPI_KEY` | No | SerpAPI key for Google Search (Vietnamese locale) | `abc123...` |
+| `SERPAPI_KEY_2` | No | Second SerpAPI key (failover) | `def456...` |
 | `TAVILY_API_KEY` | No | Tavily API key for AI-powered search | `tvly-dev-...` |
+| `TAVILY_API_KEY_2` | No | Second Tavily key (failover) | `tvly-pro-...` |
 
 ## Redis Session Store
 
@@ -49,7 +52,7 @@ Multiple API keys can be configured for automatic failover when rate limits are 
 |----------|----------|---------|-------------|
 | `REDIS_ADDR` | No | `127.0.0.1:6379` | Redis server address |
 
-When Redis is unavailable, the system falls back to in-memory session storage (data lost on restart).
+When Redis is unavailable, system sẽ fall back về in-memory session storage (data mất khi restart).
 
 ## Server Configuration
 
@@ -65,6 +68,8 @@ When Redis is unavailable, the system falls back to in-memory session storage (d
 | `CONTEXT_KEEP_RECENT` | No | `7` | Recent messages kept intact during summarization |
 | `CONTEXT_MAX_TOKENS` | No | `92000` | Token threshold for triggering summarization |
 | `CONTEXT_MAX_SUMMARY_INPUT` | No | `18000` | Max characters sent to LLM for summarization |
+
+<!-- /AUTO-GENERATED -->
 
 ## Example `.env` File
 

@@ -1,5 +1,10 @@
 # Hướng Dẫn Đóng Góp (CONTRIBUTING)
 
+> Documentation generated from source-of-truth files. Regenerate with `/ecc:update-docs`.
+
+<!-- AUTO-GENERATED: scripts table and environment docs regenerated 2026-06-18 -->
+<!-- /AUTO-GENERATED -->
+
 Chào mừng bạn đến với dự án TestAIFinance! Tài liệu này hướng dẫn bạn cách đóng góp vào dự án.
 
 ## 🚀 Bắt Đầu
@@ -31,18 +36,24 @@ go mod tidy
 
 ## 📋 Bảng Lệnh Tham Chiếu
 
+<!-- AUTO-GENERATED: scripts from package.json — regenerate with /ecc:update-docs -->
+
 ### Frontend (TypeScript/Vite)
 
 | Command | Mô tả |
 |---------|-------|
 | `cd frontend && npm run dev` | Khởi động dev server với hot reload |
 | `cd frontend && npm run build` | Build production với type checking |
+| `cd frontend && npm run preview` | Preview production build |
 | `cd frontend && npm run typecheck` | Kiểm tra type chỉ (không build) |
 | `cd frontend && npm run lint` | Chạy ESLint |
 | `cd frontend && npm run lint:fix` | Tự động fix ESLint |
 | `cd frontend && npm run format` | Format code với Prettier |
+| `cd frontend && npm run format:check` | Kiểm tra formatting Prettier |
 | `cd frontend && npm run test` | Chạy test suite với Vitest |
+| `cd frontend && npm run test:watch` | Chạy tests trong watch mode |
 | `cd frontend && npm run test:e2e` | Chạy E2E tests với Playwright |
+| `cd frontend && npm run prepare` | Setup Husky pre-commit hooks |
 
 ### Backend (Go)
 
@@ -58,6 +69,15 @@ go mod tidy
 | `cd Gemini && make clean` | Xóa build artifacts |
 | `cd Gemini && make lint` | Chạy `go vet` |
 | `cd Gemini && make fmt` | Format code với goimports/gofmt |
+
+### Full Stack (PowerShell)
+
+```powershell
+# Chạy cả backend + frontend
+.\run-server.ps1
+```
+
+<!-- /AUTO-GENERATED -->
 
 ### Full Stack (PowerShell)
 
