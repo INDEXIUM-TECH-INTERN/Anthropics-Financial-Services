@@ -10,7 +10,7 @@ services:
     plan: starter
     dockerfilePath: ./Gemini/Dockerfile
     dockerContext: ./Gemini
-    healthCheckPath: /health
+    # healthCheckPath: /health
     autoDeployTrigger: commit
     envVars:
       # Gemini API keys (round-robin pool: GEMINI_API_KEY, GEMINI_API_KEY_2, ...)
