@@ -38,8 +38,8 @@ func NewSimpleKeyPool(keysString string) (*SimpleKeyPool, error) {
 	}
 
 	// Shuffle để không luôn dùng key đầu tiên
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(validKeys), func(i, j int) {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	r.Shuffle(len(validKeys), func(i, j int) {
 		validKeys[i], validKeys[j] = validKeys[j], validKeys[i]
 	})
 
@@ -54,6 +54,19 @@ func (kp *SimpleKeyPool) GetKey() string {
 	kp.mu.Lock()
 	defer kp.mu.Unlock()
 
+	key := kp.keys[kp.index]
+	kp.lastUsed[key] = time.Now()
+	kp.index = (kp.index + 1) % len(kp.keys)
+
+	return key
+}
+
+// GetRoundRobinKey trả về key với round-robin tracking
+func (kp *SimpleKeyPool) GetRoundRobinKey() string {
+	kp.mu.Lock()
+	defer kp.mu.Unlock()
+
+	// Always use round-robin order
 	key := kp.keys[kp.index]
 	kp.lastUsed[key] = time.Now()
 	kp.index = (kp.index + 1) % len(kp.keys)

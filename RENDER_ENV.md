@@ -21,13 +21,10 @@
   - Format: "key1,key2"
   - Load balanced across requests
 
-#### Optional LLM API Keys
-- `OPENROUTER_KEYS` - Comma-separated OpenRouter keys
-  - Format: "key1,key2"
-  - Alternative LLM provider if Gemini fails
 
 #### Configuration
 - `GEMINI_MODEL` - Default: `gemini-3.1-flash-lite`
+- `GEMINI_API_KEYS` - Comma-separated keys for round-robin
 - `REDIS_URL` - Auto-populated from Redis service
 - `NODE_ENV` - `production`
 - `LOG_LEVEL` - `info`

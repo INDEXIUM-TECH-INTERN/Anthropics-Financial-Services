@@ -10,7 +10,7 @@ services:
     buildCommand: "cd Gemini && go mod download && CGO_ENABLED=0 GOOS=linux go build -ldflags='-s -w' -o /app/gemini-cli ./cmd/gemini-cli"
     startCommand: "./gemini-cli --server"
     envVars:
-      # Gemini API Keys (Comma-separated for load balancing)
+      # Gemini API Keys (5 keys in pool with round-robin)
       - key: GEMINI_API_KEYS
         sync: false
         generateValue: false
@@ -19,28 +19,19 @@ services:
       - key: GEMINI_MODEL
         value: gemini-3.1-flash-lite
 
-      # SerpAPI Keys (Web scraping)
+      # SerpAPI Keys (Web scraping - pool format)
       - key: SERPAPI_API_KEY
         sync: false
       - key: SERPAPI_API_KEY_2
         sync: false
-      - key: SERPAPI_API_KEY_3
-        sync: false
 
-      # Tavily Keys (Web search)
+      # Tavily Keys (Web search - pool format)
       - key: TAVILY_API_KEY
         sync: false
       - key: TAVILY_API_KEY_2
         sync: false
-      - key: TAVILY_API_KEY_3
-        sync: false
 
-      # OpenRouter Keys (Alternative LLM provider)
-      - key: OPENROUTER_API_KEY
-        sync: false
-      - key: OPENROUTER_API_KEY_2
-        sync: false
-
+      
       # Redis Configuration
       - key: REDIS_URL
         fromService:

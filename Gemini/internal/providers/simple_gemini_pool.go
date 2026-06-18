@@ -36,40 +36,35 @@ func NewSimpleGeminiProvider(apiKeys, model string, maxRetries int) (*SimpleGemi
 	}, nil
 }
 
-// SendMessage gửi message với retry logic
+// SendMessage gửi message với round-robin key selection
 func (gp *SimpleGeminiProvider) SendMessage(ctx context.Context, message string) (string, error) {
-	// Try with different keys
-	keys := gp.keyPool.GetAllKeys()
-
-	for _, key := range keys {
-		// Try each key multiple times
-		for attempt := 0; attempt < gp.maxRetries; attempt++ {
-			if attempt > 0 {
-				time.Sleep(gp.retryDelay * time.Duration(attempt))
-			}
-
-			resp, err := gp.generateContentWithKey(ctx, key, message)
-			if err == nil {
-				gp.errorCount = 0
-				return resp, nil
-			}
-
-			gp.errorCount++
-			log.Printf("Key %s, attempt %d failed: %v", key[:utils.MinValue(10, len(key))]+"...", attempt+1, err)
-
-			// Nếu lỗi là về key, thử key khác
-			if utils.IsAPIKeyError(err) {
-				continue
-			}
-
-			// Other errors, retry with same key
-			if attempt == gp.maxRetries-1 {
-				return "", fmt.Errorf("after %d attempts: %w", gp.maxRetries, err)
-			}
+	// Use round-robin for each attempt
+	for attempt := 0; attempt < gp.maxRetries*len(gp.keyPool.GetAllKeys()); attempt++ {
+		if attempt > 0 {
+			time.Sleep(gp.retryDelay * time.Duration(attempt))
 		}
+
+		// Get key in round-robin order
+		key := gp.keyPool.GetRoundRobinKey()
+
+		resp, err := gp.generateContentWithKey(ctx, key, message)
+		if err == nil {
+			gp.errorCount = 0
+			return resp, nil
+		}
+
+		gp.errorCount++
+		log.Printf("Key %s, attempt %d failed: %v", key[:utils.MinValue(10, len(key))]+"...", attempt+1, err)
+
+		// Nếu lỗi là về key, tiếp tục với key tiếp theo (round-robin tự handle)
+		if utils.IsAPIKeyError(err) {
+			continue
+		}
+
+		// Other errors, retry with next key
 	}
 
-	return "", fmt.Errorf("all keys failed after retries")
+	return "", fmt.Errorf("all keys failed after %d attempts", gp.maxRetries*len(gp.keyPool.GetAllKeys()))
 }
 
 // generateContentWithKey tạo content với specific key
@@ -95,8 +90,8 @@ func (gp *SimpleGeminiProvider) GetRandomKey() string {
 }
 
 // GetStats trả về statistics
-func (gp *SimpleGeminiProvider) GetStats() map[string]interface{} {
-	return map[string]interface{}{
+func (gp *SimpleGeminiProvider) GetStats() map[string]any {
+	return map[string]any{
 		"keys_count":   gp.keyPool.GetKeysCount(),
 		"usage_stats": gp.keyPool.Stats(),
 	}
