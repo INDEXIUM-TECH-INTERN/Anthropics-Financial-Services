@@ -23,6 +23,12 @@ type LLMProvider interface {
 
 	// IsHealthy checks if the provider is healthy
 	IsHealthy() bool
+
+	// GenerateText generates text from a simple prompt (for summarization)
+	GenerateText(systemPrompt, userPrompt string) (string, error)
+
+	// GetTools returns available tools
+	GetTools() []ToolSchema
 }
 
 // LLMRequest represents a request to the LLM

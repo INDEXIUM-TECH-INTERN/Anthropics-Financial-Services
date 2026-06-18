@@ -66,3 +66,14 @@ func (p *GeminiProvider) SetModel(model string) error {
 func (p *GeminiProvider) IsHealthy() bool {
 	return p.apiKey != "" && p.model != ""
 }
+
+// GenerateText generates text from a simple prompt (for summarization)
+func (p *GeminiProvider) GenerateText(systemPrompt, userPrompt string) (string, error) {
+	// TODO: Implement GenerateText using Gemini API
+	return "Summary placeholder", nil
+}
+
+// GetTools returns available tools
+func (p *GeminiProvider) GetTools() []entities.ToolSchema {
+	return []entities.ToolSchema{}
+}

@@ -9,61 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"gemini-cli/internal/domain/entities"
 	"gemini-cli/internal/models/messaging"
 	"gemini-cli/internal/providers"
 	"gemini-cli/internal/pubsub"
 	"gemini-cli/internal/routing"
 	"gemini-cli/internal/utils"
 )
-
-// convertAttachments converts []messaging.Attachment to []entities.Attachment
-func convertAttachments(atts []messaging.Attachment) []entities.Attachment {
-	result := make([]entities.Attachment, len(atts))
-	for i, att := range atts {
-		result[i] = entities.Attachment{
-			Name:     att.Name,
-			Type:     att.Type,
-			Data:     att.Data,
-			Size:     int64(len(att.Data)),
-			MimeType: "application/octet-stream",
-		}
-	}
-	return result
-}
-
-// convertMessages converts []entities.Message to []messaging.Message
-func convertMessages(msgs []entities.Message) []messaging.Message {
-	result := make([]messaging.Message, len(msgs))
-	for i, msg := range msgs {
-		result[i] = messaging.Message{
-			Role:        messaging.Role(msg.Role),
-			Content:     msg.Content,
-			Attachments: convertAttachmentsFromEntities(msg.Attachments),
-		}
-	}
-	return result
-}
-
-// convertContextWindow converts *entities.ContextWindow to *ContextWindow (core package)
-func convertContextWindow(eCW *entities.ContextWindow) *ContextWindow {
-	return &ContextWindow{
-		History: convertMessages(eCW.History),
-	}
-}
-
-// convertAttachmentsFromEntities converts []entities.Attachment to []messaging.Attachment
-func convertAttachmentsFromEntities(atts []entities.Attachment) []messaging.Attachment {
-	result := make([]messaging.Attachment, len(atts))
-	for i, att := range atts {
-		result[i] = messaging.Attachment{
-			Name: att.Name,
-			Type: att.Type,
-			Data: att.Data,
-		}
-	}
-	return result
-}
 
 var (
 	// Pre-compiled regexes for stripThinkingTags — avoids regexp.MustCompile on every call
@@ -72,18 +23,18 @@ var (
 )
 
 type Orchestrator struct {
-	agent *entities.Agent
+	agent *Agent
 }
 
-func NewOrchestrator(a *entities.Agent) *Orchestrator {
+func NewOrchestrator(a *Agent) *Orchestrator {
 	return &Orchestrator{agent: a}
 }
 
 func (o *Orchestrator) ProcessMessage(ctx context.Context, userInput string, atts []messaging.Attachment) (string, error) {
-	o.agent.Lock()
-	o.agent.SetUserInput(userInput)
+	o.agent.mu.Lock()
+	o.agent.userInput = userInput
 
-	isNewConversation := len(o.agent.GetConversation().History) == 0
+	isNewConversation := len(o.agent.conversation.ContextWindow.History) == 0
 
 	if isNewConversation {
 		if strings.HasPrefix(userInput, "/") {
@@ -93,21 +44,21 @@ func (o *Orchestrator) ProcessMessage(ctx context.Context, userInput string, att
 		} else {
 			if routing.IsCasualGreeting(userInput) {
 				pubsub.BroadcastLog("Nhận diện ý định xã giao. Đang phản hồi nhanh...", "routing")
-				o.agent.AppendUserTextInternal(userInput, convertAttachments(atts))
-				o.agent.Mu.Unlock()
+				o.agent.appendUserTextInternal(userInput, atts)
+				o.agent.mu.Unlock()
 				return o.runConversationLoopInternal(ctx)
 			}
 
 			pubsub.BroadcastLog("Khởi tạo cuộc hội thoại mới...", "process")
-			o.agent.AppendUserTextInternal(userInput, convertAttachments(atts))
-			o.agent.Mu.Unlock()
+			o.agent.appendUserTextInternal(userInput, atts)
+			o.agent.mu.Unlock()
 			BootstrapContext(o.agent)
 			return o.runConversationLoopInternal(ctx)
 		}
 	} else {
-		o.agent.AppendUserTextInternal(userInput, convertAttachments(atts))
+		o.agent.appendUserTextInternal(userInput, atts)
 	}
-	o.agent.Mu.Unlock()
+	o.agent.mu.Unlock()
 
 	return o.runConversationLoopInternal(ctx)
 }
@@ -119,9 +70,9 @@ func (o *Orchestrator) ProcessMessage(ctx context.Context, userInput string, att
 // chuyển sang chế độ blocking cho đến khi tool xong, rồi stream final response.
 func (o *Orchestrator) ProcessMessageStream(ctx context.Context, userInput string, atts []messaging.Attachment, onChunk func(string, bool)) error {
 	// Phase 1: Bootstrap context (giống ProcessMessage nhưng không stream)
-	o.agent.Lock()
-	o.agent.SetUserInput(userInput)
-	isNewConversation := len(o.agent.GetConversation().History) == 0
+	o.agent.mu.Lock()
+	o.agent.userInput = userInput
+	isNewConversation := len(o.agent.conversation.ContextWindow.History) == 0
 
 	if isNewConversation {
 		if strings.HasPrefix(userInput, "/") {
@@ -131,20 +82,20 @@ func (o *Orchestrator) ProcessMessageStream(ctx context.Context, userInput strin
 		} else {
 			if routing.IsCasualGreeting(userInput) {
 				pubsub.BroadcastLog("Nhận diện ý định xã giao. Đang phản hồi nhanh...", "routing")
-				o.agent.AppendUserTextInternal(userInput, convertAttachments(atts))
-				o.agent.Unlock()
+				o.agent.appendUserTextInternal(userInput, atts)
+				o.agent.mu.Unlock()
 				return o.streamFinalResponse(ctx, onChunk)
 			}
 			pubsub.BroadcastLog("Khởi tạo cuộc hội thoại mới...", "process")
-			o.agent.AppendUserTextInternal(userInput, convertAttachments(atts))
-			o.agent.Unlock()
+			o.agent.appendUserTextInternal(userInput, atts)
+			o.agent.mu.Unlock()
 			BootstrapContext(o.agent)
 			return o.streamFinalResponse(ctx, onChunk)
 		}
 	} else {
-		o.agent.AppendUserTextInternal(userInput, convertAttachments(atts))
+		o.agent.appendUserTextInternal(userInput, atts)
 	}
-	o.agent.Unlock()
+	o.agent.mu.Unlock()
 
 	return o.streamFinalResponse(ctx, onChunk)
 }
@@ -160,27 +111,27 @@ func (o *Orchestrator) streamFinalResponse(ctx context.Context, onChunk func(str
 
 	for i := 0; i < maxIterations; i++ {
 		// Kiểm tra context summarization (read lock)
-		o.agent.Mu.RLock()
-		cw := convertContextWindow(o.agent.Conversation)
+		o.agent.mu.RLock()
+		cw := o.agent.conversation.ContextWindow
 		needsSummary := cw.ShouldSummarize(maxContextTokens, keepRecentMessages)
-		o.agent.Mu.RUnlock()
+		o.agent.mu.RUnlock()
 
 		if needsSummary {
 			pubsub.BroadcastLog("Context window lớn, đang tóm tắt lịch sử cũ...", "process")
-			o.agent.Mu.RLock()
-			_, err := cw.SummarizeOldest(o.agent.Provider, keepRecentMessages, maxSummaryChars)
-			o.agent.Mu.RUnlock()
+			o.agent.mu.RLock()
+			_, err := cw.SummarizeOldest(o.agent.GetProvider(), keepRecentMessages, maxSummaryChars)
+			o.agent.mu.RUnlock()
 			if err != nil {
 				fmt.Printf("⚠️ [Context] Tóm tắt thất bại: %v.\n", err)
 			}
 		}
 
 		// Build messages (read lock)
-		o.agent.Mu.RLock()
-		systemPrompt := o.agent.SystemPrompt
-		condensedHistory := convertMessages(o.agent.Conversation.History)
-		tools := nil.GetTools()
-		o.agent.Mu.RUnlock()
+		o.agent.mu.RLock()
+		systemPrompt := o.agent.systemPrompt
+		condensedHistory := o.agent.conversation.ContextWindow.BuildLLMHistory(keepRecentMessages)
+		tools := o.agent.dispatcher.GetTools()
+		o.agent.mu.RUnlock()
 
 		var messages []messaging.Message
 		if systemPrompt != "" {
@@ -199,6 +150,7 @@ func (o *Orchestrator) streamFinalResponse(ctx context.Context, onChunk func(str
 		// Gọi LLM với streaming thực tế (ngoài lock)
 		var fullText strings.Builder
 		var accumulatedToolCalls []messaging.ToolCall
+		var accumulatedThoughtSignature string
 		streamDone := make(chan error, 1)
 
 		go func() {
@@ -208,12 +160,15 @@ func (o *Orchestrator) streamFinalResponse(ctx context.Context, onChunk func(str
 					streamDone <- fmt.Errorf("stream panic: %v", r)
 				}
 			}()
-			err := o.agent.Provider.GenerateStream(ctx, req, func(sc providers.StreamChunk) {
+			err := o.agent.GetProvider().GenerateStream(ctx, req, func(sc providers.StreamChunk) {
 				if !sc.Done && sc.Text != "" {
 					fullText.WriteString(sc.Text)
 				}
 				if len(sc.ToolCalls) > 0 {
 					accumulatedToolCalls = append(accumulatedToolCalls, sc.ToolCalls...)
+				}
+				if sc.ThoughtSignature != "" {
+					accumulatedThoughtSignature = sc.ThoughtSignature
 				}
 			})
 			streamDone <- err
@@ -231,15 +186,16 @@ func (o *Orchestrator) streamFinalResponse(ctx context.Context, onChunk func(str
 		// Append vào history (write lock)
 		finalText := fullText.String()
 		msg := messaging.Message{
-			Role:      messaging.RoleAssistant,
-			Content:   finalText,
-			ToolCalls: accumulatedToolCalls,
+			Role:             messaging.RoleAssistant,
+			Content:          finalText,
+			ToolCalls:        accumulatedToolCalls,
+			ThoughtSignature: accumulatedThoughtSignature,
 		}
-		o.agent.Mu.Lock()
-		o.agent.Conversation.History = append(o.agent.Conversation.History, msg)
-		o.agent.Mu.Unlock()
+		o.agent.mu.Lock()
+		o.agent.conversation.ContextWindow.History = append(o.agent.conversation.ContextWindow.History, msg)
+		o.agent.mu.Unlock()
 
-		hasToolCall := nil.HandleToolCalls(msg)
+		hasToolCall := o.agent.dispatcher.HandleToolCalls(msg)
 
 		// === BƯỚC 5: KIỂM TRA VÀ CẢNH BÁO VẤN ĐỀ THỜI GIAN ===
 		timeWarning := o.agent.CheckTimeKnowledgeIssues(finalText)
@@ -249,9 +205,9 @@ func (o *Orchestrator) streamFinalResponse(ctx context.Context, onChunk func(str
 			finalText += "\n\n" + timeWarning
 			// Cập nhật lại message
 			msg.Content = finalText
-			o.agent.Mu.Lock()
-			o.agent.Conversation.History = append(o.agent.Conversation.History, msg)
-			o.agent.Mu.Unlock()
+			o.agent.mu.Lock()
+			o.agent.conversation.ContextWindow.History = append(o.agent.conversation.ContextWindow.History, msg)
+			o.agent.mu.Unlock()
 		}
 
 		// Send only the final response to client (skip thinking/tool-call preamble)
@@ -272,15 +228,15 @@ func (o *Orchestrator) streamFinalResponse(ctx context.Context, onChunk func(str
 			}
 		}
 
-		o.agent.Mu.Lock()
-		if o.agent.HandoffPlan != nil {
-			plan := *o.agent.HandoffPlan
-			o.agent.HandoffPlan = nil
+		o.agent.mu.Lock()
+		if o.agent.handoffPlan != nil {
+			plan := *o.agent.handoffPlan
+			o.agent.handoffPlan = nil
 			ExecuteBootstrapWithRoute(o.agent, plan)
-			o.agent.Mu.Unlock()
+			o.agent.mu.Unlock()
 			continue
 		}
-		o.agent.Mu.Unlock()
+		o.agent.mu.Unlock()
 
 		if !hasToolCall {
 			onChunk("", true)
@@ -299,19 +255,19 @@ func (o *Orchestrator) runConversationLoopInternal(ctx context.Context) (string,
 
 	for i := 0; i < maxIterations; i++ {
 		// === BƯỚC 1: KIỂM TRA VÀ TÓM TẮT NGỮ CẢNH NẾU CẦN (read lock) ===
-		o.agent.Mu.RLock()
-		cw := o.agent.Conversation
+		o.agent.mu.RLock()
+		cw := o.agent.conversation.ContextWindow
 		needsSummary := cw.ShouldSummarize(maxContextTokens, keepRecentMessages)
-		o.agent.Mu.RUnlock()
+		o.agent.mu.RUnlock()
 
 		if needsSummary {
 			pubsub.BroadcastLog("Context window lớn, đang tóm tắt lịch sử cũ...", "process")
 			fmt.Printf("🧠 [Context] Đang tóm tắt tin nhắn cũ để tiết kiệm context...\n")
 
 			// SummarizeOldest reads history — hold read lock during the call
-			o.agent.Mu.RLock()
-			_, err := cw.SummarizeOldest(o.agent.Provider, keepRecentMessages, maxSummaryChars)
-			o.agent.Mu.RUnlock()
+			o.agent.mu.RLock()
+			_, err := cw.SummarizeOldest(o.agent.GetProvider(), keepRecentMessages, maxSummaryChars)
+			o.agent.mu.RUnlock()
 
 			if err != nil {
 				fmt.Printf("⚠️ [Context] Tóm tắt thất bại: %v. Tiếp tục với context đầy đủ.\n", err)
@@ -323,11 +279,11 @@ func (o *Orchestrator) runConversationLoopInternal(ctx context.Context) (string,
 		}
 
 		// === BƯỚC 2: Xây dựng messages gửi cho LLM (read lock) ===
-		o.agent.Mu.RLock()
-		systemPrompt := o.agent.SystemPrompt
-		condensedHistory := convertMessages(o.agent.Conversation.History)
-		tools := nil.GetTools()
-		o.agent.Mu.RUnlock()
+		o.agent.mu.RLock()
+		systemPrompt := o.agent.systemPrompt
+		condensedHistory := o.agent.conversation.ContextWindow.BuildLLMHistory(keepRecentMessages)
+		tools := o.agent.dispatcher.GetTools()
+		o.agent.mu.RUnlock()
 
 		var messages []messaging.Message
 		if systemPrompt != "" {
@@ -347,17 +303,17 @@ func (o *Orchestrator) runConversationLoopInternal(ctx context.Context) (string,
 		}
 
 		// === BƯỚC 3: Gọi LLM (ngoài lock) ===
-		aiMessage, err := o.agent.Provider.Generate(ctx, req)
+		aiMessage, err := o.agent.GetProvider().Generate(ctx, req)
 		if err != nil {
 			return "", err
 		}
 
 		// === BƯỚC 4: Append response (write lock), then handle tool calls (outside lock) ===
-		o.agent.Mu.Lock()
-		o.agent.Conversation.History = append(o.agent.Conversation.History, aiMessage)
-		o.agent.Mu.Unlock()
+		o.agent.mu.Lock()
+		o.agent.conversation.ContextWindow.History = append(o.agent.conversation.ContextWindow.History, aiMessage)
+		o.agent.mu.Unlock()
 
-		hasToolCall := nil.HandleToolCalls(aiMessage)
+		hasToolCall := o.agent.dispatcher.HandleToolCalls(aiMessage)
 
 		// === BƯỚC 5: KIỂM TRA VÀ CẢNH BÁO VẤN ĐỀ THỜI GIAN ===
 		timeWarning := o.agent.CheckTimeKnowledgeIssues(aiMessage.Content)
@@ -365,21 +321,21 @@ func (o *Orchestrator) runConversationLoopInternal(ctx context.Context) (string,
 			fmt.Printf("⚠️ [Time] Phát hiện vấn đề thời gian trong response:\n%s", timeWarning)
 			// Thêm cảnh báo vào response
 			aiMessage.Content += "\n\n" + timeWarning
-			o.agent.Mu.Lock()
-			o.agent.Conversation.History = append(o.agent.Conversation.History, aiMessage)
-			o.agent.Mu.Unlock()
+			o.agent.mu.Lock()
+			o.agent.conversation.ContextWindow.History = append(o.agent.conversation.ContextWindow.History, aiMessage)
+			o.agent.mu.Unlock()
 		}
 
-		o.agent.Mu.Lock()
-		if o.agent.HandoffPlan != nil {
-			plan := *o.agent.HandoffPlan
-			o.agent.HandoffPlan = nil
+		o.agent.mu.Lock()
+		if o.agent.handoffPlan != nil {
+			plan := *o.agent.handoffPlan
+			o.agent.handoffPlan = nil
 			fmt.Printf("\n🔀 [Orchestrator] Executing handoff to: %s\n", plan.Agent)
 			ExecuteBootstrapWithRoute(o.agent, plan)
-			o.agent.Mu.Unlock()
+			o.agent.mu.Unlock()
 			continue
 		}
-		o.agent.Mu.Unlock()
+		o.agent.mu.Unlock()
 
 		if !hasToolCall {
 			return extractResponseText(aiMessage), nil

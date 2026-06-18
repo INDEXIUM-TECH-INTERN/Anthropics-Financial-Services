@@ -24,6 +24,7 @@ type AgentInterface interface {
 	ProcessMessageStream(context.Context, string, []messaging.Attachment, func(string, bool)) error
 	GetHistory() []messaging.Message
 	LoadHistory([]messaging.Message)
+	SetGeminiKeys([]string)
 }
 
 type ChatRequest struct {

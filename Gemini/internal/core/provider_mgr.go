@@ -14,23 +14,18 @@ type ProviderManager struct {
 	provider providers.Provider
 }
 
-// NewProviderManager creates a provider from environment configuration.
-// Only supports Gemini API keys with single provider (no fallbacks).
+// NewProviderManager creates a provider chain from environment configuration.
+// Priority: Gemini API keys with failover support. No longer supports OpenRouter.
 func NewProviderManager() *ProviderManager {
 	geminiProviders := newGeminiProviders()
 
 	var p providers.Provider
 	if len(geminiProviders) == 0 {
 		fmt.Println("⚠️ [Config] Không tìm thấy Gemini API keys. Sử dụng API key trống để testing.")
-		p = newGeminiProvider("")
+		p = providers.NewMultiProvider(newGeminiProvider(""), nil)
 	} else {
-		// Cast để truy cập APIKey từ interface
-		if gemProvider, ok := geminiProviders[0].(*providers.GeminiProvider); ok {
-			p = newGeminiProvider(gemProvider.APIKey)
-		} else {
-			p = newGeminiProvider("")
-		}
-		fmt.Printf("🚀 [Config] Đã khởi tạo Gemini Provider với %d API key(s)\n", len(geminiProviders))
+		p = providers.NewMultiProvider(geminiProviders[0], geminiProviders[1:])
+		fmt.Printf("🚀 [Config] Đã khởi tạo Gemini MultiProvider với %d API keys\n", len(geminiProviders))
 	}
 
 	return &ProviderManager{provider: p}
@@ -81,6 +76,13 @@ func envValues(keys []string) []string {
 	return values
 }
 
+// openRouterKeysFromEnv reads OpenRouter API keys from OPENROUTER_API_KEY, OPENROUTER_API_KEY_2, ..., _5.
+// Deprecated: This function is kept for backward compatibility but OpenRouter is no longer supported.
+func openRouterKeysFromEnv() []string {
+	fmt.Println("⚠️ [Deprecated] OpenRouter is no longer supported in Gemini backend")
+	return envValues(numberedEnvKeys("OPENROUTER_API_KEY", 5))
+}
+
 // newGeminiProviders creates GeminiProvider instances from GEMINI_API_KEY env vars.
 func newGeminiProviders() []providers.Provider {
 	keys := envValues(numberedEnvKeys("GEMINI_API_KEY", 5))
@@ -97,6 +99,14 @@ func newGeminiProvider(apiKey string) *providers.GeminiProvider {
 		APIKey: apiKey,
 		Model:  normalizeGeminiModel(os.Getenv("GEMINI_MODEL")),
 	}
+}
+
+// newOpenRouterProviders creates OpenRouterProvider instances from env keys.
+// Deprecated: OpenRouter is no longer supported in Gemini backend.
+func newOpenRouterProviders(keys []string) []providers.Provider {
+	fmt.Println("⚠️ [Deprecated] OpenRouter is no longer supported in Gemini backend")
+	// Return empty array to prevent OpenRouter usage
+	return []providers.Provider{}
 }
 
 // normalizeGeminiModel ensures the model name starts with "models/" prefix.

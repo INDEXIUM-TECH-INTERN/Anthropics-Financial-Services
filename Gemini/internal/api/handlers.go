@@ -426,7 +426,7 @@ func handleConfigKeys(agent AgentInterface) http.HandlerFunc {
 			}
 		}
 
-		
+		agent.SetGeminiKeys(validKeys)
 		fmt.Printf("🔑 [Config] Updated %d Gemini keys\n", len(validKeys))
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{

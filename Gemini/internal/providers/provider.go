@@ -8,10 +8,11 @@ import (
 
 // StreamChunk represents a single streaming token chunk from the provider.
 type StreamChunk struct {
-	Text      string
-	Done      bool
-	Metrics   *StreamMetrics
-	ToolCalls []messaging.ToolCall
+	Text             string
+	Done             bool
+	Metrics          *StreamMetrics
+	ToolCalls        []messaging.ToolCall
+	ThoughtSignature string
 }
 
 // StreamMetrics holds token usage info returned at the end of a stream.

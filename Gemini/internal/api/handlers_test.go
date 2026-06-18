@@ -54,7 +54,7 @@ func (m *mockAgent) LoadHistory(msgs []messaging.Message) {
 	m.loadedHistory = msgs
 }
 
-func (m *mockAgent) SetOpenRouterKeys(keys []string) {
+func (m *mockAgent) SetGeminiKeys(keys []string) {
 	m.keys = keys
 }
 

@@ -268,7 +268,14 @@ func (p *GeminiProvider) GenerateStream(ctx context.Context, req messaging.Reque
 		}
 		parts := []models.GeminiPart{}
 		if msg.Content != "" {
-			parts = append(parts, models.GeminiPart{Text: msg.Content})
+			if msg.ThoughtSignature != "" {
+				parts = append(parts, models.GeminiPart{
+					Text:             msg.Content,
+					ThoughtSignature: msg.ThoughtSignature,
+				})
+			} else {
+				parts = append(parts, models.GeminiPart{Text: msg.Content})
+			}
 		}
 		// Handle attachments (R6.1)
 		for _, att := range msg.Attachments {
@@ -287,7 +294,16 @@ func (p *GeminiProvider) GenerateStream(ctx context.Context, req messaging.Reque
 		}
 		for _, tc := range msg.ToolCalls {
 			parts = append(parts, models.GeminiPart{
-				FunctionCall: &models.GeminiFunctionCall{Name: tc.Name, Args: tc.Args},
+				FunctionCall: &models.GeminiFunctionCall{
+					Name: tc.Name,
+					Args: tc.Args,
+				},
+				ThoughtSignature: msg.ThoughtSignature,
+			})
+		}
+		if msg.Content == "" && len(msg.ToolCalls) == 0 && msg.ThoughtSignature != "" {
+			parts = append(parts, models.GeminiPart{
+				ThoughtSignature: msg.ThoughtSignature,
 			})
 		}
 		for _, tr := range msg.ToolResponses {
@@ -366,6 +382,7 @@ func (p *GeminiProvider) GenerateStream(ctx context.Context, req messaging.Reque
 	scanner := bufio.NewScanner(resp.Body)
 	var fullText strings.Builder
 	var accumulatedToolCalls []messaging.ToolCall
+	var accumulatedThoughtSignature string
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if !strings.HasPrefix(line, "data: ") {
@@ -382,9 +399,12 @@ func (p *GeminiProvider) GenerateStream(ctx context.Context, req messaging.Reque
 			continue
 		}
 		for _, part := range gResp.Candidates[0].Content.Parts {
+			if part.ThoughtSignature != "" {
+				accumulatedThoughtSignature = part.ThoughtSignature
+			}
 			if part.Text != "" {
 				fullText.WriteString(part.Text)
-				onChunk(StreamChunk{Text: part.Text})
+				onChunk(StreamChunk{Text: part.Text, ThoughtSignature: part.ThoughtSignature})
 			}
 			if part.FunctionCall != nil {
 				callID := fmt.Sprintf("call_%s_%d", part.FunctionCall.Name, len(accumulatedToolCalls))
@@ -401,7 +421,12 @@ func (p *GeminiProvider) GenerateStream(ctx context.Context, req messaging.Reque
 		return fmt.Errorf("gemini stream scanner error: %w", err)
 	}
 
-	onChunk(StreamChunk{Done: true, Text: fullText.String(), ToolCalls: accumulatedToolCalls})
+	onChunk(StreamChunk{
+		Done:             true,
+		Text:             fullText.String(),
+		ToolCalls:        accumulatedToolCalls,
+		ThoughtSignature: accumulatedThoughtSignature,
+	})
 	return nil
 }
 

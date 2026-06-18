@@ -35,7 +35,8 @@ func main() {
 
 	// 3. Application Layer
 	fmt.Println("\n3️⃣  Application Layer")
-	orchestrator := core.NewOrchestrator(agent)
+	coreAgent := core.NewAgent()
+	orchestrator := core.NewOrchestrator(coreAgent)
 	if orchestrator == nil {
 		fmt.Println("❌ Failed to create orchestrator")
 		return

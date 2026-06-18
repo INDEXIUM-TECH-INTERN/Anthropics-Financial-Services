@@ -3,6 +3,9 @@ package entities
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -264,4 +267,93 @@ func (m *MockProvider) GetAvailableModels() []ModelInfo {
 
 func (m *MockProvider) IsHealthy() bool {
 	return true
+}
+
+// CheckTimeKnowledgeIssues kiểm tra và cảnh báo các vấn đề về thời gian
+func (a *Agent) CheckTimeKnowledgeIssues(text string) string {
+	now := time.Now()
+	currentYear := now.Year()
+	warnings := []string{}
+	warningSet := make(map[string]bool) // Trùng lặp warnings
+
+	// 1. Kiểm tra các năm cũ (2024 và trước đó khi đã có năm mới)
+	if currentYear > 2024 {
+		yearMatches := regexp.MustCompile(`\b2024\b`).FindAllString(text, -1)
+		if len(yearMatches) > 0 {
+			warningSet["- Dữ liệu năm 2024 có thể không còn mới nhất"] = true
+		}
+
+		// Kiểm tra các năm cũ khác
+		oldYears := []int{2023, 2022, 2021}
+		for _, year := range oldYears {
+			yearMatches := regexp.MustCompile(`\b`+strconv.Itoa(year)+`\b`).FindAllString(text, -1)
+			if len(yearMatches) > 0 {
+				warningSet[fmt.Sprintf("- Tham chiếu đến năm %d có thể không cập nhật", year)] = true
+			}
+		}
+	}
+
+	// 2. Kiểm tra các biểu thức thời gian không hợp lý
+	illogicalPatterns := []string{
+		`3 năm trước`, `2 năm trước`, `1 năm trước`,
+		`6 tháng trước`, `3 tháng trước`, `1 tháng trước`,
+	}
+	for _, pattern := range illogicalPatterns {
+		if strings.Contains(text, pattern) {
+			// Kiểm tra xem kết quả có phải là năm cũ không
+			for _, year := range []int{2024, 2023, 2022} {
+				if strings.Contains(text, strconv.Itoa(year)) {
+					warningSet[fmt.Sprintf("- Biểu thức '%s' đề cập đến năm %d có thể không chính xác", pattern, year)] = true
+					break
+				}
+			}
+		}
+	}
+
+	// 3. Kiểm tra "gần đây" với các năm cũ
+	recentPatterns := []string{"gần nhất", "gần đây", "hiện tại"}
+	for _, pattern := range recentPatterns {
+		if strings.Contains(text, pattern) {
+			// Nếu chứa các pattern này nhưng lại đề cập đến năm 2024
+			if strings.Contains(text, "2024") && currentYear > 2024 {
+				warningSet[fmt.Sprintf("- Từ '%s' cần được xác nhận lại với dữ liệu mới nhất", pattern)] = true
+			}
+		}
+	}
+
+	// 4. Kiểm tra giờ giao dịch
+	if strings.Contains(text, "giờ giao dịch") {
+		hour := now.Hour()
+		weekday := now.Weekday()
+		if !(weekday >= time.Monday && weekday <= time.Friday && hour >= 9 && hour < 15) {
+			warningSet["- Ngoài giờ giao dịch chính (9:00-15:00 từ thứ 2 đến thứ 6)"] = true
+		}
+	}
+
+	// 5. Sử dụng time parser để validate các biểu thức thời gian cụ thể
+	timeExpressions := regexp.MustCompile(`\d{1,2}[/-]\d{1,2}[/-]\d{4}|\d{4}`).FindAllString(text, -1)
+	for _, expr := range timeExpressions {
+		// Nếu là năm và là năm cũ
+		if len(expr) == 4 {
+			year, err := strconv.Atoi(expr)
+			if err == nil && year < currentYear-1 {
+				warningSet[fmt.Sprintf("- Dữ liệu năm %d có thể không còn mới", year)] = true
+			}
+		}
+	}
+
+	// Chuyển map thành slice để tránh trùng lặp
+	for warning := range warningSet {
+		warnings = append(warnings, warning)
+	}
+
+	if len(warnings) > 0 {
+		result := "*⚠️ CẢNH BÁO VỀ THỜI GIAN:*\n"
+		result += strings.Join(warnings, "\n")
+		result += fmt.Sprintf("\n\nHiện tại là: %s (%d)\n", now.Format("02/01/2006"), currentYear)
+		result += "Vui lòng kiểm tra với nguồn dữ liệu mới nhất.\n\n"
+		return result
+	}
+
+	return ""
 }
