@@ -3,11 +3,15 @@
    Keeping only essential styles not covered in professional-news.css
    ═══════════════════════════════════════════════════ */
 
-/* ── Tab Navigation (Header) ── */
+/* ── Enhanced Tab Navigation (Header) ── */
 .topbar-tabs {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xs);
+  border: 1px solid var(--border-default);
 }
 
 .topbar-tab {
@@ -15,18 +19,47 @@
   align-items: center;
   background: transparent;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: var(--text-tertiary);
-  font-size: 13px;
-  font-weight: 500;
-  padding: 8px 16px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  padding: var(--spacing-sm) var(--spacing-md);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.topbar-tab::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 100%;
+  background: var(--gradient-primary);
+  transition: width var(--transition-base);
+  z-index: -1;
 }
 
 .topbar-tab:hover {
   color: var(--text-primary);
   background: var(--bg-hover);
+  transform: translateY(-1px);
+}
+
+.topbar-tab.active {
+  color: var(--text-primary);
+  background: var(--accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.topbar-tab.active::before {
+  width: 100%;
+}
+
+.topbar-tab.active:hover {
+  background: var(--gradient-primary);
 }
 
 .topbar-tab.active {

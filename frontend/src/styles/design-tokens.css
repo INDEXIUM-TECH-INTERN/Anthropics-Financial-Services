@@ -13,8 +13,9 @@
   --color-primary: #1e40af;
   --color-primary-light: #3b82f6;
   --color-primary-dark: #1e3a8a;
+  --color-primary-hover: #2563eb;
 
-  /* Secondary Colors - Gray for Professional */
+  /* Secondary Colors - Enhanced Gray Scale */
   --color-gray-50: #f9fafb;
   --color-gray-100: #f3f4f6;
   --color-gray-200: #e5e7eb;
@@ -26,17 +27,64 @@
   --color-gray-800: #1f2937;
   --color-gray-900: #111827;
 
-  /* Accent Colors - Green for Growth */
+  /* Professional Neutral Colors */
+  --color-neutral-100: #f3f4f6;
+  --color-neutral-200: #e5e7eb;
+  --color-neutral-300: #d1d5db;
+  --color-neutral-400: #9ca3af;
+  --color-neutral-500: #6b7280;
+  --color-neutral-600: #4b5563;
+  --color-neutral-700: #374151;
+  --color-neutral-800: #1f2937;
+  --color-neutral-900: #111827;
+
+  /* Accent Colors - Enhanced for Finance */
   --color-success: #059669;
   --color-success-light: #10b981;
+  --color-success-dark: #047857;
   --color-warning: #d97706;
+  --color-warning-light: #f59e0b;
   --color-danger: #dc2626;
+  --color-danger-light: #ef4444;
+  --color-info: #3b82f6;
+  --color-info-light: #60a5fa;
 
-  /* Professional Gradients */
+  /* Enhanced Gradients */
   --gradient-primary: linear-gradient(135deg, #1e40af, #3b82f6);
+  --gradient-primary-hover: linear-gradient(135deg, #2563eb, #60a5fa);
   --gradient-accent: linear-gradient(135deg, #3b82f6, #1e40af);
   --gradient-success: linear-gradient(135deg, #059669, #10b981);
+  --gradient-warning: linear-gradient(135deg, #d97706, #f59e0b);
+  --gradient-danger: linear-gradient(135deg, #dc2626, #ef4444);
   --gradient-border: conic-gradient(from 180deg, #3b82f6, #1e40af, #3b82f6);
+
+  /* Enhanced Spacing Scale */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
+
+  /* Enhanced Typography Scale */
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 32px;
+  --font-size-4xl: 40px;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.25;
+  --line-height-base: 1.5;
+  --line-height-relaxed: 1.75;
 
   /* Professional Backgrounds */
   --bg-surface-1: var(--bg-canvas);
