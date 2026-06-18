@@ -15,15 +15,27 @@ import (
 	"gemini-cli/internal/models"
 	"gemini-cli/internal/models/messaging"
 )
-
 type GeminiProvider struct {
-	APIKey string
-	Model  string
+	APIKey  string
+	Keys    []string
+	Current int
+	Model   string
+}
+
+func (p *GeminiProvider) getAPIKey() string {
+	if p.APIKey != "" {
+		return p.APIKey
+	}
+	if len(p.Keys) == 0 {
+		return ""
+	}
+	// Round-robin rotation of API keys
+	key := p.Keys[p.Current]
+	p.Current = (p.Current + 1) % len(p.Keys)
+	return key
 }
 
 func (p *GeminiProvider) Generate(ctx context.Context, req messaging.Request) (messaging.Message, error) {
-	// TODO: Implement key pool rotation
-		
 	model := strings.TrimSpace(p.Model)
 	if model == "" {
 		model = "gemini-3.1-flash-lite" // Updated default for 2026
@@ -32,8 +44,9 @@ func (p *GeminiProvider) Generate(ctx context.Context, req messaging.Request) (m
 	if !strings.HasPrefix(modelPath, "models/") {
 		modelPath = "models/" + modelPath
 	}
+	apiKey := p.getAPIKey()
 	// Use v1beta as it supports systemInstruction and tools fields in the JSON payload.
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/%s:generateContent", modelPath)
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/%s:generateContent?key=%s", modelPath, apiKey)
 
 	// Translate messaging.Request to models.GeminiRequest
 	var geminiContents []models.GeminiContent
@@ -245,7 +258,6 @@ func (p *GeminiProvider) GenerateText(systemPrompt, userPrompt string) (string, 
 }
 
 func (p *GeminiProvider) GenerateStream(ctx context.Context, req messaging.Request, onChunk func(StreamChunk)) error {
-	
 	model := strings.TrimSpace(p.Model)
 	if model == "" {
 		model = "gemini-3.1-flash-lite"
@@ -254,7 +266,8 @@ func (p *GeminiProvider) GenerateStream(ctx context.Context, req messaging.Reque
 	if !strings.HasPrefix(modelPath, "models/") {
 		modelPath = "models/" + modelPath
 	}
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/%s:streamGenerateContent?alt=sse", modelPath)
+	apiKey := p.getAPIKey()
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/%s:streamGenerateContent?alt=sse&key=%s", modelPath, apiKey)
 
 	// Build Gemini request (same as Generate)
 	var geminiContents []models.GeminiContent
@@ -474,8 +487,10 @@ func NewGeminiProvider(apiKey string) *GeminiProvider {
 // NewGeminiProviderWithPool creates a Gemini provider that uses a key pool
 func NewGeminiProviderWithPool(keys []string) *GeminiProvider {
 	return &GeminiProvider{
-		APIKey: "", // Will be set dynamically
-		Model:  normalizeGeminiModel(os.Getenv("GEMINI_MODEL")),
+		APIKey:  "",
+		Keys:    keys,
+		Current: 0,
+		Model:   normalizeGeminiModel(os.Getenv("GEMINI_MODEL")),
 	}
 }
 

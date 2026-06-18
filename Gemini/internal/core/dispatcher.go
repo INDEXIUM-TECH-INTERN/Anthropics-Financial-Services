@@ -171,7 +171,9 @@ func (d *Dispatcher) GetTools() []messaging.ToolSchema {
 // Returns error if required tools are missing when they should be used
 func (d *Dispatcher) ValidateRequiredToolUsage(aiMessage messaging.Message, userInput string) error {
 	// Check if input requires research tools
-	if d.requiresResearchTool(userInput) {
+	isRealtimeBootstrap := tools.NeedsRealtimeData(userInput)
+
+	if d.requiresResearchTool(userInput) && !isRealtimeBootstrap {
 		hasResearchTool := false
 		for _, toolCall := range aiMessage.ToolCalls {
 			if toolCall.Name == "financial_research" || toolCall.Name == "tavily_search" {
@@ -180,7 +182,54 @@ func (d *Dispatcher) ValidateRequiredToolUsage(aiMessage messaging.Message, user
 			}
 		}
 
-		if !hasResearchTool {
+		// Check history if not found in current message
+		if !hasResearchTool && d.agent != nil && d.agent.conversation != nil {
+			d.agent.mu.RLock()
+			for _, msg := range d.agent.conversation.ContextWindow.History {
+				for _, tc := range msg.ToolCalls {
+					if tc.Name == "financial_research" || tc.Name == "tavily_search" {
+						hasResearchTool = true
+						break
+					}
+				}
+				if hasResearchTool {
+					break
+				}
+			}
+			d.agent.mu.RUnlock()
+		}
+
+		// Nếu AI đang chọn gọi tool tính toán, và trong câu hỏi đã chứa chữ số (có sẵn số liệu),
+		// thì không bắt buộc phải gọi tool search.
+		hasCalcToolCall := false
+		for _, toolCall := range aiMessage.ToolCalls {
+			if toolCall.Name == "financial_calculate" {
+				hasCalcToolCall = true
+				break
+			}
+		}
+
+		// Kiểm tra xem đã từng tính toán trong lịch sử chưa
+		hasCalcInHistory := false
+		if !hasCalcToolCall && d.agent != nil && d.agent.conversation != nil {
+			d.agent.mu.RLock()
+			for _, msg := range d.agent.conversation.ContextWindow.History {
+				for _, tc := range msg.ToolCalls {
+					if tc.Name == "financial_calculate" {
+						hasCalcInHistory = true
+						break
+					}
+				}
+				if hasCalcInHistory {
+					break
+				}
+			}
+			d.agent.mu.RUnlock()
+		}
+		
+		hasDigits := strings.ContainsAny(userInput, "0123456789")
+
+		if !hasResearchTool && !((hasCalcToolCall || hasCalcInHistory) && hasDigits) {
 			return fmt.Errorf("required tool missing: userInput requires research tools (financial_research/tavily_search) but AI did not call any")
 		}
 	}
@@ -193,6 +242,23 @@ func (d *Dispatcher) ValidateRequiredToolUsage(aiMessage messaging.Message, user
 				hasCalculationTool = true
 				break
 			}
+		}
+
+		// Check history if not found in current message
+		if !hasCalculationTool && d.agent != nil && d.agent.conversation != nil {
+			d.agent.mu.RLock()
+			for _, msg := range d.agent.conversation.ContextWindow.History {
+				for _, tc := range msg.ToolCalls {
+					if tc.Name == "financial_calculate" {
+						hasCalculationTool = true
+						break
+					}
+				}
+				if hasCalculationTool {
+					break
+				}
+			}
+			d.agent.mu.RUnlock()
 		}
 
 		if !hasCalculationTool {
