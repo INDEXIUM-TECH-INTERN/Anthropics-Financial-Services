@@ -125,7 +125,7 @@ func guessSkillsForAgent(agent string) []string {
 	case "pitch-agent":
 		return []string{"pitch-deck"}
 	case "meeting-prep-agent":
-		return []string{}
+		return []string{"client-report"}
 	case "market-researcher":
 		return []string{"sector-overview"}
 	case "earnings-reviewer":
@@ -133,15 +133,15 @@ func guessSkillsForAgent(agent string) []string {
 	case "model-builder":
 		return []string{"dcf-model"}
 	case "valuation-reviewer":
-		return []string{}
+		return []string{"portfolio-monitoring"}
 	case "gl-reconciler":
-		return []string{}
+		return []string{"gl-recon"}
 	case "month-end-closer":
 		return []string{"variance-commentary"}
 	case "statement-auditor":
-		return []string{}
+		return []string{"nav-tieout"}
 	case "kyc-screener":
-		return []string{}
+		return []string{"kyc-doc-parse"}
 	default:
 		return []string{}
 	}
