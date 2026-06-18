@@ -2,76 +2,57 @@
 # Multi-service deployment with Go backend + Frontend SPA
 
 services:
-  # ===== API Backend Service (Go) =====
-  - type: web
+  # ===== API Backend Service (Go) — private, internal only =====
+  - type: pserv
     name: testai-backend
-    env: docker
+    runtime: docker
     region: singapore
-    buildCommand: "cd Gemini && go mod download && CGO_ENABLED=0 GOOS=linux go build -ldflags='-s -w' -o /app/gemini-cli ./cmd/gemini-cli"
-    startCommand: "./gemini-cli --server"
+    plan: starter
+    dockerfilePath: ./Gemini/Dockerfile
+    dockerContext: ./Gemini
+    healthCheckPath: /health
+    autoDeployTrigger: commit
     envVars:
-      # Gemini API Keys (5 keys in pool with round-robin)
-      - key: GEMINI_API_KEYS
+      # Gemini API keys (round-robin pool: GEMINI_API_KEY, GEMINI_API_KEY_2, ...)
+      - key: GEMINI_API_KEY
         sync: false
-        generateValue: false
+      - key: GEMINI_API_KEY_2
+        sync: false
+      - key: GEMINI_API_KEY_3
+        sync: false
+      - key: GEMINI_API_KEY_4
+        sync: false
+      - key: GEMINI_API_KEY_5
+        sync: false
 
-      # Gemini Model Configuration
+      # Gemini model
       - key: GEMINI_MODEL
         value: gemini-3.1-flash-lite
 
-      # SerpAPI Keys (Web scraping - pool format)
-      - key: SERPAPI_API_KEY
+      # SerpAPI keys
+      - key: SERPAPI_KEY
         sync: false
-      - key: SERPAPI_API_KEY_2
+      - key: SERPAPI_KEY_2
         sync: false
 
-      # Tavily Keys (Web search - pool format)
+      # Tavily keys
       - key: TAVILY_API_KEY
         sync: false
       - key: TAVILY_API_KEY_2
         sync: false
 
-      
-      # Redis Configuration
+      # Redis (wired from Key Value instance)
       - key: REDIS_URL
         fromService:
           type: keyvalue
           name: testai-redis
           property: connectionString
 
-      # Application Settings
-      - key: PORT
-        value: 10000
+      # App settings (PORT is injected automatically by Render)
       - key: NODE_ENV
         value: production
       - key: LOG_LEVEL
         value: info
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: testai-redis
-          property: connectionString
-      - key: PORT
-        value: 10000  # Render assigns random port, app uses 8080 internally
-      - key: NODE_ENV
-        value: production
-      - key: LOG_LEVEL
-        value: info
-    healthCheck:
-      path: /health
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      startPeriod: 40s
-    disk:
-      sizeGB: 1
-    instanceCount: 1
-    cpuCount: 1
-    memoryLimit: 1Gi
-    dockerfilePath: ./Gemini/Dockerfile
-    dockerContext: .
-    public: false
-    autoDeployTrigger: commit
 
   # ===== Redis Service =====
   - type: keyvalue
@@ -81,50 +62,32 @@ services:
     maxmemoryPolicy: allkeys-lru
     ipAllowList: []
 
-  # ===== Frontend Service (Nginx) =====
+  # ===== Frontend Service (Nginx) — public entry point =====
   - type: web
     name: testai-frontend
-    env: docker
+    runtime: docker
     region: singapore
-    buildCommand: "cd frontend && npm ci && npm run build"
-    startCommand: "nginx -g 'daemon off;'"
+    plan: free
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    healthCheckPath: /
+    autoDeployTrigger: commit
     envVars:
       - key: NODE_ENV
         value: production
-    healthCheck:
-      path: /
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    disk:
-      sizeGB: 1
-    instanceCount: 1
-    cpuCount: 1
-    memoryLimit: 512Mi
-    dockerfilePath: ./frontend/Dockerfile
-    dockerContext: .
-    public: true
-    routes:
-      - type: rewrite
-        source: //*
-        destination: /index.html
-    autoDeployTrigger: commit
+      # Wire backend host/port for nginx proxy on Render private network
+      - key: BACKEND_HOST
+        fromService:
+          type: pserv
+          name: testai-backend
+          property: host
+      - key: BACKEND_PORT
+        fromService:
+          type: pserv
+          name: testai-backend
+          property: port
 
-# Database configuration (nếu cần thêm sau)
-# databases:
-#   - name: testai-db
-#     databaseName: testai_finance
-#     user: testai_user
-#     plan: free
-#     postgresMajorVersion: "16"
-
-# Notes cho deployment:
-# 1. Cần manually nhập các API keys vào Render dashboard:
-#    - GEMINI_API_KEY_1 đến GEMINI_API_KEY_6
-#    - SERPAPI_KEY, SERPAPI_KEY_2
-#    - TAVILY_API_KEY, TAVILY_API_KEY_2
-#    - OPENROUTER_API_KEY
-# 2. Service được tự động restart khi failed
-# 3. Health check monitoring sẵn có
-# 4. Tự động scale qua dashboard interface
-# 5. Frontend được served tại domain chính
+# Notes:
+# 1. Manually set secret env vars in the Render dashboard (sync: false).
+# 2. Backend is a private service (pserv); only frontend is public.
+# 3. SPA routing is handled by nginx in frontend/Dockerfile (not Blueprint routes).
