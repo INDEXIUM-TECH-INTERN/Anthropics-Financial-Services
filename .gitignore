@@ -39,3 +39,15 @@ frontend/.vite/
 package-lock.json
 .claude/
 Gemini/Ahihi.txt
+
+# Additional cleanup patterns - GitHub repository cleanliness
+/src/
+/bin/
+/scripts/
+/temp-financial-services/
+/OpenRouter/
+/test_gemini_keys.go
+C:UsersRabunoDocumentsAHihiTestAIFinancefrontendsrcsharedlibdom.ts
+*.tmp
+.DS_Store
+Thumbs.db
