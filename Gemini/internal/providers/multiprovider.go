@@ -75,7 +75,8 @@ func (m *MultiProvider) GenerateText(systemPrompt, userPrompt string) (string, e
 	}
 
 	isQuota := isQuotaOrRateLimitError(err)
-	fmt.Printf("⚠️ [Fallback] Primary provider error (GenerateText): %v\n", err)
+	fmt.Printf("⚠️ [PROVIDER SWITCH] Primary provider failed: %v\n", err)
+		fmt.Printf("🔄 [SWITCH] Đang chuyển sang provider dự phòng...\n")
 
 	if isQuota {
 		m.mu.Lock()
@@ -121,7 +122,8 @@ func (m *MultiProvider) tryFallbacksOnlyText(systemPrompt, userPrompt string) (s
 			return raw, nil
 		}
 		pubsub.BroadcastLog(fmt.Sprintf("Fallback #%d error: %v", activeIdx+1, lastErr), "error")
-		fmt.Printf("⚠️ [Fallback] Fallback #%d error: %v\n", activeIdx+1, lastErr)
+		fmt.Printf("❌ [PROVIDER FAILED] Fallback #%d failed: %v\n", activeIdx+1, lastErr)
+		fmt.Printf("⚠️ [SWITCH] Đang thử provider tiếp theo...\n")
 	}
 
 	return "", fmt.Errorf("Tất cả các dịch vụ AI (Primary & %d Fallbacks) đều gặp lỗi hoặc hết hạn mức (Quota/Rate Limit). Vui lòng thử lại sau vài phút. Lỗi cuối cùng: %v", numFallbacks, lastErr)

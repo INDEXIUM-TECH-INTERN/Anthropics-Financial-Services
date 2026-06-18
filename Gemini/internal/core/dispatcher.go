@@ -64,10 +64,10 @@ func (d *Dispatcher) GetTools() []messaging.ToolSchema {
 		{
 			Name:        "financial_research",
 			Description: "Truy vấn dữ liệu thị trường thực tế bằng Google Search (tương đương MCP Data Connectors).",
-			Parameters: map[string]interface{}{
+			Parameters: map[string]any{
 				"type": "object",
-				"properties": map[string]interface{}{
-					"query": map[string]interface{}{"type": "string", "description": "Từ khóa hoặc mã chứng khoán cần tra cứu"},
+				"properties": map[string]any{
+					"query": map[string]any{"type": "string", "description": "Từ khóa hoặc mã chứng khoán cần tra cứu"},
 				},
 				"required": []string{"query"},
 			},
@@ -75,10 +75,10 @@ func (d *Dispatcher) GetTools() []messaging.ToolSchema {
 		{
 			Name:        "tavily_search",
 			Description: "Truy vấn dữ liệu thị trường thực tế bằng Tavily Search (phù hợp để tìm thông tin tài chính chuyên sâu, câu trả lời trực tiếp).",
-			Parameters: map[string]interface{}{
+			Parameters: map[string]any{
 				"type": "object",
-				"properties": map[string]interface{}{
-					"query": map[string]interface{}{"type": "string", "description": "Từ khóa hoặc mã chứng khoán cần tra cứu"},
+				"properties": map[string]any{
+					"query": map[string]any{"type": "string", "description": "Từ khóa hoặc mã chứng khoán cần tra cứu"},
 				},
 				"required": []string{"query"},
 			},
@@ -86,10 +86,10 @@ func (d *Dispatcher) GetTools() []messaging.ToolSchema {
 		{
 			Name:        "financial_scrape",
 			Description: "Đọc sâu nội dung báo cáo, tin tức từ URL (tương đương Web/PDF Reader MCP).",
-			Parameters: map[string]interface{}{
+			Parameters: map[string]any{
 				"type": "object",
-				"properties": map[string]interface{}{
-					"url": map[string]interface{}{"type": "string", "description": "URL nguồn tài liệu"},
+				"properties": map[string]any{
+					"url": map[string]any{"type": "string", "description": "URL nguồn tài liệu"},
 				},
 				"required": []string{"url"},
 			},
@@ -97,10 +97,10 @@ func (d *Dispatcher) GetTools() []messaging.ToolSchema {
 		{
 			Name:        "financial_calculate",
 			Description: "Thực hiện tính toán tài chính (tương đương Python/Excel tools).",
-			Parameters: map[string]interface{}{
+			Parameters: map[string]any{
 				"type": "object",
-				"properties": map[string]interface{}{
-					"expression": map[string]interface{}{"type": "string", "description": "Biểu thức toán học (ví dụ: DCF, P/E calculation)"},
+				"properties": map[string]any{
+					"expression": map[string]any{"type": "string", "description": "Biểu thức toán học (ví dụ: DCF, P/E calculation)"},
 				},
 				"required": []string{"expression"},
 			},
@@ -108,12 +108,12 @@ func (d *Dispatcher) GetTools() []messaging.ToolSchema {
 		{
 			Name:        "handoff_request",
 			Description: "Gửi yêu cầu chuyển giao tác vụ cho Agent chuyên môn khác (tương đương orchestrate.py).",
-			Parameters: map[string]interface{}{
+			Parameters: map[string]any{
 				"type": "object",
-				"properties": map[string]interface{}{
-					"target_agent": map[string]interface{}{"type": "string", "description": "Agent mục tiêu (ví dụ: earnings-reviewer, model-builder)"},
-					"reason":       map[string]interface{}{"type": "string", "description": "Lý do và ngữ cảnh cần chuyển giao"},
-					"task_payload": map[string]interface{}{"type": "string", "description": "Dữ liệu/Nhiệm vụ cụ thể cần thực hiện"},
+				"properties": map[string]any{
+					"target_agent": map[string]any{"type": "string", "description": "Agent mục tiêu (ví dụ: earnings-reviewer, model-builder)"},
+					"reason":       map[string]any{"type": "string", "description": "Lý do và ngữ cảnh cần chuyển giao"},
+					"task_payload": map[string]any{"type": "string", "description": "Dữ liệu/Nhiệm vụ cụ thể cần thực hiện"},
 				},
 				"required": []string{"target_agent", "reason"},
 			},
@@ -121,11 +121,11 @@ func (d *Dispatcher) GetTools() []messaging.ToolSchema {
 		{
 			Name:        "load_financial_context",
 			Description: "Nạp tài liệu kỹ năng (Skill) từ bộ Vertical Plugins.",
-			Parameters: map[string]interface{}{
+			Parameters: map[string]any{
 				"type": "object",
-				"properties": map[string]interface{}{
-					"type": map[string]interface{}{"type": "string", "description": "agent hoặc skill"},
-					"name": map[string]interface{}{"type": "string", "description": "Tên tài liệu (e.g. market-researcher/sector-overview)"},
+				"properties": map[string]any{
+					"type": map[string]any{"type": "string", "description": "agent hoặc skill"},
+					"name": map[string]any{"type": "string", "description": "Tên tài liệu (e.g. market-researcher/sector-overview)"},
 				},
 				"required": []string{"type", "name"},
 			},
@@ -133,19 +133,19 @@ func (d *Dispatcher) GetTools() []messaging.ToolSchema {
 		{
 			Name:        "export_report",
 			Description: "Xuất báo cáo tài chính chuyên nghiệp dưới dạng Excel (.xlsx) hoặc PowerPoint (.pptx).",
-			Parameters: map[string]interface{}{
+			Parameters: map[string]any{
 				"type": "object",
-				"properties": map[string]interface{}{
-					"format": map[string]interface{}{
+				"properties": map[string]any{
+					"format": map[string]any{
 						"type":        "string",
 						"description": "Định dạng báo cáo: 'xlsx' hoặc 'pptx'",
 						"enum":        []string{"xlsx", "pptx"},
 					},
-					"title": map[string]interface{}{
+					"title": map[string]any{
 						"type":        "string",
 						"description": "Tiêu đề của báo cáo",
 					},
-					"data": map[string]interface{}{
+					"data": map[string]any{
 						"type":        "string",
 						"description": "Dữ liệu JSON thô để đưa vào báo cáo (optional).",
 					},
@@ -156,15 +156,91 @@ func (d *Dispatcher) GetTools() []messaging.ToolSchema {
 		{
 			Name:        "read_local_file",
 			Description: "Đọc nội dung tệp tin cục bộ trên server (ví dụ: các tệp báo cáo đã xuất trong thư mục exports).",
-			Parameters: map[string]interface{}{
+			Parameters: map[string]any{
 				"type": "object",
-				"properties": map[string]interface{}{
-					"path": map[string]interface{}{"type": "string", "description": "Tên tệp hoặc đường dẫn tệp (ví dụ: report_123.xlsx)"},
+				"properties": map[string]any{
+					"path": map[string]any{"type": "string", "description": "Tên tệp hoặc đường dẫn tệp (ví dụ: report_123.xlsx)"},
 				},
 				"required": []string{"path"},
 			},
 		},
 	}
+}
+
+// ValidateRequiredToolUsage checks if the AI response complies with required tool usage rules
+// Returns error if required tools are missing when they should be used
+func (d *Dispatcher) ValidateRequiredToolUsage(aiMessage messaging.Message, userInput string) error {
+	// Check if input requires research tools
+	if d.requiresResearchTool(userInput) {
+		hasResearchTool := false
+		for _, toolCall := range aiMessage.ToolCalls {
+			if toolCall.Name == "financial_research" || toolCall.Name == "tavily_search" {
+				hasResearchTool = true
+				break
+			}
+		}
+
+		if !hasResearchTool {
+			return fmt.Errorf("required tool missing: userInput requires research tools (financial_research/tavily_search) but AI did not call any")
+		}
+	}
+
+	// Check if input requires calculation for financial queries
+	if d.requiresCalculationTool(userInput) {
+		hasCalculationTool := false
+		for _, toolCall := range aiMessage.ToolCalls {
+			if toolCall.Name == "financial_calculate" {
+				hasCalculationTool = true
+				break
+			}
+		}
+
+		if !hasCalculationTool {
+			return fmt.Errorf("required tool missing: financial query requires calculation but AI did not call financial_calculate")
+		}
+	}
+
+	return nil
+}
+
+// requiresResearchTool determines if the input requires research tools based on content analysis
+func (d *Dispatcher) requiresResearchTool(userInput string) bool {
+	query := strings.ToLower(userInput)
+	researchKeywords := []string{
+		"phân tích cổ phiếu", "cổ phiếu", "chiến lược đầu tư", "đầu tư",
+		"thị trường chứng khoán", "market cap", "pe ratio", "beta",
+		"tìm kiếm thông tin", "nghiên cứu", "báo cáo tài chính", "doanh thu",
+		"lợi nhuận", "eps", "p/b", "roa", "roe", "dividend yield",
+		"giá cổ phiếu", "giá thị trường", "khối lượng giao dịch", "vn-index",
+		"hose", "hnx", "upcom", "blue chips", "penny stocks",
+	}
+
+	for _, keyword := range researchKeywords {
+		if strings.Contains(query, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
+// requiresCalculationTool determines if the input requires financial calculations
+func (d *Dispatcher) requiresCalculationTool(userInput string) bool {
+	query := strings.ToLower(userInput)
+	calcKeywords := []string{
+		"tính", "calculate", "tính toán", "định giá", "valuation",
+		"dcf", "discounted cash flow", "present value", "future value",
+		"npv", "irr", "roi", "roic", "wacc", "cap rate",
+		"pe", "p/e", "pb", "p/b", "roe", "roa", "debt/equity",
+		"yield", "dividend yield", "earnings yield", "profit margin",
+		"margin", "ratio", "ratio analysis",
+	}
+
+	for _, keyword := range calcKeywords {
+		if strings.Contains(query, keyword) {
+			return true
+		}
+	}
+	return false
 }
 
 // HandleToolCalls processes tool calls from an AI response message using map-based dispatch.
@@ -176,7 +252,7 @@ func (d *Dispatcher) HandleToolCalls(aiMessage messaging.Message) bool {
 
 	for _, toolCall := range aiMessage.ToolCalls {
 		fmt.Printf("🎯 [Action] AI invokes MCP tool: %s\n", toolCall.Name)
-		pubsub.BroadcastEvent(fmt.Sprintf("Thực thi Tool: %s...", toolCall.Name), "tool_executed", map[string]interface{}{
+		pubsub.BroadcastEvent(fmt.Sprintf("Thực thi Tool: %s...", toolCall.Name), "tool_executed", map[string]any{
 			"tool": toolCall.Name,
 			"args": toolCall.Args,
 		})
@@ -218,7 +294,7 @@ func (d *Dispatcher) dispatchToolCall(toolCall *messaging.ToolCall) string {
 
 // validateRequiredParams checks that all required parameters defined in the tool
 // schema are present and non-empty in the provided args map.
-func validateRequiredParams(toolName string, args map[string]interface{}, schema messaging.ToolSchema) error {
+func validateRequiredParams(toolName string, args map[string]any, schema messaging.ToolSchema) error {
 	requiredRaw, ok := schema.Parameters["required"]
 	if !ok {
 		return nil
@@ -262,6 +338,16 @@ func (d *Dispatcher) handleFinancialResearch(args handlers.Args) (string, error)
 	result := tools.SearchGoogle(searchQuery)
 	if result != "" && !strings.HasPrefix(result, "Lỗi") && !strings.HasPrefix(result, "Error") {
 		d.cachePut("google", searchQuery, result)
+	} else {
+		// Fallback to tavily if google fails
+		fmt.Printf("🔄 [Fallback] Google search failed, trying Tavily...\n")
+		pubsub.BroadcastLog("Google search failed, using Tavily fallback", "fallback")
+		result = tools.SearchTavily(searchQuery)
+		if result != "" && !strings.HasPrefix(result, "Lỗi") && !strings.HasPrefix(result, "Error") {
+			d.cachePut("tavily", searchQuery, result)
+			return "[TAVILY FALLBACK] " + result, nil
+		}
+		return fmt.Sprintf("❌ [LỖI] Không thể truy cập dữ liệu từ cả Google Search lẫn Tavily. Vui lòng kiểm tra kết nối internet hoặc thử lại sau."), nil
 	}
 	return result, nil
 }
@@ -505,7 +591,7 @@ func (d *Dispatcher) appendFunctionResponse(toolCall *messaging.ToolCall, result
 
 // mustJSON marshals a value to JSON string, panicking on error (should never happen
 // with simple map types, but if it does we want to fail loud rather than silently).
-func mustJSON(v interface{}) string {
+func mustJSON(v any) string {
 	b, _ := json.Marshal(v)
 	return string(b)
 }

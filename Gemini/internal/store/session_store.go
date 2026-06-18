@@ -29,6 +29,7 @@ type ChatSession struct {
 }
 
 const sessionKeyPrefix = "chat:session:"
+const maxSessionAge = 24 * time.Hour // Auto-reset sessions older than 24h
 
 func sessionKey(id string) string {
 	return sessionKeyPrefix + id
@@ -79,14 +80,31 @@ func SaveSession(sess *ChatSession) error {
 	return err
 }
 
-// GetSession retrieves a session by ID.
+// GetSession retrieves a session by ID with proper isolation.
 func GetSession(id string) (*ChatSession, error) {
 	if redis.Client == nil {
 		memMu.RLock()
 		sess, ok := memSessions[id]
 		memMu.RUnlock()
 		if ok {
-			return sess, nil
+			// Auto-reset old sessions
+			if time.Since(sess.UpdatedAt) > maxSessionAge {
+				fmt.Printf("🔄 [Session] Auto-resetting old session: %s\n", id)
+				ResetSession(id)
+				return &ChatSession{
+					ID:       id,
+					Title:    sess.Title,
+					Messages: []messaging.Message{},
+				}, nil
+			}
+			// Return a copy to prevent external modifications
+			copy := *sess
+			messagesCopy := make([]messaging.Message, len(sess.Messages))
+			for i, msg := range sess.Messages {
+				messagesCopy[i] = msg
+			}
+			copy.Messages = messagesCopy
+			return &copy, nil
 		}
 		return &ChatSession{
 			ID:       id,
@@ -159,6 +177,29 @@ func ListSessions() ([]*ChatSession, error) {
 	}
 
 	return sessions, nil
+}
+
+// ResetSession clears all messages from a session while keeping the ID and title.
+func ResetSession(id string) error {
+	if redis.Client == nil {
+		memMu.Lock()
+		if sess, exists := memSessions[id]; exists {
+			sess.Messages = []messaging.Message{}
+			sess.UpdatedAt = time.Now()
+		}
+		memMu.Unlock()
+		return nil
+	}
+
+	sess, err := GetSession(id)
+	if err != nil {
+		return err
+	}
+
+	sess.Messages = []messaging.Message{}
+	sess.UpdatedAt = time.Now()
+
+	return SaveSession(sess)
 }
 
 // DeleteSession removes a session.
