@@ -1,0 +1,18 @@
+# Redis container with persistence
+FROM redis:7-alpine
+
+# Enable AOF persistence
+RUN echo "appendonly yes" >> /etc/redis/redis.conf
+
+# Create data directory
+RUN mkdir -p /data
+
+# Expose Redis port
+EXPOSE 6379
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD redis-cli ping
+
+# Start Redis with AOF
+CMD ["redis-server", "/etc/redis/redis.conf"]

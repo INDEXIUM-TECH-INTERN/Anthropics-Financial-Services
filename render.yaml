@@ -1,88 +1,139 @@
+# Render Blueprint for TestAIFinance
+# Multi-service deployment with Go backend + Frontend SPA
+
 services:
+  # ===== API Backend Service (Go) =====
   - type: web
-    name: indexium-gemini
-    runtime: go
-    plan: free
+    name: testai-backend
+    env: docker
     region: singapore
-    branch: main
-    autoDeployTrigger: commit
-    buildCommand: cd Gemini && go build -o gemini ./cmd/gemini-cli
-    startCommand: cd Gemini && ./gemini -server
-    healthCheckPath: /health
-    buildFilter:
-      paths:
-        - Gemini/**
-        - frontend/**
-        - render.yaml
+    buildCommand: "cd Gemini && go mod download && CGO_ENABLED=0 GOOS=linux go build -ldflags='-s -w' -o /app/gemini-cli ./cmd/gemini-cli"
+    startCommand: "./gemini-cli --server"
     envVars:
-      - key: USE_OPENROUTER_ONLY
-        value: "0"
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: indexium-redis
-          property: connectionString
+      # Gemini API Keys (Comma-separated for load balancing)
+      - key: GEMINI_API_KEYS
+        sync: false
+        generateValue: false
+
+      # Gemini Model Configuration
       - key: GEMINI_MODEL
-        value: gemini-flash-latest
-      - key: OPENROUTER_MODEL
-        value: meta-llama/llama-3.3-70b-instruct:free
-      - key: GEMINI_API_KEY
+        value: gemini-3.1-flash-lite
+
+      # SerpAPI Keys (Web scraping)
+      - key: SERPAPI_API_KEY
         sync: false
-      - key: GEMINI_API_KEY_2
+      - key: SERPAPI_API_KEY_2
         sync: false
-      - key: GEMINI_API_KEY_3
+      - key: SERPAPI_API_KEY_3
         sync: false
-      - key: GEMINI_API_KEY_4
+
+      # Tavily Keys (Web search)
+      - key: TAVILY_API_KEY
         sync: false
-      - key: GEMINI_API_KEY_5
+      - key: TAVILY_API_KEY_2
         sync: false
+      - key: TAVILY_API_KEY_3
+        sync: false
+
+      # OpenRouter Keys (Alternative LLM provider)
       - key: OPENROUTER_API_KEY
         sync: false
       - key: OPENROUTER_API_KEY_2
         sync: false
-      - key: OPENROUTER_API_KEY_3
-        sync: false
-      - key: OPENROUTER_API_KEY_4
-        sync: false
-      - key: OPENROUTER_API_KEY_5
-        sync: false
-      - key: SERPAPI_KEY
-        sync: false
-      - key: TAVILY_API_KEY
-        sync: false
 
-  # Future backend:
-  # - type: web
-  #   name: indexium-claude
-  #   runtime: go
-  #   plan: free
-  #   region: singapore
-  #   branch: main
-  #   autoDeployTrigger: commit
-  #   buildCommand: cd Claude && go build -o claude .
-  #   startCommand: cd Claude && ./claude -server
-  #   healthCheckPath: /health
-  #   envVars:
-  #     # If you create an Environment Group manually in Render, link it here.
-  #     # - fromGroup: indexium-ai-secrets
-  #     - key: REDIS_URL
-  #       fromService:
-  #         type: keyvalue
-  #         name: indexium-redis
-  #         property: connectionString
+      # Redis Configuration
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: testai-redis
+          property: connectionString
 
+      # Application Settings
+      - key: PORT
+        value: 10000
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: testai-redis
+          property: connectionString
+      - key: PORT
+        value: 10000  # Render assigns random port, app uses 8080 internally
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+    healthCheck:
+      path: /health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      startPeriod: 40s
+    disk:
+      sizeGB: 1
+    instanceCount: 1
+    cpuCount: 1
+    memoryLimit: 1Gi
+    dockerfilePath: ./Gemini/Dockerfile
+    dockerContext: .
+    public: false
+    autoDeployTrigger: commit
+
+  # ===== Redis Service =====
   - type: keyvalue
-    name: indexium-redis
+    name: testai-redis
     plan: free
     region: singapore
     maxmemoryPolicy: allkeys-lru
     ipAllowList: []
 
-# Future PostgreSQL:
+  # ===== Frontend Service (Nginx) =====
+  - type: web
+    name: testai-frontend
+    env: docker
+    region: singapore
+    buildCommand: "cd frontend && npm ci && npm run build"
+    startCommand: "nginx -g 'daemon off;'"
+    envVars:
+      - key: NODE_ENV
+        value: production
+    healthCheck:
+      path: /
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    disk:
+      sizeGB: 1
+    instanceCount: 1
+    cpuCount: 1
+    memoryLimit: 512Mi
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: .
+    public: true
+    routes:
+      - type: rewrite
+        source: //*
+        destination: /index.html
+    autoDeployTrigger: commit
+
+# Database configuration (nếu cần thêm sau)
 # databases:
-#   - name: indexium-postgres
-#     databaseName: indexium_finance
-#     user: indexium
+#   - name: testai-db
+#     databaseName: testai_finance
+#     user: testai_user
 #     plan: free
 #     postgresMajorVersion: "16"
-#     ipAllowList: []
+
+# Notes cho deployment:
+# 1. Cần manually nhập các API keys vào Render dashboard:
+#    - GEMINI_API_KEY_1 đến GEMINI_API_KEY_6
+#    - SERPAPI_KEY, SERPAPI_KEY_2
+#    - TAVILY_API_KEY, TAVILY_API_KEY_2
+#    - OPENROUTER_API_KEY
+# 2. Service được tự động restart khi failed
+# 3. Health check monitoring sẵn có
+# 4. Tự động scale qua dashboard interface
+# 5. Frontend được served tại domain chính
