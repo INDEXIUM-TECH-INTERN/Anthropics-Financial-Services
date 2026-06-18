@@ -25,16 +25,18 @@ cd Gemini && go build -o gemini ./cmd/gemini-cli
 cd Gemini && ./gemini -server
 ```
 
-**Health check:** `GET /health` → `200 OK` body `"ok"`
+**Health check:** `GET /health` → `200 OK` body with JSON response
 
 **Dependencies:**
 - `indexium-redis` (Key Value store, free plan, `allkeys-lru` eviction)
 
 **Required secrets** (set in Render dashboard, `sync: false`):
-- `GEMINI_API_KEY`, `GEMINI_API_KEY_2`–`KEY_5`
-- `OPENROUTER_API_KEY`, `OPENROUTER_API_KEY_2`–`KEY_4`
-- `SERPAPI_KEY`
-- `TAVILY_API_KEY`
+- `GEMINI_API_KEY`, `GEMINI_API_KEY_2`–`KEY_6`
+- `OPENROUTER_API_KEY`
+- `SERPAPI_KEY`, `SERPAPI_KEY_2`
+- `TAVILY_API_KEY`, `TAVILY_API_KEY_2`
+- `REDIS_ADDR` (optional, defaults to 127.0.0.1:6379)
+- `USE_OPENROUTER_ONLY` (optional, defaults to 0)
 
 ### Local / Self-Hosted
 
@@ -57,7 +59,7 @@ cd ..
 
 | Check | Endpoint | Expected | Description |
 |-------|----------|----------|-------------|
-| Server alive | `GET /health` | `200 OK` `ok` | Basic liveness |
+| Server alive | `GET /health` | `200 OK` with JSON response | Basic liveness |
 | Chat working | `POST /api/chat` | `200` with `reply` field | End-to-end AI response |
 | SSE connected | `GET /api/events` | `text/event-stream` | Real-time event stream |
 | Sessions | `GET /api/chats` | `200` with `chats` array | Session store reachable |
@@ -65,16 +67,19 @@ cd ..
 ### Quick Health Test
 
 ```powershell
-# Server alive
-curl http://localhost:8080/health
+# Server alive (should return JSON with status, version, timestamp)
+curl http://localhost:8080/health | jq .
 
 # Chat test
 curl -X POST http://localhost:8080/api/chat `
   -H "Content-Type: application/json" `
-  -d '{"message":"Xin chào","chat_id":"health_check"}'
+  -d '{"message":"Xin chào","chat_id":"health_check"}' | jq .
 
 # Sessions list
-curl http://localhost:8080/api/chats
+curl http://localhost:8080/api/chats | jq .
+
+# For Windows without jq:
+# Remove | jq from each command
 ```
 
 ## Monitoring
