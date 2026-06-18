@@ -731,10 +731,11 @@ func TestResolveFrontendDir(t *testing.T) {
 	dir := resolveFrontendDir()
 	// Should return one of the candidate dirs (may not exist in test env)
 	validDirs := map[string]bool{
-		"frontend/dist": true,
-		"frontend":      true,
-		"../../frontend": true,
-		"../frontend":   true,
+		"../frontend/dist": true,
+		"../frontend":      true,
+		"frontend/dist":    true,
+		"frontend":         true,
+		"../../frontend":   true,
 	}
 	if !validDirs[dir] {
 		t.Errorf("unexpected frontend dir: %q", dir)

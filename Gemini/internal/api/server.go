@@ -170,7 +170,8 @@ func StartServer(agent AgentInterface) {
 
 func resolveFrontendDir() string {
 	// Check for Vite build output first, then fall back to dev paths
-	for _, dir := range []string{"frontend/dist", "frontend", "../../frontend", "../frontend"} {
+	// Prioritize the original frontend outside the Gemini folder ("../frontend/dist" and "../frontend")
+	for _, dir := range []string{"../frontend/dist", "../frontend", "frontend/dist", "frontend", "../../frontend"} {
 		if _, err := os.Stat(dir); err == nil {
 			return dir
 		}
