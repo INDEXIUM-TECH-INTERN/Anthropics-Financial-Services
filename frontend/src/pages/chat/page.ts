@@ -1226,6 +1226,13 @@ export function createChatPage(): ChatPage {
 
   // ═══ INIT ═══
   async function init() {
+    // Fix DOM parenting if browser misparsed it
+    const newsContainer = document.getElementById('world-news-container');
+    const mainApp = document.querySelector('.app-main');
+    if (newsContainer && mainApp && newsContainer.parentElement !== mainApp) {
+      mainApp.appendChild(newsContainer);
+    }
+
     initConnectionStatus();
     setupEventListeners();
 
