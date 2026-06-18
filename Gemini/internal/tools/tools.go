@@ -2,6 +2,7 @@ package tools
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -37,6 +38,10 @@ func Calculate(expression string) string {
 // evalExpression đánh giá biểu thức toán học cơ bản (+, -, *, /, ^, %, parentheses)
 func evalExpression(expr string) (float64, error) {
 	expr = strings.TrimSpace(expr)
+	// Hỗ trợ lũy thừa kiểu Python (**) bằng cách chuyển thành ^
+	expr = strings.ReplaceAll(expr, "**", "^")
+	// Loại bỏ hoàn toàn dấu cách để tránh lỗi phân tích cú pháp khi gặp khoảng trắng
+	expr = strings.ReplaceAll(expr, " ", "")
 	if expr == "" {
 		return 0, fmt.Errorf("biểu thức rỗng")
 	}
@@ -119,11 +124,7 @@ func (p *exprParser) parsePower() (float64, error) {
 		if err != nil {
 			return 0, err
 		}
-		result := 1.0
-		for i := 0; i < int(exp); i++ {
-			result *= base
-		}
-		return result, nil
+		return math.Pow(base, exp), nil
 	}
 	return base, nil
 }
