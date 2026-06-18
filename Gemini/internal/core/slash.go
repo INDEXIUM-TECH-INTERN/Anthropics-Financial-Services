@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"gemini-cli/internal/domain/entities"
 	"gemini-cli/internal/pubsub"
 )
 
@@ -63,7 +64,7 @@ var slashCommands = map[string]slashCommand{
 // input was recognized as a slash command and routed; false otherwise.
 // The agent's internal state (userInput, conversation history, bootstrap) is
 // updated as a side effect.
-func HandleSlashCommand(input string, agent *Agent) bool {
+func HandleSlashCommand(input string, agent *entities.Agent) bool {
 	parts := strings.Fields(input)
 	if len(parts) == 0 {
 		return false
@@ -87,8 +88,8 @@ func HandleSlashCommand(input string, agent *Agent) bool {
 		Reason: fmt.Sprintf("Slash command %s", cmd),
 	}
 
-	agent.userInput = args
-	agent.appendUserTextInternal(args, nil)
+	agent.UserInput = args
+	agent.AppendUserTextInternal(args, nil)
 	ExecuteBootstrapWithRoute(agent, route)
 	return true
 }

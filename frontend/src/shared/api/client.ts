@@ -29,10 +29,7 @@ export class ApiClient {
   constructor(public baseUrl: string) {}
 
   async getSessions(): Promise<ChatSession[]> {
-    const res = await retryWithBackoff(
-      () => fetch(`${this.baseUrl}/api/chats`),
-      { maxRetries: 3, initialDelay: 1000 }
-    );
+    const res = await retryWithBackoff(() => fetch(`${this.baseUrl}/api/chats`), { maxRetries: 3, initialDelay: 1000 });
     if (!res.ok) throw new ApiError('Failed to fetch sessions', res.status);
     const data: ChatSessionsResponse = await res.json();
     return data.chats || [];
@@ -40,12 +37,13 @@ export class ApiClient {
 
   async createSession(title: string): Promise<ChatSession> {
     const res = await retryWithBackoff(
-      () => fetch(`${this.baseUrl}/api/chats`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title }),
-      }),
-      { maxRetries: 3, initialDelay: 1000 }
+      () =>
+        fetch(`${this.baseUrl}/api/chats`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title }),
+        }),
+      { maxRetries: 3, initialDelay: 1000 },
     );
     if (!res.ok) throw new ApiError('Failed to create session', res.status);
     return res.json() as Promise<ChatSession>;
@@ -54,7 +52,7 @@ export class ApiClient {
   async deleteSession(chatId: string): Promise<void> {
     const res = await retryWithBackoff(
       () => fetch(`${this.baseUrl}/api/chats?chat_id=${encodeURIComponent(chatId)}`, { method: 'DELETE' }),
-      { maxRetries: 3, initialDelay: 1000 }
+      { maxRetries: 3, initialDelay: 1000 },
     );
     if (!res.ok) throw new ApiError('Failed to delete session', res.status);
   }
@@ -62,7 +60,7 @@ export class ApiClient {
   async getHistory(chatId: string): Promise<HistoryResponse> {
     const res = await retryWithBackoff(
       () => fetch(`${this.baseUrl}/api/history?chat_id=${encodeURIComponent(chatId)}`),
-      { maxRetries: 3, initialDelay: 1000 }
+      { maxRetries: 3, initialDelay: 1000 },
     );
     if (!res.ok) throw new ApiError('Failed to fetch history', res.status);
     return res.json() as Promise<HistoryResponse>;
@@ -70,12 +68,13 @@ export class ApiClient {
 
   async saveConfigKeys(keys: string[]): Promise<ConfigKeysResponse> {
     const res = await retryWithBackoff(
-      () => fetch(`${this.baseUrl}/api/config/keys`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keys } satisfies ConfigKeysRequest),
-      }),
-      { maxRetries: 3, initialDelay: 1000 }
+      () =>
+        fetch(`${this.baseUrl}/api/config/keys`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ keys } satisfies ConfigKeysRequest),
+        }),
+      { maxRetries: 3, initialDelay: 1000 },
     );
     if (!res.ok) throw new ApiError('Failed to save config keys', res.status);
     return res.json() as Promise<ConfigKeysResponse>;

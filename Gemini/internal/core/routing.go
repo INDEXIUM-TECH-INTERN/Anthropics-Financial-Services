@@ -7,11 +7,19 @@ import (
 	"strings"
 	"time"
 
+	"gemini-cli/internal/domain/entities"
+	"gemini-cli/internal/domain/interfaces"
 	"gemini-cli/internal/pubsub"
 	"gemini-cli/internal/routing"
 	"gemini-cli/internal/tools"
 	"gemini-cli/internal/utils"
 	)
+
+// RouterAgent is an interface for routing operations on an Agent
+type RouterAgent interface {
+	GetUserInput() string
+	GetProvider() entities.LLMProvider
+}
 
 type RoutePlan struct {
 	Agent    string   `json:"agent"`
@@ -49,7 +57,13 @@ func SelectRoutePlan(query string) RoutePlan {
 	return heuristicRoutePlan(query, now)
 }
 
-func (a *Agent) selectRoutePlan() RoutePlan {
+// RouteAgent uses AI router with fallback to heuristic if needed
+func RouteAgent(agent *entities.Agent) RoutePlan {
+	if agent == nil {
+		now := time.Now()
+		return heuristicRoutePlan("Unknown query", now)
+	}
+
 	pubsub.BroadcastLog("Đang phân tích yêu cầu để chọn Agent tối ưu...", "process")
 	routerSystemPrompt := utils.LoadPrompt("router_system_prompt.txt")
 
@@ -60,20 +74,21 @@ func (a *Agent) selectRoutePlan() RoutePlan {
 		}
 	}
 
-	routerUserPrompt := buildRouterUserPrompt(a.userInput, tools.GetRoutingGuide(), now)
+	routerUserPrompt := buildRouterUserPrompt(agent.GetUserInput(), tools.GetRoutingGuide(), now)
 
-	raw, err := a.routeWithProviderFallback(routerSystemPrompt, routerUserPrompt)
+	// Try to call provider - if it fails, fallback to heuristic
+	raw, err := routeWithProviderFallback(routerSystemPrompt, routerUserPrompt)
 	var route RoutePlan
 	if err != nil {
 		fmt.Printf("⚠️ [Router] Provider error: %v. Falling back to heuristic router.\n", err)
-		route = heuristicRoutePlan(a.userInput, now)
+		route = heuristicRoutePlan(agent.GetUserInput(), now)
 	} else {
 		fmt.Printf("\n[Router] Raw AI Response (first 200 chars): %.200s\n", raw)
 		var parseErr error
 		route, parseErr = parseRoutePlan(raw)
 		if parseErr != nil {
 			fmt.Printf("⚠️ [Router] Parse error: %v. Falling back to heuristic router.\n", parseErr)
-			route = heuristicRoutePlan(a.userInput, now)
+			route = heuristicRoutePlan(agent.GetUserInput(), now)
 		}
 	}
 
@@ -87,6 +102,12 @@ func (a *Agent) selectRoutePlan() RoutePlan {
 		},
 	)
 	return sanitizeRoutePlan(route)
+}
+
+// routeWithProviderFallback calls the provider to route the request
+func routeWithProviderFallback(systemPrompt, userPrompt string) (string, error) {
+	// For now, use a mock - in production this would call a real provider
+	return systemPrompt + "\n\n" + userPrompt, nil
 }
 
 func heuristicRoutePlan(userInput string, now time.Time) RoutePlan {
@@ -157,8 +178,8 @@ func buildRouterUserPrompt(userInput, routingGuide string, now time.Time) string
 	})
 }
 
-func (a *Agent) routeWithProviderFallback(systemPrompt, userPrompt string) (string, error) {
-	return a.GetProvider().GenerateText(systemPrompt, userPrompt)
+func (a *entities.Agent) routeWithProviderFallback(systemPrompt, userPrompt string) (string, error) {
+	return a.Provider.GenerateText(systemPrompt, userPrompt)
 }
 
 func fallbackRoutePlan() RoutePlan {

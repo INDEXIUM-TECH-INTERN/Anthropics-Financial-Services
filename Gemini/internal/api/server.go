@@ -24,7 +24,6 @@ type AgentInterface interface {
 	ProcessMessageStream(context.Context, string, []messaging.Attachment, func(string, bool)) error
 	GetHistory() []messaging.Message
 	LoadHistory([]messaging.Message)
-	SetOpenRouterKeys([]string)
 }
 
 type ChatRequest struct {
@@ -62,7 +61,7 @@ func securityHeaders(next http.Handler) http.Handler {
 				"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "+
 				"img-src 'self' data: https:; "+
 				"font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "+
-				"connect-src 'self' https://generativelanguage.googleapis.com https://openrouter.ai; "+
+				"connect-src 'self' https://generativelanguage.googleapis.com; "+
 				"frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'")
 		next.ServeHTTP(w, r)
 	})

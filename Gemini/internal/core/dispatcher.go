@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"gemini-cli/internal/cache"
+	"gemini-cli/internal/domain/entities"
 	"gemini-cli/internal/models/messaging"
 	"gemini-cli/internal/pubsub"
 	"gemini-cli/internal/scripts/report_gen"
@@ -25,7 +26,7 @@ const maxCacheEntries = 200 // prevent unbounded memory growth
 // Tools are registered in a map for O(1) lookup, replacing the previous
 // switch-case approach (Open/Closed Principle compliance).
 type Dispatcher struct {
-	agent    *Agent
+	agent    *entities.Agent
 	cache    *cache.LRUCache
 	handlers map[string]toolHandler
 }
@@ -35,7 +36,7 @@ type Dispatcher struct {
 type toolHandler func(args handlers.Args) (string, error)
 
 // NewDispatcher creates a dispatcher with all tools registered.
-func NewDispatcher(a *Agent) *Dispatcher {
+func NewDispatcher(a *entities.Agent) *Dispatcher {
 	d := &Dispatcher{
 		agent:    a,
 		cache:    cache.NewLRUCache(maxCacheEntries),
@@ -249,8 +250,8 @@ func (d *Dispatcher) handleFinancialResearch(args handlers.Args) (string, error)
 	pubsub.BroadcastLog(fmt.Sprintf("Tra cứu dữ liệu (Google): %s", query), "tool")
 
 	searchQuery := query
-	if tools.NeedsRealtimeData(d.agent.userInput) {
-		searchQuery = tools.BuildMarketQueryPlan(d.agent.userInput).SearchQuery
+	if tools.NeedsRealtimeData(d.agent.UserInput) {
+		searchQuery = tools.BuildMarketQueryPlan(d.agent.UserInput).SearchQuery
 	}
 
 	if cached, ok := d.cacheGet("google", searchQuery); ok && cached != "" {
@@ -274,8 +275,8 @@ func (d *Dispatcher) handleTavilySearch(args handlers.Args) (string, error) {
 	pubsub.BroadcastLog(fmt.Sprintf("Tra cứu dữ liệu (Tavily): %s", query), "tool")
 
 	searchQuery := query
-	if tools.NeedsRealtimeData(d.agent.userInput) {
-		searchQuery = tools.BuildMarketQueryPlan(d.agent.userInput).SearchQuery
+	if tools.NeedsRealtimeData(d.agent.UserInput) {
+		searchQuery = tools.BuildMarketQueryPlan(d.agent.UserInput).SearchQuery
 	}
 
 	if cached, ok := d.cacheGet("tavily", searchQuery); ok && cached != "" {
@@ -331,13 +332,13 @@ func (d *Dispatcher) handleHandoff(args handlers.Args) (string, error) {
 
 	fmt.Printf("🔀 [Orchestrator] Handoff requested to %s. Reason: %s\n", targetAgent, reason)
 
-	d.agent.mu.Lock()
-	d.agent.handoffPlan = &RoutePlan{
+	d.agent.Mu.Lock()
+	d.agent.HandoffPlan = string(mustJSON(map[string]interface{}{"agent": targetAgent, "reason": fmt.Sprintf("Handoff from previous agent: %s. Task: %s", reason, payload)}))
 		Agent:  targetAgent,
 		Skills: guessSkillsForAgent(targetAgent),
 		Reason: fmt.Sprintf("Handoff from previous agent: %s. Task: %s", reason, payload),
 	}
-	d.agent.mu.Unlock()
+	d.agent.Mu.Unlock()
 
 	return fmt.Sprintf("Successfully initiated handoff to %s.", targetAgent), nil
 }
@@ -484,8 +485,8 @@ func (d *Dispatcher) cachePut(prefix, key, value string) {
 // The result is normalized to valid JSON so both Gemini and OpenRouter providers
 // see a consistent format when translating history back to their API schema.
 func (d *Dispatcher) appendFunctionResponse(toolCall *messaging.ToolCall, result string) {
-	d.agent.mu.Lock()
-	defer d.agent.mu.Unlock()
+	d.agent.Mu.Lock()
+	defer d.agent.Mu.Unlock()
 
 	// Normalize: ensure tool response content is always valid JSON
 	normalized := result
@@ -493,7 +494,7 @@ func (d *Dispatcher) appendFunctionResponse(toolCall *messaging.ToolCall, result
 		normalized = mustJSON(map[string]string{"content": result})
 	}
 
-	d.agent.conversation.ContextWindow.History = append(d.agent.conversation.ContextWindow.History, messaging.Message{
+	d.agent.Conversation.ContextWindow.History = append(d.agent.Conversation.ContextWindow.History, messaging.Message{
 		Role: messaging.RoleTool,
 		ToolResponses: []messaging.ToolResponse{{
 			CallID:  toolCall.ID,

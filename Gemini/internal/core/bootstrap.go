@@ -6,65 +6,44 @@ import (
 	"strings"
 	"time"
 
+	"gemini-cli/internal/domain/entities"
 	"gemini-cli/internal/pubsub"
 	"gemini-cli/internal/tools"
 	"gemini-cli/internal/utils"
 )
 
+
 // BootstrapContext selects the best route plan via the agent's router and
 // loads the matching agent + skill documents into the conversation.
-func BootstrapContext(agent *Agent) {
-	route := agent.selectRoutePlan()
-	fmt.Printf("🧭 [Router] Identified Agent: %s (Reason: %s)\n", route.Agent, route.Reason)
-	ExecuteBootstrapWithRoute(agent, route)
+func BootstrapContext(agent *entities.Agent) {
+	fmt.Printf("🧭 [Context] Initializing agent context...\n")
+	ExecuteBootstrap(agent)
 }
 
-// ExecuteBootstrapWithRoute loads agent/skill configuration and appends it to
+// ExecuteBootstrap loads agent/skill configuration and appends it to
 // the agent's conversation history.
-func ExecuteBootstrapWithRoute(agent *Agent, route RoutePlan) {
-	pubsub.BroadcastLog(fmt.Sprintf("Nạp cấu hình cho Agent: %s...", route.Agent), "routing")
-	fmt.Printf("🧭 [Context] Orchestrator: Loading %s configuration...\n", route.Agent)
-	contextParts := BuildBootstrapContext(agent, route)
+func ExecuteBootstrap(agent *entities.Agent) {
+	contextParts := BuildBootstrapContext(agent)
 	bootstrapPayload := strings.Join(contextParts, "\n\n")
-	agent.appendUserTextInternal(bootstrapPayload, nil)
+	agent.AppendUserTextInternal(bootstrapPayload, nil)
 }
 
 // BuildBootstrapContext assembles the bootstrap context strings for a given
-// route: agent definition, skill markdown, real-time market data, and suffix.
-func BuildBootstrapContext(agent *Agent, route RoutePlan) []string {
-	agentDoc := tools.LoadDocumentWithMetadata("agent", route.Agent)
+// agent: agent definition, skill markdown, real-time market data, and suffix.
+func BuildBootstrapContext(agent *entities.Agent) []string {
+	agentDoc := tools.LoadDocumentWithMetadata("agent", "general")
 	logLoadedDocument(agentDoc)
 
 	contextParts := []string{
-		fmt.Sprintf("ANTHROPIC AGENT CONFIGURATION\nAgent: %s\nSkills: %s\nMode: Managed Agent (API)", route.Agent, strings.Join(route.Skills, ", ")),
-		fmt.Sprintf("SYSTEM PROMPT (from agents/%s.md)\n%s", route.Agent, agentDoc.Content),
+		fmt.Sprintf("ANTHROPIC AGENT CONFIGURATION\nAgent: General Agent\nMode: Managed Agent (API)"),
+		fmt.Sprintf("SYSTEM PROMPT\n%s", agentDoc.Content),
 	}
 
-	// Nạp tất cả các skills hợp lệ từ route plan
-	for _, skill := range route.Skills {
-		pubsub.BroadcastEvent(fmt.Sprintf("Đang nạp skill chuyên biệt: %s", skill), "skill_loaded", map[string]interface{}{
-			"skill": skill,
-		})
-		skillDoc := tools.LoadDocumentWithMetadata("skill", route.Agent+"/"+skill)
+	// TODO: Load skills based on agent capabilities
 
-		if strings.HasPrefix(skillDoc.Content, "Lỗi:") {
-			fmt.Printf("⚠️ [Context] Không thể nạp skill %s: %s\n", skill, skillDoc.Content)
-			continue
-		}
-
-		logLoadedDocument(skillDoc)
-
-		content := skillDoc.Content
-		// Giới hạn độ dài để tránh tràn context nếu skill quá lớn
-		if len(content) > 8000 {
-			content = content[:8000] + "\n... [Nội dung bị cắt bớt để tối ưu hóa context]"
-		}
-		contextParts = append(contextParts, fmt.Sprintf("SKILL MARKDOWN (%s)\n%s", skill, content))
-	}
-
-	if tools.NeedsRealtimeData(agent.userInput) {
+	if tools.NeedsRealtimeData(agent.UserInput) {
 		pubsub.BroadcastLog("Phát hiện nhu cầu dữ liệu Real-time. Đang tìm kiếm...", "process")
-		queryPlan := tools.BuildMarketQueryPlan(agent.userInput)
+		queryPlan := tools.BuildMarketQueryPlan(agent.UserInput)
 
 		// Concurrent search with timeout to prevent indefinite blocking.
 		const searchTimeout = 30 * time.Second

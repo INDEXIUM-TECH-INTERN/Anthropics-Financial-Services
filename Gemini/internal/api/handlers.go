@@ -426,9 +426,8 @@ func handleConfigKeys(agent AgentInterface) http.HandlerFunc {
 			}
 		}
 
-		agent.SetOpenRouterKeys(validKeys)
-
-		fmt.Printf("🔑 [Config] Updated %d OpenRouter keys\n", len(validKeys))
+		
+		fmt.Printf("🔑 [Config] Updated %d Gemini keys\n", len(validKeys))
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status": "ok",

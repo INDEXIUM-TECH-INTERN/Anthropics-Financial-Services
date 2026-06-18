@@ -21,9 +21,11 @@ type GeminiProvider struct {
 }
 
 func (p *GeminiProvider) Generate(ctx context.Context, req messaging.Request) (messaging.Message, error) {
+	// Get key from pool with failover
+		
 	model := strings.TrimSpace(p.Model)
 	if model == "" {
-		model = "gemini-2.0-flash" // Updated default for 2026
+		model = "gemini-3.1-flash-lite" // Updated default for 2026
 	}
 	modelPath := model
 	if !strings.HasPrefix(modelPath, "models/") {
@@ -242,9 +244,10 @@ func (p *GeminiProvider) GenerateText(systemPrompt, userPrompt string) (string, 
 }
 
 func (p *GeminiProvider) GenerateStream(ctx context.Context, req messaging.Request, onChunk func(StreamChunk)) error {
+	
 	model := strings.TrimSpace(p.Model)
 	if model == "" {
-		model = "gemini-2.0-flash"
+		model = "gemini-3.1-flash-lite"
 	}
 	modelPath := model
 	if !strings.HasPrefix(modelPath, "models/") {

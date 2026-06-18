@@ -14,24 +14,23 @@ type ProviderManager struct {
 	provider providers.Provider
 }
 
-// NewProviderManager creates a provider chain from environment configuration.
-// Priority: Gemini primary → OpenRouter fallbacks. Can be overridden via USE_OPENROUTER_ONLY.
+// NewProviderManager creates a provider from environment configuration.
+// Only supports Gemini API keys with single provider (no fallbacks).
 func NewProviderManager() *ProviderManager {
 	geminiProviders := newGeminiProviders()
-	orProviders := newOpenRouterProviders(openRouterKeysFromEnv())
-
-	useOnlyOR := os.Getenv("USE_OPENROUTER_ONLY") == "1" || len(geminiProviders) == 0
 
 	var p providers.Provider
-	if useOnlyOR && len(orProviders) > 0 {
-		fmt.Println("🚀 [Config] Sử dụng OpenRouter làm primary (bypass Gemini để tránh quota)")
-		p = providers.NewMultiProvider(orProviders[0], orProviders[1:])
+	if len(geminiProviders) == 0 {
+		fmt.Println("⚠️ [Config] Không tìm thấy Gemini API keys. Sử dụng API key trống để testing.")
+		p = newGeminiProvider("")
 	} else {
-		allProviders := append(geminiProviders, orProviders...)
-		if len(allProviders) == 0 {
-			allProviders = append(allProviders, newGeminiProvider(""))
+		// Cast để truy cập APIKey từ interface
+		if gemProvider, ok := geminiProviders[0].(*providers.GeminiProvider); ok {
+			p = newGeminiProvider(gemProvider.APIKey)
+		} else {
+			p = newGeminiProvider("")
 		}
-		p = providers.NewMultiProvider(allProviders[0], allProviders[1:])
+		fmt.Printf("🚀 [Config] Đã khởi tạo Gemini Provider với %d API key(s)\n", len(geminiProviders))
 	}
 
 	return &ProviderManager{provider: p}
@@ -42,8 +41,8 @@ func (pm *ProviderManager) GetProvider() providers.Provider {
 	return pm.provider
 }
 
-// SetOpenRouterKeys replaces the provider chain with new OpenRouter keys at runtime.
-func (pm *ProviderManager) SetOpenRouterKeys(keys []string) {
+// SetGeminiKeys replaces the provider chain with new Gemini API keys at runtime.
+func (pm *ProviderManager) SetGeminiKeys(keys []string) {
 	var cleanKeys []string
 	for _, key := range keys {
 		key = strings.TrimSpace(key)
@@ -53,14 +52,10 @@ func (pm *ProviderManager) SetOpenRouterKeys(keys []string) {
 		cleanKeys = append(cleanKeys, key)
 	}
 
-	orProviders := newOpenRouterProviders(cleanKeys)
-	allProviders := append(newGeminiProviders(), orProviders...)
-	if len(allProviders) == 0 {
-		allProviders = append(allProviders, newGeminiProvider(""))
+	if len(cleanKeys) > 0 {
+		// TODO: Implement key pool update
+		fmt.Printf("🔑 [Config] Updated %d Gemini keys (key pool not implemented yet)\n", len(cleanKeys))
 	}
-	pm.provider = providers.NewMultiProvider(allProviders[0], allProviders[1:])
-
-	fmt.Printf("🔑 [Config] Updated OpenRouter keys. Count: %d\n", len(orProviders))
 }
 
 // numberedEnvKeys generates a list of env var names: base, base_2, base_3, ..., base_max.
@@ -86,11 +81,6 @@ func envValues(keys []string) []string {
 	return values
 }
 
-// openRouterKeysFromEnv reads OpenRouter API keys from OPENROUTER_API_KEY, OPENROUTER_API_KEY_2, ..., _5.
-func openRouterKeysFromEnv() []string {
-	return envValues(numberedEnvKeys("OPENROUTER_API_KEY", 5))
-}
-
 // newGeminiProviders creates GeminiProvider instances from GEMINI_API_KEY env vars.
 func newGeminiProviders() []providers.Provider {
 	keys := envValues(numberedEnvKeys("GEMINI_API_KEY", 5))
@@ -109,28 +99,11 @@ func newGeminiProvider(apiKey string) *providers.GeminiProvider {
 	}
 }
 
-// newOpenRouterProviders creates OpenRouterProvider instances from env keys.
-func newOpenRouterProviders(keys []string) []providers.Provider {
-	model := os.Getenv("OPENROUTER_MODEL")
-	if model == "" {
-		model = "meta-llama/llama-3.3-70b-instruct:free"
-	}
-
-	openRouters := make([]providers.Provider, 0, len(keys))
-	for _, key := range keys {
-		openRouters = append(openRouters, &providers.OpenRouterProvider{
-			APIKey: key,
-			Model:  model,
-		})
-	}
-	return openRouters
-}
-
 // normalizeGeminiModel ensures the model name starts with "models/" prefix.
 func normalizeGeminiModel(model string) string {
 	normalized := strings.TrimSpace(model)
 	if normalized == "" {
-		return "gemini-flash-latest"
+		return "models/gemini-3.1-flash-lite" // Updated default for 2026
 	}
 	if !strings.HasPrefix(normalized, "models/") {
 		return "models/" + normalized

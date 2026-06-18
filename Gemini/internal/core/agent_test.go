@@ -152,11 +152,6 @@ func TestAgentWithMockProvider(t *testing.T) {
 	}
 }
 
-func TestAgentSetOpenRouterKeys(t *testing.T) {
-	a := NewAgent()
-	// Should not panic
-	a.SetOpenRouterKeys([]string{"key1", "key2"})
-}
 
 func TestBuildGroundedSystemPrompt(t *testing.T) {
 	// Use a fixed time: 2026-06-14 12:00:00 UTC (Sunday)

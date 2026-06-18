@@ -60,6 +60,19 @@
                 <span class="topbar-title">Financial AI Agent</span>
                 <span class="topbar-subtitle" id="current-chat-title">Cuộc trò chuyện mới</span>
             </div>
+
+            <!-- Tab Navigation for Chat & World News Dashboard -->
+            <div class="topbar-tabs" id="topbar-tabs">
+                <button class="topbar-tab active" data-tab="chat" id="tab-btn-chat">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px; vertical-align: middle;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Trợ lý AI
+                </button>
+                <button class="topbar-tab" data-tab="world-news" id="tab-btn-news">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px; vertical-align: middle;"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+                    Bản tin Thế giới
+                </button>
+            </div>
+
             <div class="topbar-right">
                 <button class="topbar-btn theme-toggle" id="theme-toggle" title="Chuyển theme">
                     <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
@@ -118,7 +131,192 @@
             </div>
             <div class="input-hint">Indexium AI có thể mắc lỗi. Xác minh thông tin quan trọng.</div>
         </div>
+
+
+        <!-- Tab 2: World Finance News Dashboard -->
+        <div class="world-news-container hidden" id="world-news-container">
+            <!-- Header Dashboard -->
+            <div class="world-news-header">
+                <div class="news-title-area">
+                    <h1 id="news-report-title">Bản tin Tài chính Thế giới sáng</h1>
+                    <p>Tổng hợp lúc 7:00 sáng hàng ngày (GMT+7) từ các nguồn CNBC, WSJ, Reuters, Bloomberg...</p>
+                </div>
+                <div class="date-picker-wrapper">
+                    <span class="date-picker-label">Bản tin ngày:</span>
+                    <select class="date-picker-select" id="news-date-select">
+                        <option value="2026-06-17">17/06/2026 (Hôm nay)</option>
+                        <option value="2026-06-16">16/06/2026</option>
+                        <option value="2026-06-15">15/06/2026</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Quick Summary / Highlights -->
+            <div class="highlights-box">
+                <div class="highlights-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00f2fe" stroke-width="2" style="vertical-align: middle; margin-right: 6px;"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                    Tóm tắt Tiêu điểm Nổi bật
+                </div>
+                <ul class="highlights-list" id="quick-highlights-list">
+                    <!-- Dynamic rendering -->
+                </ul>
+            </div>
+
+            <!-- Key Metrics Row (2-3 con số nổi bật nhất) -->
+            <div class="key-metrics-row" id="key-metrics-row">
+                <!-- Dynamic rendering -->
+            </div>
+
+            <!-- Main Dashboard Grid -->
+            <div class="world-news-grid">
+                <!-- Left Column: Markets -->
+                <div class="news-column-left">
+                    <!-- 1. Chứng khoán thế giới -->
+                    <section class="news-section">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                                1. Chứng khoán Thế giới
+                            </div>
+                            <div class="section-meta">Chốt phiên: 16h00 chiều (Giờ Mỹ - ET)</div>
+                            <div class="section-sources">
+                                <a href="https://www.cnbc.com/world/" target="_blank" class="source-badge">CNBC</a>
+                                <a href="https://www.wsj.com/finance/stocks?mod=nav_top_subsection" target="_blank" class="source-badge">WSJ</a>
+                                <a href="https://www.reuters.com/markets/stocks/" target="_blank" class="source-badge">Reuters</a>
+                            </div>
+                        </div>
+                        <div class="section-body">
+                            <div class="media-and-chart-block">
+                                <div class="thumbnail-container">
+                                    <img src="/images/cnbc_trader.png" class="news-thumbnail" id="stock-thumbnail" alt="CNBC Trader">
+                                </div>
+                                <div class="chart-container" title="Biểu đồ dao động S&P 500 chốt phiên (Dữ liệu FactSet dựng bởi WSJ)">
+                                    <canvas id="stock-chart" class="chart-canvas"></canvas>
+                                </div>
+                            </div>
+                            <ul class="summary-list" id="stock-summary-list">
+                                <!-- Dynamic rendering -->
+                            </ul>
+                        </div>
+                    </section>
+
+                    <!-- 2. Giá dầu thế giới -->
+                    <section class="news-section">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;"><path d="M12 22a7 7 0 0 0 7-7c0-4.3-7-11-7-11S5 10.7 5 15a7 7 0 0 0 7 7z"/></svg>
+                                2. Giá dầu Thế giới
+                            </div>
+                            <div class="section-meta" id="oil-session-meta">Chốt phiên NYMEX & ICE (Thứ 2 - 6)</div>
+                            <div class="section-sources">
+                                <a href="https://www.reuters.com/markets/" target="_blank" class="source-badge">Reuters</a>
+                                <a href="https://www.nytimes.com/section/business/energy-environment?page=2" target="_blank" class="source-badge">NYTimes</a>
+                                <a href="https://www.wsj.com/business/energy-oil?mod=nav_top_subsection" target="_blank" class="source-badge">WSJ</a>
+                            </div>
+                        </div>
+                        <div class="section-body">
+                            <div class="oil-double-badge" id="oil-prices-badge">
+                                <!-- Dynamic price badges WTI & Brent -->
+                            </div>
+                            <div class="media-and-chart-block">
+                                <div class="thumbnail-container">
+                                    <img src="/images/reuters_oil.png" class="news-thumbnail" id="oil-thumbnail" alt="Reuters Oil">
+                                </div>
+                                <div class="chart-container" title="Biểu đồ biến động giá dầu WTI & Brent">
+                                    <canvas id="oil-chart" class="chart-canvas"></canvas>
+                                </div>
+                            </div>
+                            <ul class="summary-list" id="oil-summary-list">
+                                <!-- Dynamic rendering -->
+                            </ul>
+                        </div>
+                    </section>
+
+                    <!-- 3. Giá vàng, USD và các hàng hóa khác -->
+                    <section class="news-section">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;"><circle cx="12" cy="12" r="10"/><path d="M12 6v12"/><path d="M8 10h8"/><path d="M8 14h8"/></svg>
+                                3. Giá Vàng, USD & Hàng hóa
+                            </div>
+                            <div class="section-meta">Cập nhật theo thời gian thực</div>
+                            <div class="section-sources">
+                                <a href="https://www.reuters.com/markets/" target="_blank" class="source-badge">Reuters</a>
+                            </div>
+                        </div>
+                        <div class="section-body">
+                            <div class="media-and-chart-block">
+                                <div class="thumbnail-container">
+                                    <img src="/images/gold_dollar.png" class="news-thumbnail" id="gold-usd-thumbnail" alt="Gold & Dollar">
+                                </div>
+                                <div class="chart-container" title="Biểu đồ xu hướng Vàng & Dollar Index">
+                                    <canvas id="gold-chart" class="chart-canvas"></canvas>
+                                </div>
+                            </div>
+                            <ul class="summary-list" id="gold-usd-summary-list">
+                                <!-- Dynamic rendering -->
+                            </ul>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Right Column: News & Events -->
+                <div class="news-column-right">
+                    <!-- 5. Breaking News (Tin nóng khẩn cấp) -->
+                    <section class="news-section breaking-section">
+                        <div class="section-header">
+                            <div class="section-title" style="color: #ff5252;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                                Breaking News (Tin nóng)
+                            </div>
+                        </div>
+                        <div class="breaking-news-list" id="breaking-news-list">
+                            <!-- Dynamic rendering -->
+                        </div>
+                    </section>
+
+                    <!-- 4. Tiêu điểm tài chính trong ngày trước đó -->
+                    <section class="news-section">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                                4. Tiêu điểm Kinh tế 24h
+                            </div>
+                        </div>
+                        <div class="section-body" style="gap: 16px;">
+                            <div>
+                                <h4 style="margin: 0 0 8px 0; font-size: 12px; color: var(--text-tertiary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Thế giới VTVIndex (24h qua)</h4>
+                                <div class="news-list" id="vtv-news-list">
+                                    <!-- Dynamic rendering -->
+                                </div>
+                            </div>
+                            <div style="height: 1px; background: var(--border-subtle); margin: 4px 0;"></div>
+                            <div>
+                                <h4 style="margin: 0 0 8px 0; font-size: 12px; color: var(--text-tertiary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Báo chí Tài chính Việt Nam</h4>
+                                <div class="news-list" id="vn-finance-news-list">
+                                    <!-- Dynamic rendering -->
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 6. Box tiêu điểm theo dõi tiếp theo -->
+                    <section class="news-section">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                6. Sự kiện & Dữ liệu đáng chú ý
+                            </div>
+                        </div>
+                        <div class="watchlist-list" id="upcoming-watchlist">
+                            <!-- Dynamic rendering -->
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
     </main>
+
 
     <!-- ═══ Thinking Panel (slide-over) ═══ -->
     <aside class="thinking-panel glass-panel hidden" id="thinking-panel" aria-label="Bảng suy nghĩ AI">

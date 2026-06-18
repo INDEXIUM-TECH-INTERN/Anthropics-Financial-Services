@@ -131,16 +131,8 @@ export interface RetryOptions {
   backoffFactor?: number;
 }
 
-export async function retryWithBackoff<T>(
-  fn: () => Promise<T>,
-  options: RetryOptions = {}
-): Promise<T> {
-  const {
-    maxRetries = 3,
-    initialDelay = 1000,
-    maxDelay = 30000,
-    backoffFactor = 2,
-  } = options;
+export async function retryWithBackoff<T>(fn: () => Promise<T>, options: RetryOptions = {}): Promise<T> {
+  const { maxRetries = 3, initialDelay = 1000, maxDelay = 30000, backoffFactor = 2 } = options;
 
   let lastError: Error;
   let delay = initialDelay;
@@ -155,7 +147,7 @@ export async function retryWithBackoff<T>(
         break;
       }
 
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
       delay = Math.min(delay * backoffFactor, maxDelay);
     }
   }

@@ -1,0 +1,95 @@
+[
+  {
+    "id": 1,
+    "user_query": "Giá cổ phiếu FPT hôm nay thế nào?",
+    "expected": {
+      "agent": "market-researcher",
+      "temporal": { "intent": "realtime", "resolved_date": "2026-05-21" }
+    }
+  },
+  {
+    "id": 2,
+    "user_query": "Cho tôi xem báo cáo thu nhập của VNM hôm qua.",
+    "expected": {
+      "agent": "earnings-reviewer",
+      "temporal": { "intent": "latest", "resolved_date": "2026-05-20" }
+    }
+  },
+  {
+    "id": 3,
+    "user_query": "Dự báo giá vàng ngày mai.",
+    "expected": { "temporal": { "is_future": true } }
+  },
+  {
+    "id": 4,
+    "user_query": "Phân tích kỹ thuật mã HPG thứ Hai vừa rồi.",
+    "expected": {
+      "agent": "market-researcher",
+      "temporal": { "intent": "historical", "resolved_date": "2026-05-18" }
+    }
+  },
+  {
+    "id": 5,
+    "user_query": "Tổng tài sản của HDB trong 10 năm qua thay đổi thế nào?",
+    "expected": {
+      "agent": "model-builder",
+      "temporal": { "intent": "historical" }
+    }
+  },
+  {
+    "id": 6,
+    "user_query": "Chỉ tiêu 'Chi phí dự phòng rủi ro tín dụng' nằm ở trang nào trong báo cáo tài chính năm 2023 của HDB?",
+    "expected": {
+      "agent": "statement-auditor",
+      "temporal": { "intent": "historical", "resolved_date": "2023-12-31" }
+    }
+  },
+  {
+    "id": 7,
+    "user_query": "Trích dẫn báo cáo nói về chi phí dự phòng của HDB năm 2024",
+    "expected": {
+      "agent": "earnings-reviewer",
+      "temporal": { "intent": "historical", "resolved_date": "2024-12-31" }
+    }
+  },
+  {
+    "id": 8,
+    "user_query": "Báo cáo tài chính 6 tháng đầu năm 2025?",
+    "expected": {
+      "agent": "earnings-reviewer",
+      "temporal": { "intent": "historical", "resolved_date": "2025-06-30" }
+    }
+  },
+  {
+    "id": 9,
+    "user_query": "HDB có những lợi thế gì trong những năm gần đây để bức tốc phát triển trong các năm sắp tới?",
+    "expected": {
+      "agent": "market-researcher",
+      "temporal": { "intent": "latest" }
+    }
+  },
+  {
+    "id": 10,
+    "user_query": "Ban lãnh đạo hiện tại của HDB gồm những ai?",
+    "expected": {
+      "agent": "meeting-prep-agent",
+      "temporal": { "intent": "realtime" }
+    }
+  },
+  {
+    "id": 11,
+    "user_query": "Tổng quát ngành ngân hàng năm 2025",
+    "expected": {
+      "agent": "market-researcher",
+      "temporal": { "intent": "historical" }
+    }
+  },
+  {
+    "id": 12,
+    "user_query": "So sánh tổng tài sản HDB và ACB trong 3 năm gần đây",
+    "expected": {
+      "agent": "market-researcher",
+      "temporal": { "intent": "historical" }
+    }
+  }
+]

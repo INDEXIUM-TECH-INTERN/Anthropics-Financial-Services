@@ -12,6 +12,8 @@ import type { ChatSession, AttachmentPayload, TokenMetrics } from '../../shared/
 import { createChatViewWidget } from '../../widgets/chat-view/compose';
 import { createSidebarWidget } from '../../widgets/sidebar/compose';
 import { createPipelineWidget } from '../../widgets/pipeline/compose';
+import { MOCK_NEWS_DATA } from '../../shared/api/mock-news';
+
 
 import {
   $currentChatId,
@@ -100,6 +102,17 @@ export function createChatPage(): ChatPage {
   const closeShortcuts = $('close-shortcuts');
   const metricsModal = $('metrics-modal');
   const closeMetrics = $('close-metrics');
+
+  // ═══ TAB CONTROL DOM REFS & STATE ═══
+  const tabBtnChat = $('tab-btn-chat');
+  const tabBtnNews = $('tab-btn-news');
+  const worldNewsContainer = $('world-news-container');
+  const conversationsSidebar = $('conversations-sidebar');
+  const inputAreaEl = document.querySelector('.input-area') as HTMLElement | null;
+  const toggleConversationsBtn = $('toggle-conversations');
+  const newsDateSelect = $<HTMLSelectElement>('news-date-select');
+  let currentTab = 'chat';
+
 
   // ═══ WIDGETS ═══
   const chatWidget = createChatViewWidget(chatContent, chatViewport);
@@ -614,8 +627,412 @@ export function createChatPage(): ChatPage {
     metricsModal?.classList.add('hidden');
   }
 
+  // ═══ SPARKLINE & CHART DRAWING ═══
+  function generateSparklinePath(points: number[], width = 100, height = 30): string {
+    const min = Math.min(...points);
+    const max = Math.max(...points);
+    const range = max - min || 1;
+    const xStep = width / (points.length - 1);
+    return points.map((p, i) => {
+      const x = i * xStep;
+      const y = height - ((p - min) / range) * (height - 6) - 3;
+      return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
+    }).join(' ');
+  }
+
+  function drawCanvasChart(
+    canvasId: string, 
+    points: number[], 
+    labels: string[], 
+    color = '#00f2fe', 
+    secondaryPoints?: number[], 
+    secondaryColor = '#ffab00'
+  ) {
+    const canvas = $<HTMLCanvasElement>(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    if (width === 0 || height === 0) return; // Prevent 0-sized crashes
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.scale(dpr, dpr);
+
+    ctx.clearRect(0, 0, width, height);
+
+    const paddingLeft = 40;
+    const paddingRight = 15;
+    const paddingTop = 15;
+    const paddingBottom = 20;
+    const chartWidth = width - paddingLeft - paddingRight;
+    const chartHeight = height - paddingTop - paddingBottom;
+
+    let allPoints = [...points];
+    if (secondaryPoints) {
+      allPoints = [...allPoints, ...secondaryPoints];
+    }
+    const minVal = Math.min(...allPoints);
+    const maxVal = Math.max(...allPoints);
+    const valRange = maxVal - minVal || 1;
+    
+    const yMin = minVal - valRange * 0.1;
+    const yMax = maxVal + valRange * 0.1;
+    const yRange = yMax - yMin;
+
+    // Gridlines & Y-Axis labels
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.font = '9px var(--font-mono)';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+
+    const steps = 3;
+    for (let i = 0; i <= steps; i++) {
+      const val = yMin + (yRange * i) / steps;
+      const y = paddingTop + chartHeight - (chartHeight * i) / steps;
+      
+      ctx.beginPath();
+      ctx.moveTo(paddingLeft, y);
+      ctx.lineTo(width - paddingRight, y);
+      ctx.stroke();
+
+      let lbl = val.toFixed(1);
+      if (val >= 1000) lbl = Math.round(val).toLocaleString();
+      ctx.fillText(lbl, paddingLeft - 8, y);
+    }
+
+    // X-Axis labels
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    const xStep = chartWidth / (points.length - 1);
+    points.forEach((_, i) => {
+      if (i % 2 === 0 || i === points.length - 1) {
+        const x = paddingLeft + i * xStep;
+        ctx.fillText(labels[i] || '', x, height - paddingBottom + 5);
+      }
+    });
+
+    const drawLine = (dataPoints: number[], lineColor: string, fillGrad: boolean) => {
+      ctx.beginPath();
+      dataPoints.forEach((val, i) => {
+        const x = paddingLeft + i * xStep;
+        const y = paddingTop + chartHeight - ((val - yMin) / yRange) * chartHeight;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 4;
+      ctx.shadowColor = lineColor;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      if (fillGrad) {
+        let r = 0, g = 242, b = 254; // default cyan
+        if (lineColor === '#ff5252') { r = 255; g = 82; b = 82; }
+        else if (lineColor === '#ffab00') { r = 255; g = 171; b = 0; }
+        else if (lineColor === '#00e676') { r = 0; g = 230; b = 118; }
+
+        const grad = ctx.createLinearGradient(0, paddingTop, 0, height - paddingBottom);
+        grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.15)`);
+        grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+        
+        ctx.beginPath();
+        ctx.moveTo(paddingLeft, height - paddingBottom);
+        dataPoints.forEach((val, i) => {
+          const x = paddingLeft + i * xStep;
+          const y = paddingTop + chartHeight - ((val - yMin) / yRange) * chartHeight;
+          ctx.lineTo(x, y);
+        });
+        ctx.lineTo(paddingLeft + (dataPoints.length - 1) * xStep, height - paddingBottom);
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+      }
+
+      // Dots
+      dataPoints.forEach((val, i) => {
+        const x = paddingLeft + i * xStep;
+        const y = paddingTop + chartHeight - ((val - yMin) / yRange) * chartHeight;
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, 2 * Math.PI);
+        ctx.fillStyle = lineColor;
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.stroke();
+      });
+    };
+
+    drawLine(points, color, !secondaryPoints);
+    if (secondaryPoints) {
+      drawLine(secondaryPoints, secondaryColor, false);
+    }
+  }
+
+  // ═══ RENDER NEWS DASHBOARD ═══
+  function renderWorldNews() {
+    const selectedDate = newsDateSelect?.value || '2026-06-17';
+    const report = MOCK_NEWS_DATA[selectedDate];
+    if (!report) {
+      addLogEntry(`Không tìm thấy bản tin ngày ${selectedDate}`, 'error');
+      return;
+    }
+
+    // Add visual transition class
+    worldNewsContainer?.classList.remove('news-fade-in');
+    void worldNewsContainer?.offsetWidth; // Trigger layout reflow
+    worldNewsContainer?.classList.add('news-fade-in');
+
+    // 1. Quick Highlights
+    const quickHighlightsList = $('quick-highlights-list');
+    if (quickHighlightsList) {
+      quickHighlightsList.innerHTML = report.quickHighlights
+        .map(h => `<li class="highlights-item">${escHtml(h)}</li>`)
+        .join('');
+    }
+
+    // 2. Key Metrics Row
+    const keyMetricsRow = $('key-metrics-row');
+    if (keyMetricsRow) {
+      keyMetricsRow.innerHTML = report.keyNumbers
+        .map(m => {
+          const pathStr = generateSparklinePath(m.sparkline);
+          const colorClass = m.isPositive ? 'positive' : 'negative';
+          const strokeColor = m.isPositive ? '#00e676' : '#ff5252';
+          return `
+            <div class="metric-card">
+              <div class="metric-card-header">
+                <span class="metric-card-label">${escHtml(m.label)}</span>
+                <span class="metric-card-change ${colorClass}">
+                  ${m.isPositive ? '▲' : '▼'} ${escHtml(m.change)}
+                </span>
+              </div>
+              <div class="metric-card-value-area">
+                <span class="metric-card-value">${escHtml(m.value)}</span>
+              </div>
+              <div class="metric-card-visual">
+                <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
+                  <path d="${pathStr}" fill="none" stroke="${strokeColor}" stroke-width="1.8" stroke-linecap="round" />
+                </svg>
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+    }
+
+    // 3. Stocks detail
+    const stockSummaryList = $('stock-summary-list');
+    if (stockSummaryList) {
+      stockSummaryList.innerHTML = report.stocks.highlights
+        .map(h => `<li class="summary-item">${escHtml(h)}</li>`)
+        .join('');
+    }
+    const stockThumbnail = $<HTMLImageElement>('stock-thumbnail');
+    if (stockThumbnail) stockThumbnail.src = report.stocks.thumbnail;
+
+    // 4. Oil details WTI & Brent
+    const oilPricesBadge = $('oil-prices-badge');
+    if (oilPricesBadge) {
+      oilPricesBadge.innerHTML = `
+        <div class="oil-submetric">
+          <span class="oil-submetric-label">WTI (NYMEX):</span>
+          <span class="oil-submetric-value">${escHtml(report.oil.wtiPrice)}</span>
+          <span class="oil-submetric-change ${report.oil.wtiPositive ? 'positive' : 'negative'}">
+            ${report.oil.wtiPositive ? '▲' : '▼'} ${escHtml(report.oil.wtiPercent)}
+          </span>
+        </div>
+        <div class="oil-submetric">
+          <span class="oil-submetric-label">Brent (ICE):</span>
+          <span class="oil-submetric-value">${escHtml(report.oil.brentPrice)}</span>
+          <span class="oil-submetric-change ${report.oil.brentPositive ? 'positive' : 'negative'}">
+            ${report.oil.brentPositive ? '▲' : '▼'} ${escHtml(report.oil.brentPercent)}
+          </span>
+        </div>
+      `;
+    }
+    const oilSummaryList = $('oil-summary-list');
+    if (oilSummaryList) {
+      oilSummaryList.innerHTML = report.oil.highlights
+        .map(h => `<li class="summary-item">${escHtml(h)}</li>`)
+        .join('');
+    }
+    const oilThumbnail = $<HTMLImageElement>('oil-thumbnail');
+    if (oilThumbnail) oilThumbnail.src = report.oil.thumbnail;
+
+    // 5. Gold & USD
+    const goldUsdSummaryList = $('gold-usd-summary-list');
+    if (goldUsdSummaryList) {
+      goldUsdSummaryList.innerHTML = report.goldUsd.highlights
+        .map(h => `<li class="summary-item">${escHtml(h)}</li>`)
+        .join('');
+    }
+
+    // 6. Breaking News
+    const breakingNewsListEl = $('breaking-news-list');
+    if (breakingNewsListEl) {
+      breakingNewsListEl.innerHTML = report.breakingNews
+        .map(b => `
+          <div class="breaking-news-item ${b.isUrgent ? 'urgent' : ''}">
+            <span class="breaking-time-badge">${escHtml(b.time)}</span>
+            <div class="breaking-content-area">
+              <div class="breaking-meta">
+                <span class="breaking-meta-source">${escHtml(b.source)}</span>
+                <span>• Breaking</span>
+              </div>
+              <div class="breaking-text">${escHtml(b.content)}</div>
+            </div>
+          </div>
+        `)
+        .join('');
+    }
+
+    // 7. VTVIndex News
+    const vtvNewsList = $('vtv-news-list');
+    if (vtvNewsList) {
+      if (report.vtvIndexNews && report.vtvIndexNews.length > 0) {
+        vtvNewsList.innerHTML = report.vtvIndexNews
+          .map(n => `
+            <div class="news-item">
+              <h5 class="news-item-title">${escHtml(n.title)}</h5>
+              <p class="news-item-desc">${escHtml(n.summary)}</p>
+              <div class="news-item-footer">
+                <span class="news-item-source">📺 ${escHtml(n.source)}</span>
+                <span>${escHtml(n.time)}</span>
+              </div>
+            </div>
+          `)
+          .join('');
+      } else {
+        vtvNewsList.innerHTML = '<div style="font-size:12px; color:var(--text-tertiary); padding:8px 0;">Không có tin tiêu điểm trong ngày.</div>';
+      }
+    }
+
+    // 8. Vietnam Finance News
+    const vnFinanceNewsList = $('vn-finance-news-list');
+    if (vnFinanceNewsList) {
+      vnFinanceNewsList.innerHTML = report.vietnamFinanceNews
+        .map(n => `
+          <div class="news-item">
+            <h5 class="news-item-title">${escHtml(n.title)}</h5>
+            <p class="news-item-desc">${escHtml(n.summary)}</p>
+            <div class="news-item-footer">
+              <span class="news-item-source">📰 ${escHtml(n.source)}</span>
+              <span>${escHtml(n.time)}</span>
+            </div>
+          </div>
+        `)
+        .join('');
+    }
+
+    // 9. Upcoming Watchlist
+    const upcomingWatchlist = $('upcoming-watchlist');
+    if (upcomingWatchlist) {
+      upcomingWatchlist.innerHTML = report.watchlist
+        .map(w => `
+          <div class="watchlist-card">
+            <div class="watchlist-card-left">
+              <div class="watchlist-event" title="${escHtml(w.event)}">${escHtml(w.event)}</div>
+              <div class="watchlist-card-meta">
+                <span class="watchlist-source">${escHtml(w.source)}</span>
+                <span>•</span>
+                <span>${escHtml(w.time)}</span>
+              </div>
+            </div>
+            <span class="importance-badge ${w.importance}">${escHtml(w.importance.toUpperCase())}</span>
+          </div>
+        `)
+        .join('');
+    }
+
+    // Render Canvas Charts (with a small timeout to let the container size settle)
+    setTimeout(() => {
+      // Stock chart (S&P 500)
+      const stockColor = report.stocks.isPositive ? '#00e676' : '#ff5252';
+      drawCanvasChart('stock-chart', report.stocks.chartPoints, report.stocks.chartLabels, stockColor);
+
+      // Oil chart WTI & Brent
+      drawCanvasChart(
+        'oil-chart',
+        report.oil.chartPointsWTI,
+        report.oil.chartLabels,
+        '#00f2fe',
+        report.oil.chartPointsBrent,
+        '#ffab00'
+      );
+
+      // Gold & DXY Chart
+      drawCanvasChart(
+        'gold-chart',
+        report.goldUsd.chartPointsGold,
+        report.goldUsd.chartLabels,
+        '#ffe082',
+        report.goldUsd.chartPointsDXY,
+        '#b0bec5'
+      );
+    }, 150);
+  }
+
+  // ═══ SWITCH TAB FUNCTION ═══
+  function switchTab(tab: 'chat' | 'world-news') {
+    currentTab = tab;
+    if (tab === 'chat') {
+      tabBtnChat?.classList.add('active');
+      tabBtnNews?.classList.remove('active');
+      worldNewsContainer?.classList.add('hidden');
+      chatViewport?.classList.remove('hidden');
+      if (inputAreaEl) inputAreaEl.classList.remove('hidden');
+      
+      const open = $sidebarOpen.get();
+      conversationsSidebar?.classList.toggle('collapsed', !open);
+      if (toggleConversationsBtn) toggleConversationsBtn.style.display = 'flex';
+      
+      addLogEntry('Đã chuyển sang Trợ lý AI', 'info');
+    } else {
+      tabBtnChat?.classList.remove('active');
+      tabBtnNews?.classList.add('active');
+      chatViewport?.classList.add('hidden');
+      if (inputAreaEl) inputAreaEl.classList.add('hidden');
+      
+      conversationsSidebar?.classList.add('collapsed');
+      if (toggleConversationsBtn) toggleConversationsBtn.style.display = 'none';
+      
+      worldNewsContainer?.classList.remove('hidden');
+      renderWorldNews();
+      addLogEntry('Đã chuyển sang Bản tin Thế giới', 'info');
+    }
+  }
+
   // ═══ EVENT LISTENERS ═══
   function setupEventListeners() {
+    // Tab Switching Events
+    tabBtnChat?.addEventListener('click', () => switchTab('chat'));
+    tabBtnNews?.addEventListener('click', () => switchTab('world-news'));
+
+    // Date Picker Event
+    newsDateSelect?.addEventListener('change', () => {
+      renderWorldNews();
+    });
+
+    // Window Resize Event to redraw charts responsively
+    let resizeTimeout: number;
+    window.addEventListener('resize', () => {
+      if (currentTab === 'world-news') {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = window.setTimeout(() => {
+          renderWorldNews();
+        }, 100);
+      }
+    });
+
     // Send
     sendBtn?.addEventListener('click', () => {
       if ($isGenerating.get()) stopGeneration();

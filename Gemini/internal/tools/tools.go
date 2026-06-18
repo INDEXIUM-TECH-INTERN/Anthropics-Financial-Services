@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"gemini-cli/internal/tools/market"
 	"gemini-cli/internal/tools/registry"
@@ -196,11 +195,13 @@ func GetRoutingGuide() string {
 
 // Time validation utilities - placeholder for future implementation
 func ValidateAndFixTimeRanges(text string) string {
-	// TODO: Implement time validation
-	return text
+	// TODO: Implement time validation using new time parser
+	return NormalizeTimeExpression(text)
 }
 
 func GetCurrentTimeInfo() string {
-	// TODO: Implement current time info
-	return "Thời gian hiện tại: " + time.Now().Format("02/01/2006 15:04:05")
+	return GetCurrentTimeInfoEx()
 }
+
+// NormalizeTimeExpression chuẩn hóa và giải thích biểu thức thời gian
+// NormalizeTimeExpression chuẩn hóa và giải thích biểu thức thời gian
