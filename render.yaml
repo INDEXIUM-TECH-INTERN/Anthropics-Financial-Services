@@ -1,19 +1,18 @@
-# Render Blueprint for TestAIFinance — 100% Free tier (no credit card required)
-# Single web service serves API + frontend SPA; Redis for cache/sessions
+# Render Blueprint — Free tier, 2 web services (backend + frontend) + Redis
+# No credit card required (both services use plan: free, type: web)
 
 services:
-  # ===== App (Go API + Frontend SPA) =====
+  # ===== Backend (Go API) =====
   - type: web
-    name: testai-app
+    name: testai-backend
     runtime: docker
     region: singapore
     plan: free
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    dockerfilePath: ./Gemini/Dockerfile
+    dockerContext: ./Gemini
     healthCheckPath: /health
     autoDeployTrigger: commit
     envVars:
-      # Gemini API keys (round-robin pool: GEMINI_API_KEY, GEMINI_API_KEY_2, ...)
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_API_KEY_2
@@ -49,6 +48,30 @@ services:
       - key: LOG_LEVEL
         value: info
 
+  # ===== Frontend (Nginx + SPA) — public entry point =====
+  - type: web
+    name: testai-frontend
+    runtime: docker
+    region: singapore
+    plan: free
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    healthCheckPath: /
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: BACKEND_HOST
+        fromService:
+          type: web
+          name: testai-backend
+          property: host
+      - key: BACKEND_PORT
+        fromService:
+          type: web
+          name: testai-backend
+          property: port
+
   # ===== Redis =====
   - type: keyvalue
     name: testai-redis
@@ -58,6 +81,7 @@ services:
     ipAllowList: []
 
 # Notes:
-# 1. Manually set secret env vars in Render dashboard (sync: false).
-# 2. Free web service sleeps after ~15 min idle; first request may take 30-60s to wake.
-# 3. Local dev with separate frontend/backend: use docker-compose.yml instead.
+# 1. Share testai-frontend.onrender.com — nginx proxies /api/* to backend internally.
+# 2. testai-backend also has a public URL on Free tier (API exposed directly).
+# 3. Both Free web services sleep after ~15 min idle; first visit may take 30-60s.
+# 4. For private backend (no public API URL), use type: pserv + plan: starter (~$7/mo, needs card).
