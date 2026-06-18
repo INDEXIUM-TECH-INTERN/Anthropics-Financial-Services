@@ -1,104 +1,126 @@
-# Frontend — Vanilla TypeScript SPA
+<!-- Generated: 2026-06-18 | Files scanned: 142 | Token estimate: ~850 -->
 
-<!-- Generated: 2026-06-14 | TS files: 23 | Token estimate: ~900 -->
+# Frontend Architecture
 
 ## Entry Point
-`frontend/src/main.ts` — app bootstrap, 37KB. Initializes all modules and mounts the UI.
+`frontend/src/app/app.ts` - Bootstraps the FSD architecture with chat page initialization
 
-## Architecture
-No framework — vanilla TypeScript with modular ES modules loaded via Vite.
+## Page Architecture
 
+### Main Page
 ```
-main.ts (bootstrap)
-├── components/chat/
-│   ├── message-bubble.ts      — Renders user/assistant messages, markdown
-│   ├── code-block.ts          — Syntax-highlighted code blocks
-│   ├── thinking-card.ts       — Tool-call thinking/reasoning display
-│   ├── streaming-cursor.ts    — Animated SSE streaming cursor
-│   └── typing-indicator.ts    — Typing animation
-│
-├── components/sidebar/
-│   └── conversation-list.ts   — Session list, create/rename/delete
-│
-├── components/ui/
-│   ├── icon-button.ts         — Reusable icon button
-│   ├── skeleton.ts            — Loading skeleton placeholder
-│   ├── toast.ts               — Toast notification system
-│   └── connection-status.ts   — SSE connection indicator
-│
-├── services/
-│   ├── api.ts                 — REST API calls (chat, history, sessions, config)
-│   ├── sse-manager.ts         — SSE connection + event parsing + callbacks
-│   ├── markdown.ts            — Markdown → HTML renderer
-│   ├── error-handler.ts       — Global error handling + user feedback
-│   └── connection-status.ts   — Connection state tracking
-│
-├── stores/
-│   └── app-state.ts           — Global reactive state (current chat, messages, settings)
-│
-├── hooks/
-│   ├── useAutoResize.ts       — Auto-resize textarea hook
-│   └── useScrollToBottom.ts   — Auto-scroll chat to bottom
-│
-├── types/
-│   └── api.ts                 — TypeScript interfaces for API types
-│
-├── utils/
-│   └── dom.ts                 — DOM helper utilities
-│
-└── styles/
-    ├── main.css               — Entry stylesheet
-    ├── design-tokens.css      — CSS custom properties (colors, spacing)
-    ├── base.css               — Reset + base styles
-    ├── glass.css              — Glassmorphic effects
-    ├── layout.css             — App layout (sidebar + main)
-    ├── chat.css               — Chat area styles
-    ├── components.css         — Shared component styles
-    ├── input.css              — Input/textarea styles
-    ├── modal.css              — Modal dialog styles
-    ├── pipeline.css           — Execution pipeline visualization
-    └── animations.css         — Keyframe animations
+chat/page.ts → createChatPage()
+    ├── sidebar/conversation-list.ts
+    ├── chat-view/compose.ts
+    └── pipeline/compose.ts
 ```
 
-## State Management
-`stores/app-state.ts` — Simple reactive store pattern:
-- `state`: messages[], currentChatId, settings, connection status
-- `subscribe(listener)`: register state change listeners
-- `setState(partial)`: update state and notify subscribers
-- Reducer-like actions for message append, session switch, settings update
+## State Management (Nanostores)
 
-## SSE Event Flow
+### Chat State (`entities/chat/model/store.ts`)
+```typescript
+$currentChatId - Current active session ID
+$currentChatTitle - Session title
+$isGenerating - Loading state
+$pipeline - Real-time execution pipeline state
+$hasActiveChat - Computed: has active session
 ```
-sse-manager.ts connects to GET /api/events?chat_id=xxx
-    │
-    ├── Event types:
-    │   ├── "token"        → append text to current message bubble
-    │   ├── "tool_call"    → render thinking-card
-    │   ├── "tool_result"  → update thinking-card with result
-    │   ├── "agent_switch" → show agent indicator
-    │   ├── "done"         → finalize message, update history
-    │   └── "error"        → show toast notification
-    │
-    └── Event data streamed via sse-manager → app-state → components re-render
+
+### Session State (`entities/session/model/store.ts`)
+- Session CRUD operations
+- Session persistence via API
+
+## Component Hierarchy
+
+### UI Components (`shared/ui/`)
+- `icon-button.ts` - Reusable icon button with hover effects
+- `skeleton.ts` - Loading skeleton placeholders
+- `toast.ts` - Toast notification system
+- `connection-status.ts` - SSE connection indicator
+
+### Feature Components (`features/`)
 ```
+chat/send/
+├── ui.ts - Chat input with file upload
+└── model.ts - Send message logic
+
+sidebar/toggle/
+├── ui.ts - Sidebar collapse/expand button
+└── model.ts - Sidebar state management
+
+theme/toggle/
+├── ui.ts - Dark/light mode toggle
+└── model.ts - Theme state
+
+settings/modal/
+├── ui.ts - Settings modal UI
+└── model.ts - Settings management
+```
+
+### Entity Components (`entities/`)
+```
+chat/
+├── api/history.ts - Chat history API client
+└── model/types.ts - Chat message types
+
+session/
+├── api/crud.ts - Session CRUD operations
+└── model/types.ts - Session types
+```
+
+## Data Flow
+
+### SSE Event System
+```
+Backend SSE → shared/api/sse.ts → Event parsing → State updates → UI re-render
+Event types: token, tool_call, tool_result, agent_switch, done, error
+```
+
+### API Flow
+```
+UI Component → shared/api/client.ts → API endpoint → Response → State update
+```
+
+## Key Modules
+
+### API Layer (`shared/api/`)
+- `client.ts` - HTTP client with interceptors
+- `sse.ts` - SSE connection manager
+- `types.ts` - API type definitions
+- `mock-news.ts` - Development mock data
+
+### Utilities (`shared/lib/`)
+- `dom.ts` - DOM manipulation helpers
+- `html.ts` - HTML sanitization
+- `markdown.ts` - Markdown rendering with Prism.js
+- `errors.ts` - Error handling utilities
+
+### Widget Layer (`widgets/`)
+- `chat-view/compose.ts` - Chat view composition
+- `sidebar/compose.ts` - Sidebar composition
+- `pipeline/compose.ts` - Execution pipeline visualization
 
 ## Build System
-- **Vite** (`vite.config.ts`) — dev server + production build
-- Output: `frontend/dist/`
-- TypeScript: `tsconfig.json` (strict mode) + `tsconfig.node.json` (Vite config)
+- **Vite** - Fast dev server and production builds
+- **TypeScript** - Strict mode with full type safety
+- **Nanostores** - Reactive state management
+- **Prism.js** - Syntax highlighting
+- **Marked** - Markdown parsing
 
-## API Client (`services/api.ts`)
-```typescript
-POST /api/chat          → sync chat
-POST /api/chat/stream   → streaming chat (returns SSE event source)
-GET  /api/history       → get conversation history
-GET  /api/chats         → list all sessions
-POST /api/reset         → reset session
-PUT  /api/config/keys   → update API keys (requires X-Config-Secret)
+## Page Structure
+```
+App Layout
+├── Sidebar (Session List)
+├── Main Chat Area
+│   ├── Message History
+│   ├── Input Area
+│   └── Pipeline Status
+└── Settings Modal
 ```
 
-## UI Pattern
-- Glassmorphic design with CSS custom properties (design-tokens.css)
-- Responsive: sidebar collapses on mobile
-- Vietnamese-first UI text
-- No external UI library — all components hand-rolled
+## Technology Stack
+- Vanilla TypeScript (no framework)
+- Nanostores for reactive state
+- CSS custom properties for theming
+- Glassmorphic design system
+- Mobile-responsive layout

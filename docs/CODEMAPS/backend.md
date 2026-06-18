@@ -1,119 +1,87 @@
-# Backend — Go API Server
+<!-- Generated: 2026-06-18 | Files scanned: 142 | Token estimate: ~700 -->
 
-<!-- Generated: 2026-06-14 | Go files: 42 | Token estimate: ~950 -->
+# Backend Architecture
 
-## Entry Point
-`Gemini/cmd/gemini-cli/main.go` — starts CLI or HTTP server based on args.
+## API Routes
 
-## Route Map
-
-| Method | Path | Handler | Auth | Description |
-|--------|------|---------|------|-------------|
-| GET | `/health` | `handleHealth` | — | Liveness check |
-| GET | `/api/events` | `handleSSE` | — | SSE event stream (chat updates) |
-| POST | `/api/chat` | `handleChat` | Rate-limit | Synchronous chat |
-| POST | `/api/chat/stream` | `handleChatStream` | Rate-limit | Streaming chat (SSE) |
-| GET | `/api/history` | `handleHistory` | Rate-limit | Get chat history |
-| POST | `/api/reset` | `handleReset` | Rate-limit | Reset session |
-| GET | `/api/chats` | `handleChats` | Rate-limit | List sessions |
-| PUT | `/api/config/keys` | `handleConfigKeys` | X-Config-Secret / localhost | Update API keys at runtime |
-
-## Middleware Chain
+### REST Endpoints
 ```
-Request → rateLimitMiddleware → securityHeaders → handler
-```
-- **rateLimitMiddleware**: 20 req/s, burst 50; skips `/api/events`, `/health`, and non-API routes
-- **securityHeaders**: CSP, X-Frame-Options, Referrer-Policy, Permissions-Policy
+GET  /health                     → HealthCheck (server.go:27)
+POST /api/chats                  → handleChats (handlers.go:93)
+  ├─ GET  /api/chats             → store.ListSessions()
+  ├─ POST /api/chats             → store.SaveSession(newChat)
+  └─ DELETE /api/chats?chat_id=X → store.DeleteSession(chatID)
 
-## Core Packages
-
-### `internal/api/` — HTTP Layer
-- `server.go` — `StartServer()`, middleware, route registration, CORS, graceful shutdown
-- `handlers.go` — All HTTP handler functions
-
-### `internal/core/` — Business Logic
-- `agent.go` — `Agent` struct: `ProcessMessage()`, `ProcessMessageStream()`
-- `orchestrator.go` — ReAct loop: Think → Route → Act → Observe
-- `routing.go` — `Router.SelectAgent()` — AI-powered + heuristic agent selection
-- `dispatcher.go` — `Dispatcher.Dispatch()` — tool execution with LRU cache
-- `provider_mgr.go` — Provider selection and failover orchestration
-- `context_window.go` — LLM-based context summarization for long conversations
-- `bootstrap.go` — Agent initialization with system prompts
-- `conversation.go` — Conversation message types
-- `slash.go` — Slash command parsing (`/reset`, `/help`, etc.)
-
-### `internal/providers/` — LLM Clients
-- `provider.go` — `ProviderInterface` (Generate, RegisterKey)
-- `gemini.go` — Google Gemini API client
-- `openrouter.go` — OpenRouter API client (free model rotation)
-- `multiprovider.go` — `MultiProvider` — failover + key rotation across both providers
-- `mock.go` — Mock provider for testing
-
-### `internal/tools/` — Tool System
-- `tools.go` — Tool interface definition
-- `handlers/handlers.go` — Search, Scrape, Calculate, Handoff tool implementations
-- `market/market.go` — Market data helpers
-- `scraper/scraper.go` — SSRF-protected web scraping
-- `registry/registry.go` — Tool registration and lookup
-
-### `internal/store/` — Persistence
-- `session_store.go` — `SessionStore` interface: Get, Set, Delete, List — Redis + in-memory
-
-### `internal/models/` — Data Types
-- `common.go` — Shared request/response structs
-- `gemini.go` — Gemini-specific API types
-- `messaging/messaging.go` — Message, Attachment types
-
-### `internal/cache/` — Caching
-- `lru.go` — LRU cache for tool results (avoids redundant API calls)
-
-### `internal/pubsub/` — Event System
-- `hub.go` — Pub/Sub hub for SSE fan-out (subscribe, broadcast, unsubscribe)
-
-### `internal/redis/` — Redis Client
-- `client.go` — Redis connection management
-
-### `internal/routing/` — Pre-processing
-- `greeting.go` — Greeting detection (bypass agent for simple hellos)
-- `temporal.go` — Temporal expression detection
-
-### `internal/errors/` — Error Handling
-- `errors.go` — Custom error types
-
-### `internal/logger/` — Logging
-- `logger.go` — Structured logging
-
-### `internal/prompt/` — System Prompts
-- Vietnamese-language system prompts for all specialist agents
-
-### `internal/utils/` — Utilities
-- `token.go` — Token estimation
-- `parser.go` — Text parsing helpers
-- `utils.go` — Environment loading, string utilities
-
-### `internal/evaluator/` — Testing
-- Automated evaluation suite
-
-### `internal/scripts/` — Scripting
-- `parser/parser.go` — Script parser
-- `report_gen/report_gen.go` — Report generation
-
-## Agent Routing
-```
-User Message → greeting check → temporal check → Router.SelectAgent()
-    ├── AI-powered routing (LLM classifies intent)
-    └── Heuristic fallback (keyword matching)
-    
-Specialist agents: market-research, earnings, modeling, valuation,
-                   audit, kyc, portfolio, news, general
+POST /api/chat                   → handleChat (handlers.go:182)
+POST /api/chat/stream            → handleChatStream (handlers.go:258)
+GET  /api/history?chat_id=X      → handleHistory (handlers.go:370)
+POST /api/config/keys            → handleConfigKeys (handlers.go:400)
+POST /api/reset                  → handleReset (handlers.go:80)
+GET  /events                    → handleSSE (handlers.go:39)
 ```
 
-## Session Lifecycle
+### SSE Events
 ```
-1. Client sends message with optional chat_id
-2. Server loads session from Redis (or creates new)
-3. Agent processes message (ReAct loop)
-4. Updated session saved to Redis
-5. Response + history returned to client
-6. SSE events broadcast during processing
+Client → /events → pubsub.GlobalHub → Broadcaster → All Connected Clients
+Event Types: system, token, done, error
 ```
+
+## Core Architecture
+
+### Agent Flow
+```
+User Request → HTTP Handler → Agent Interface → Load History → ProcessMessage → Save History → Response
+                                ↓
+                         Streaming: ProcessMessageStream → SSE chunks → Real-time updates
+```
+
+### Key Components
+
+#### API Layer (`Gemini/internal/api/`)
+- `server.go` - HTTP server setup with CORS
+- `handlers.go` - All endpoint implementations
+- Agent Interface methods for HTTP integration
+
+#### Core Layer (`Gemini/internal/core/`)
+- `agent.go` - Main agent orchestration
+- `orchestrator.go` - Tool coordination
+- `router.go` - Message routing
+- `dispatcher.go` - Task dispatching
+
+#### Provider Layer (`Gemini/internal/providers/`)
+- `gemini.go` - Gemini API client
+- `provider.go` - Common provider interface
+- Multi-provider support with failover
+
+#### Storage Layer (`Gemini/internal/store/`)
+- `memory.go` - In-memory session storage
+- `redis.go` - Redis-backed storage
+- Session CRUD operations
+
+## Service Chain
+
+### Chat Processing Chain
+1. **HTTP Handler** (`handleChat`) - Validate request, get session
+2. **Agent** (`agent.ProcessMessage`) - Load history, process with LLM
+3. **Provider** (`GeminiProvider.Call`) - Execute API call
+4. **Tools** (if needed) - Market data, search, calculation
+5. **Storage** (`store.SaveSession`) - Persist updated history
+
+### Streaming Chain
+1. **HTTP Handler** (`handleChatStream`) - Setup SSE connection
+2. **Agent** (`ProcessMessageStream`) - Stream processing
+3. **SSE Hub** (`pubsub`) - Broadcast to all clients
+4. **Metrics** - Real-time performance tracking
+
+## Key Files
+- `Gemini/cmd/gemini-cli/main.go` - Entry point (CLI mode or server mode)
+- `Gemini/internal/api/handlers.go` - All HTTP handlers (500+ lines)
+- `Gemini/internal/core/agent.go` - Main agent logic (critical path)
+- `Gemini/internal/providers/gemini.go` - Gemini API integration
+- `Gemini/internal/store/memory.go` - Session persistence
+
+## Dependencies
+- Go 1.25.6 (module: gemini-cli)
+- go-redis/v9 (optional, for Redis backend)
+- External APIs: Gemini, SerpAPI, Tavily
+- SSE for real-time updates

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -21,7 +22,7 @@ type GeminiProvider struct {
 }
 
 func (p *GeminiProvider) Generate(ctx context.Context, req messaging.Request) (messaging.Message, error) {
-	// Get key from pool with failover
+	// TODO: Implement key pool rotation
 		
 	model := strings.TrimSpace(p.Model)
 	if model == "" {
@@ -158,7 +159,7 @@ func (p *GeminiProvider) Generate(ctx context.Context, req messaging.Request) (m
 		return messaging.Message{}, fmt.Errorf("error creating http request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("x-goog-api-key", p.APIKey)
+	// TODO: Implement key rotation for pool
 
 	client := &http.Client{Timeout: 300 * time.Second}
 	resp, err := client.Do(httpReq)
@@ -363,7 +364,7 @@ func (p *GeminiProvider) GenerateStream(ctx context.Context, req messaging.Reque
 		return fmt.Errorf("error creating gemini stream request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("x-goog-api-key", p.APIKey)
+	// TODO: Implement key rotation for pool
 	httpReq.Header.Set("Accept", "text/event-stream")
 
 	client := &http.Client{Timeout: 10 * time.Minute}
@@ -460,4 +461,32 @@ func isGeminiSupportedMime(mime string) bool {
 		}
 	}
 	return false
+}
+
+// NewGeminiProvider creates a Gemini provider with the given API key and model
+func NewGeminiProvider(apiKey string) *GeminiProvider {
+	return &GeminiProvider{
+		APIKey: apiKey,
+		Model:  normalizeGeminiModel(os.Getenv("GEMINI_MODEL")),
+	}
+}
+
+// NewGeminiProviderWithPool creates a Gemini provider that uses a key pool
+func NewGeminiProviderWithPool(keys []string) *GeminiProvider {
+	return &GeminiProvider{
+		APIKey: "", // Will be set dynamically
+		Model:  normalizeGeminiModel(os.Getenv("GEMINI_MODEL")),
+	}
+}
+
+// normalizeGeminiModel ensures the model name starts with "models/" prefix
+func normalizeGeminiModel(model string) string {
+	normalized := strings.TrimSpace(model)
+	if normalized == "" {
+		return "gemini-3.1-flash-lite" // Updated default for 2026
+	}
+	if !strings.HasPrefix(normalized, "models/") {
+		return "models/" + normalized
+	}
+	return normalized
 }

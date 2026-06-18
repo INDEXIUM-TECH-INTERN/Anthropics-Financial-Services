@@ -567,7 +567,7 @@ func (d *Dispatcher) cachePut(prefix, key, value string) {
 }
 
 // appendFunctionResponse appends a tool response to the conversation history.
-// The result is normalized to valid JSON so both Gemini and OpenRouter providers
+// The result is normalized to valid JSON so the Gemini provider
 // see a consistent format when translating history back to their API schema.
 func (d *Dispatcher) appendFunctionResponse(toolCall *messaging.ToolCall, result string) {
 	d.agent.mu.Lock()

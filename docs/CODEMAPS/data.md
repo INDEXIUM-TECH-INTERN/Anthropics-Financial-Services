@@ -1,69 +1,112 @@
+<!-- Generated: 2026-06-18 | Files scanned: 142 | Token estimate: ~600 -->
+
 # Data Layer
 
-<!-- Generated: 2026-06-14 | Token estimate: ~600 -->
-
 ## Persistence Strategy
-**Redis-primary / in-memory fallback** — no traditional RDBMS.
+**Redis-primary / in-memory fallback** - No traditional RDBMS. Automatic fallback when Redis unavailable.
 
 ## Redis Schema
 
 ### Session Store
-Key pattern: `session:{chat_id}`  
-Value: JSON-serialized session data (messages[], title, timestamps)
+Key pattern: `chat:session:{chat_id}`  
+Value: JSON-serialized session data with 24h TTL
 
-| Operation | Redis Command | File |
-|-----------|--------------|------|
-| Get session | `GET session:{id}` | `internal/store/session_store.go` |
-| Set session | `SET session:{id} EX 86400` | `internal/store/session_store.go` |
-| Delete session | `DEL session:{id}` | `internal/store/session_store.go` |
-| List sessions | `KEYS session:*` | `internal/store/session_store.go` |
+| Operation | Redis Command | Implementation |
+|-----------|--------------|----------------|
+| Get session | `GET chat:session:{id}` | `store.GetSession()` |
+| Set session | `SET chat:session:{id} EX 86400` | `store.SaveSession()` |
+| Delete session | `DEL chat:session:{id}` | `store.DeleteSession()` |
+| List sessions | `SMEMBERS chat:sessions:list` | `store.ListSessions()` |
 
 ### Session Data Structure
 ```json
 {
-  "chat_id": "uuid",
+  "id": "chat_123abc",
   "title": "Cuộc trò chuyện mới",
   "messages": [
     {
-      "role": "user" | "assistant",
+      "role": "user" | "assistant" | "system" | "tool",
       "content": "string",
-      "timestamp": "ISO-8601",
-      "attachments": []
+      "tool_calls": [...],
+      "tool_responses": [...],
+      "latency_ms": 150,
+      "token_in": 100,
+      "token_out": 200,
+      "ram_mb": "128MB",
+      "cpu_load": "15%"
     }
   ],
-  "created_at": "ISO-8601",
-  "updated_at": "ISO-8601"
+  "updated_at": "2026-06-18T10:30:00Z"
 }
 ```
 
-## LRU Cache (Tool Results)
-- Located in: `internal/cache/lru.go`
-- Caches tool call results (search, scrape, market data) to avoid redundant API calls
-- Max entries: 256 (default)
-- TTL: per-entry expiration
+## Storage Architecture
 
-## In-Memory Fallback
-When Redis is unavailable (connection refused, timeout):
-- `SessionStore` automatically falls back to `map[string]*Session`
-- Data lost on server restart
-- Logged warning: `⚠️ [Redis] ... falling back to in-memory only`
+### Primary Storage (Redis)
+```
+Connection Pool → Session CRUD → JSON Serialization ↔ Redis
+    ↓
+  Automatic failover to in-memory on connection loss
+```
 
-## Pub/Sub (In-Process)
-- `internal/pubsub/hub.go` — in-process pub/sub, **not** Redis pub/sub
-- Used for SSE event fan-out within the single server process
-- Channels: `subscribe chan<- Event`, `unsubscribe chan<- int`
+### Fallback Storage (In-Memory)
+```
+sync.Map → Session Cache → LRU Eviction (1000 sessions max)
+    ↓
+  Data persists only during server runtime
+```
 
-## Configuration (Runtime)
-- API keys stored in `os.Getenv()` at startup
-- Runtime key updates via `PUT /api/config/keys` → stored in-memory (not persisted)
-- Env file: `Gemini/.env` (not committed)
+## Caching Layer
 
-## Files Referencing Data Layer
-| File | Purpose |
-|------|---------|
-| `internal/store/session_store.go` | Session CRUD interface + Redis/in-mem impl |
-| `internal/store/session_store_test.go` | Session store unit tests |
-| `internal/redis/client.go` | Redis connection pool |
-| `internal/cache/lru.go` | LRU cache for tools |
-| `internal/cache/lru_test.go` | LRU cache unit tests |
-| `internal/pubsub/hub.go` | In-process event hub |
+### Tool Results Cache (`internal/cache/lru.go`)
+- Purpose: Cache expensive tool results (search, scrape, market data)
+- Max entries: 256
+- Eviction: LRU when full
+- TTL: Per-tool configuration
+
+## Message Types (`internal/models/messaging/`)
+```typescript
+type Message struct {
+  Role: 'user' | 'assistant' | 'system' | 'tool'
+  Content: string
+  ToolCalls: ToolCall[]
+  ToolResponses: ToolResponse[]
+  LatencyMs: number
+  TokenIn: number
+  TokenOut: number
+  RamMB: string
+  CpuLoad: string
+}
+```
+
+## Event System (In-Process)
+```
+pubsub/hub.go → Event Channels → SSE Broadcasting
+Event Types: system, token, tool_call, done, error
+```
+
+## Configuration Storage
+- API Keys: Environment variables (runtime only)
+- Runtime Updates: `POST /api/config/keys` (in-memory, not persisted)
+- Session Keys: Generated UUID with `chat_` prefix
+
+## Key Files
+- `Gemini/internal/store/session_store.go` - Session CRUD implementation
+- `Gemini/internal/store/memory.go` - In-memory fallback
+- `Gemini/internal/redis/client.go` - Redis connection management
+- `Gemini/internal/cache/lru.go` - Tool result caching
+- `Gemini/internal/pubsub/hub.go` - Event broadcasting
+
+## Data Flow
+```
+User Request → Session Load → Message Processing → Session Save
+    ↓              ↓                ↓              ↓
+  GetSession → ProcessMessage → SaveSession → Broadcast Event
+```
+
+## Migration History
+- Initial: In-memory only
+- Added: Redis with 24h TTL
+- Added: Automatic failover
+- Added: Tool result caching
+- Added: Performance metrics tracking
