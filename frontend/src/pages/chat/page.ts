@@ -109,6 +109,7 @@ export function createChatPage(): ChatPage {
   const tabBtnNews = $('tab-btn-news');
   const worldNewsContainer = $('world-news-container');
   const conversationsSidebar = $('conversations-sidebar');
+  const chatContainerEl = document.querySelector('.chat-container') as HTMLElement | null;
   const inputAreaEl = document.querySelector('.input-area') as HTMLElement | null;
   const toggleConversationsBtn = $('toggle-conversations');
   const newsDateSelect = $<HTMLSelectElement>('news-date-select');
@@ -989,6 +990,7 @@ export function createChatPage(): ChatPage {
       tabBtnChat?.classList.add('active');
       tabBtnNews?.classList.remove('active');
       worldNewsContainer?.classList.add('hidden');
+      chatContainerEl?.classList.remove('hidden');
       chatViewport?.classList.remove('hidden');
       if (inputAreaEl) inputAreaEl.classList.remove('hidden');
       
@@ -1000,6 +1002,7 @@ export function createChatPage(): ChatPage {
     } else {
       tabBtnChat?.classList.remove('active');
       tabBtnNews?.classList.add('active');
+      chatContainerEl?.classList.add('hidden');
       chatViewport?.classList.add('hidden');
       if (inputAreaEl) inputAreaEl.classList.add('hidden');
       
@@ -1227,13 +1230,6 @@ export function createChatPage(): ChatPage {
 
   // ═══ INIT ═══
   async function init() {
-    // Fix DOM parenting if browser misparsed it
-    const newsContainer = document.getElementById('world-news-container');
-    const mainApp = document.querySelector('.app-main');
-    if (newsContainer && mainApp && newsContainer.parentElement !== mainApp) {
-      mainApp.appendChild(newsContainer);
-    }
-
     initConnectionStatus();
     setupEventListeners();
 
