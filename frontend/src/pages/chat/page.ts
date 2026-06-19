@@ -13,6 +13,7 @@ import { createChatViewWidget } from '../../widgets/chat-view/compose';
 import { createSidebarWidget } from '../../widgets/sidebar/compose';
 import { createPipelineWidget } from '../../widgets/pipeline/compose';
 import { MOCK_NEWS_DATA } from '../../shared/api/mock-news';
+import { getApiBaseUrl } from '../../shared/lib/api-base';
 
 
 import {
@@ -41,8 +42,8 @@ export interface ChatPage {
 
 export function createChatPage(): ChatPage {
   // ═══ API & SSE ═══
-  // Use relative URLs - Nginx will proxy /api/* to backend
-  let currentBaseUrl = window.location.origin;
+  // API base from /config.js (Render) or same-origin (local dev / docker-compose proxy)
+  let currentBaseUrl = getApiBaseUrl();
   let api = new ApiClient(currentBaseUrl);
   const sseManager = new SSEManager();
   let abortController: AbortController | null = null;
@@ -140,7 +141,7 @@ export function createChatPage(): ChatPage {
             connStatus?.setStatus('disconnected');
           },
         });
-        fetch(`${currentBaseUrl}/`, { method: 'HEAD', signal: AbortSignal.timeout(5000) })
+        fetch(`${currentBaseUrl}/health`, { signal: AbortSignal.timeout(5000) })
           .then((res) => {
             connStatus?.setStatus(res.ok ? 'connected' : 'disconnected');
           })
@@ -149,7 +150,7 @@ export function createChatPage(): ChatPage {
           });
       },
     });
-    fetch(`${currentBaseUrl}/`, { method: 'HEAD', signal: AbortSignal.timeout(5000) })
+    fetch(`${currentBaseUrl}/health`, { signal: AbortSignal.timeout(5000) })
       .then((res) => {
         connStatus?.setStatus(res.ok ? 'connected' : 'disconnected');
       })
@@ -1130,7 +1131,7 @@ export function createChatPage(): ChatPage {
       const b = (e.target as HTMLSelectElement).value;
       // For now, we only have one backend in Docker setup (Gemini on port 8080 via proxy)
       // In the future, this could map to different backend services
-      currentBaseUrl = window.location.origin;
+      currentBaseUrl = getApiBaseUrl();
       api = new ApiClient(currentBaseUrl);
       sseManager.connect(currentBaseUrl, {
         onMessage: (d) => handleSSEMessage(d),

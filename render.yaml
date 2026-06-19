@@ -47,6 +47,11 @@ services:
         value: production
       - key: LOG_LEVEL
         value: info
+      - key: ALLOWED_ORIGIN
+        fromService:
+          type: web
+          name: testai-frontend
+          envVarKey: RENDER_EXTERNAL_URL
 
   # ===== Frontend (Nginx + SPA) — public entry point =====
   - type: web
@@ -61,16 +66,11 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: BACKEND_HOST
+      - key: BACKEND_PUBLIC_URL
         fromService:
           type: web
           name: testai-backend
-          property: host
-      - key: BACKEND_PORT
-        fromService:
-          type: web
-          name: testai-backend
-          property: port
+          envVarKey: RENDER_EXTERNAL_URL
 
   # ===== Redis =====
   - type: keyvalue
@@ -81,7 +81,7 @@ services:
     ipAllowList: []
 
 # Notes:
-# 1. Share testai-frontend.onrender.com — nginx proxies /api/* to backend internally.
+# 1. Share testai-frontend.onrender.com — frontend calls backend via BACKEND_PUBLIC_URL.
 # 2. testai-backend also has a public URL on Free tier (API exposed directly).
 # 3. Both Free web services sleep after ~15 min idle; first visit may take 30-60s.
 # 4. For private backend (no public API URL), use type: pserv + plan: starter (~$7/mo, needs card).
