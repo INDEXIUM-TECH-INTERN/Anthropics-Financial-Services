@@ -115,6 +115,19 @@ export function createChatPage(): ChatPage {
   const newsDateSelect = $<HTMLSelectElement>('news-date-select');
   let currentTab = 'chat';
 
+  function syncSidebarUI() {
+    if (!conversationsSidebar) return;
+
+    const isChatTab = currentTab === 'chat';
+    const open = isChatTab && $sidebarOpen.get();
+    conversationsSidebar.classList.toggle('active', open);
+
+    if (sidebarBackdrop) {
+      const showBackdrop = open && window.innerWidth <= 768;
+      sidebarBackdrop.classList.toggle('visible', showBackdrop);
+      sidebarBackdrop.classList.toggle('hidden', !showBackdrop);
+    }
+  }
 
   // ═══ WIDGETS ═══
   const chatWidget = createChatViewWidget(chatContent, chatViewport);
@@ -993,11 +1006,10 @@ export function createChatPage(): ChatPage {
       chatContainerEl?.classList.remove('hidden');
       chatViewport?.classList.remove('hidden');
       if (inputAreaEl) inputAreaEl.classList.remove('hidden');
-      
-      const open = $sidebarOpen.get();
-      conversationsSidebar?.classList.toggle('collapsed', !open);
+
       if (toggleConversationsBtn) toggleConversationsBtn.style.display = 'flex';
-      
+      syncSidebarUI();
+
       addLogEntry('Đã chuyển sang Trợ lý AI', 'info');
     } else {
       tabBtnChat?.classList.remove('active');
@@ -1005,10 +1017,10 @@ export function createChatPage(): ChatPage {
       chatContainerEl?.classList.add('hidden');
       chatViewport?.classList.add('hidden');
       if (inputAreaEl) inputAreaEl.classList.add('hidden');
-      
-      conversationsSidebar?.classList.add('collapsed');
+
       if (toggleConversationsBtn) toggleConversationsBtn.style.display = 'none';
-      
+      syncSidebarUI();
+
       worldNewsContainer?.classList.remove('hidden');
       renderWorldNews();
       addLogEntry('Đã chuyển sang Bản tin Thế giới', 'info');
@@ -1062,13 +1074,10 @@ export function createChatPage(): ChatPage {
     });
 
     // Sidebar
+    $sidebarOpen.subscribe(() => syncSidebarUI());
+
     toggleConversations?.addEventListener('click', () => {
       toggleSidebar();
-      if (sidebarBackdrop && window.innerWidth <= 768) {
-        const open = $sidebarOpen.get();
-        sidebarBackdrop.classList.toggle('hidden', !open);
-        sidebarBackdrop.classList.toggle('visible', open);
-      }
     });
 
     togglePipeline?.addEventListener('click', () => {
@@ -1084,9 +1093,9 @@ export function createChatPage(): ChatPage {
 
     sidebarBackdrop?.addEventListener('click', () => {
       setSidebarOpen(false);
-      sidebarBackdrop.classList.remove('visible');
-      sidebarBackdrop.classList.add('hidden');
     });
+
+    window.addEventListener('resize', () => syncSidebarUI(), { passive: true });
 
     // Settings
     settingsTrigger?.addEventListener('click', () => $settingsOpen.set(true));
@@ -1212,6 +1221,7 @@ export function createChatPage(): ChatPage {
       if (e.key === 'Escape') {
         if (settingsModal && !settingsModal.classList.contains('hidden')) closeSettings();
         else if (shortcutsPanel && !shortcutsPanel.classList.contains('hidden')) shortcutsPanel.classList.add('hidden');
+        else if ($sidebarOpen.get() && currentTab === 'chat') setSidebarOpen(false);
       }
     });
 
@@ -1235,6 +1245,7 @@ export function createChatPage(): ChatPage {
   async function init() {
     initConnectionStatus();
     setupEventListeners();
+    syncSidebarUI();
 
     sseManager.connect(currentBaseUrl, {
       onMessage: (d) => handleSSEMessage(d),
