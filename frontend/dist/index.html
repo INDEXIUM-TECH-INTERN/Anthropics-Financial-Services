@@ -15,8 +15,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw444OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
-  <script type="module" crossorigin src="/assets/main-mZ7sfFWO.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-C0gEZJRo.css">
+  <script type="module" crossorigin src="/assets/main-BI4C1_HM.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-_hEwKsAI.css">
 </head>
 <body>
 <a href="#chat-viewport" class="skip-link">Chuyển đến nội dung chính</a>
@@ -30,13 +30,21 @@
     </div>
 
     <!-- ═══ Mobile Sidebar Backdrop ═══ -->
-    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+    <div class="sidebar-backdrop hidden" id="sidebar-backdrop" aria-hidden="true"></div>
 
     <!-- ═══ Left Sidebar ═══ -->
     <aside class="sidebar" id="conversations-sidebar" aria-label="Danh sách cuộc trò chuyện">
         <div class="sidebar-header">
-            <div class="sidebar-title">Indexium AI</div>
-            <div class="sidebar-subtitle">Trợ lý tài chính</div>
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-icon">IX</div>
+                <div>
+                    <div class="sidebar-title">Indexium</div>
+                    <div class="sidebar-subtitle">Trợ lý tài chính AI</div>
+                </div>
+            </div>
+            <button class="sidebar-close-btn" id="close-sidebar" type="button" title="Đóng danh sách" aria-label="Đóng danh sách">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
         </div>
         <div class="sidebar-search">
             <input type="text" class="sidebar-search-input" placeholder="Tìm kiếm cuộc trò chuyện..." id="search-input">
@@ -133,72 +141,6 @@
                         </div>
                     </div>
                     <div class="input-hint">Indexium AI có thể mắc lỗi. Xác minh thông tin quan trọng.</div>
-                </div>
-            </div>
-
-            <!-- Metrics Panel -->
-            <div class="metrics-panel">
-                <div class="metrics-header">
-                    <h3 class="metrics-title">Thị trường hiện tại</h3>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-card-header">
-                        <span class="metric-card-label">S&P 500</span>
-                        <span class="metric-card-change positive">▲ 2.45%</span>
-                    </div>
-                    <div class="metric-card-value-area">
-                        <span class="metric-card-value">5,234.56</span>
-                    </div>
-                    <div class="metric-card-visual">
-                        <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
-                            <path d="M 0 20 L 20 15 L 40 18 L 60 10 L 80 12 L 100 8" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" />
-                        </svg>
-                    </div>
-                </div>
-
-                <div class="metric-card">
-                    <div class="metric-card-header">
-                        <span class="metric-card-label">DXY</span>
-                        <span class="metric-card-change negative">▼ 0.82%</span>
-                    </div>
-                    <div class="metric-card-value-area">
-                        <span class="metric-card-value">104.23</span>
-                    </div>
-                    <div class="metric-card-visual">
-                        <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
-                            <path d="M 0 10 L 20 12 L 40 15 L 60 18 L 80 16 L 100 20" fill="none" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round" />
-                        </svg>
-                    </div>
-                </div>
-
-                <div class="metric-card">
-                    <div class="metric-card-header">
-                        <span class="metric-card-label">Vàng (oz)</span>
-                        <span class="metric-card-change positive">▲ 1.23%</span>
-                    </div>
-                    <div class="metric-card-value-area">
-                        <span class="metric-card-value">2,345.67</span>
-                    </div>
-                    <div class="metric-card-visual">
-                        <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
-                            <path d="M 0 25 L 20 20 L 40 22 L 60 15 L 80 18 L 100 12" fill="none" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round" />
-                        </svg>
-                    </div>
-                </div>
-
-                <div class="metric-card">
-                    <div class="metric-card-header">
-                        <span class="metric-card-label">WTI Oil</span>
-                        <span class="metric-card-change positive">▲ 3.15%</span>
-                    </div>
-                    <div class="metric-card-value-area">
-                        <span class="metric-card-value">$78.45</span>
-                    </div>
-                    <div class="metric-card-visual">
-                        <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
-                            <path d="M 0 22 L 20 18 L 40 16 L 60 14 L 80 10 L 100 8" fill="none" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round" />
-                        </svg>
-                    </div>
                 </div>
             </div>
         </div>
@@ -387,28 +329,6 @@
                 </div>
             </div>
         </div>
-
-        <div class="input-area">
-            <div class="attachments-preview" id="attachments-preview"></div>
-            <div class="input-wrapper glass-input" id="input-wrapper">
-                <button class="input-toolbar-btn" id="attach-btn" title="Đính kèm tệp">📎</button>
-                <input type="file" id="file-input" hidden multiple>
-                <textarea id="chat-input" rows="1" placeholder="Hỏi về dữ liệu tài chính, báo cáo, phân tích ngành..."></textarea>
-                <button class="send-btn" id="send-btn" title="Gửi">↑</button>
-            </div>
-            <div class="input-toolbar">
-                <div class="input-toolbar-left">
-                    <select class="input-model-select" id="backend-select">
-                        <option value="gemini">Gemini</option>
-                        <option value="claude">Claude</option>
-                    </select>
-                </div>
-                <div class="input-toolbar-right">
-                    <span class="shortcut-hint"><kbd>Enter</kbd> gửi - <kbd>Shift+Enter</kbd> xuống dòng - <kbd>Ctrl+?</kbd> phím tắt</span>
-                </div>
-            </div>
-            <div class="input-hint">Indexium AI có thể mắc lỗi. Xác minh thông tin quan trọng.</div>
-        </div>
     </main>
 
 
@@ -423,8 +343,6 @@
         </div>
     </aside>
 </div>
-
-<div class="sidebar-backdrop hidden" id="sidebar-backdrop"></div>
 
 <!-- ═══ Settings Modal ═══ -->
 <div class="modal-overlay hidden" id="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
@@ -510,6 +428,7 @@
         </div>
     </div>
 </div>
-
+
+<script src="/config.js"></script>
 </body>
 </html>
