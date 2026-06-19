@@ -260,12 +260,34 @@
   -webkit-backdrop-filter: var(--glass-blur);
 }
 
-.message.message-bot .msg-content {
-  padding: 0 4px;
-  background: transparent;
-  border: none;
-  backdrop-filter: none;
-  box-shadow: none;
+.message.message-bot .msg-content,
+.message.message-assistant .msg-content {
+  padding: 14px 18px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl) var(--radius-xl) var(--radius-xl) 6px;
+  box-shadow: var(--shadow-elevated);
+  line-height: 1.65;
+}
+
+.message.message-assistant {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.message.message-assistant .msg-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--gradient-accent);
+  color: white;
+  overflow: hidden;
+  box-shadow: 0 4px 12px var(--accent-glow);
 }
 
 /* Typing indicator */

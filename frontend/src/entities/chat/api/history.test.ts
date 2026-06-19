@@ -18,13 +18,14 @@ describe('groupHistoryMessages', () => {
     expect(result[0]?.content).toBe('Hello\n\nWorld');
   });
 
-  it('should group consecutive assistant messages', () => {
+  it('should group consecutive assistant messages and normalize role to bot', () => {
     const messages: HistoryMessage[] = [
       { role: 'assistant', content: 'Hello' },
       { role: 'assistant', content: 'World' },
     ];
     const result = groupHistoryMessages(messages);
     expect(result.length).toBe(1);
+    expect(result[0]?.role).toBe('bot');
     expect(result[0]?.content).toBe('Hello\n\nWorld');
   });
 
@@ -36,7 +37,18 @@ describe('groupHistoryMessages', () => {
     const result = groupHistoryMessages(messages);
     expect(result.length).toBe(2);
     expect(result[0]?.role).toBe('user');
-    expect(result[1]?.role).toBe('assistant');
+    expect(result[1]?.role).toBe('bot');
+  });
+
+  it('should skip empty and system messages', () => {
+    const messages: HistoryMessage[] = [
+      { role: 'assistant', content: '   ' },
+      { role: 'system', content: 'hidden bootstrap' },
+      { role: 'user', content: 'Hi' },
+    ];
+    const result = groupHistoryMessages(messages);
+    expect(result.length).toBe(1);
+    expect(result[0]?.role).toBe('user');
   });
 
   it('should keep latest metrics when grouping', () => {

@@ -431,7 +431,7 @@ export function createChatPage(): ChatPage {
       let hasMessages = false;
       let idx = 0;
       for (const g of grouped) {
-        chatWidget.appendMessage(g.content, g.role as 'user' | 'bot', false, g.metrics as TokenMetrics | undefined);
+        chatWidget.appendMessage(g.content, g.role, false, g.metrics as TokenMetrics | undefined);
         const msgs = chatContent.querySelectorAll('.message');
         (msgs[msgs.length - 1] as HTMLElement).style.animationDelay = `${idx * 0.06}s`;
         idx++;
@@ -501,7 +501,7 @@ export function createChatPage(): ChatPage {
     typingEl.className = 'typing-indicator';
     typingEl.innerHTML = '<span></span><span></span><span></span>';
     typingEl.style.padding = '4px 0';
-    chatContent?.appendChild(typingEl);
+    if (content) content.appendChild(typingEl);
 
     abortController = new AbortController();
 

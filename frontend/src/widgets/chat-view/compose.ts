@@ -5,6 +5,7 @@ import { renderMarkdown, highlightCode } from '../../shared/lib/markdown';
 import { renderErrorHTML, diagnoseError } from '../../shared/lib/errors';
 import { createMessageSkeleton } from '../../shared/ui/skeleton';
 import { escHtml } from '../../shared/lib/dom';
+import { normalizeMessageRole, type MessageSender } from '../../shared/lib/message-role';
 import type { TokenMetrics } from '../../shared/api/types';
 
 export interface ChatViewWidget {
@@ -40,23 +41,24 @@ export function createChatViewWidget(container: HTMLElement, _viewport: HTMLElem
 
   function appendMessage(
     text: string,
-    sender: 'user' | 'bot',
+    sender: MessageSender | string,
     _isStreaming = false,
     metrics?: TokenMetrics,
   ): { el: HTMLElement | null; content: HTMLElement | null; footer: HTMLElement | null } {
+    const role = typeof sender === 'string' ? normalizeMessageRole(sender) ?? 'bot' : sender;
     const el = document.createElement('div');
-    el.className = `message message-${sender}`;
+    el.className = `message message-${role}`;
 
     const avatar = document.createElement('div');
     avatar.className = 'msg-avatar';
-    avatar.textContent = sender === 'user' ? '👤' : '🤖';
+    avatar.textContent = role === 'user' ? '👤' : '🤖';
 
     const body = document.createElement('div');
     body.className = 'msg-body';
 
     const content = document.createElement('div');
     content.className = 'msg-content';
-    if (text) content.innerHTML = sender === 'bot' ? renderMarkdown(text) : escHtml(text);
+    if (text) content.innerHTML = role === 'bot' ? renderMarkdown(text) : escHtml(text);
 
     body.appendChild(content);
 
@@ -128,7 +130,7 @@ export function createChatViewWidget(container: HTMLElement, _viewport: HTMLElem
   }
 
   function clearMessages() {
-    container.querySelectorAll('.message, .skeleton-loading, .thinking-card').forEach((m) => m.remove());
+    container.querySelectorAll('.message, .skeleton-loading, .thinking-card, .typing-indicator').forEach((m) => m.remove());
   }
 
   function destroy() {

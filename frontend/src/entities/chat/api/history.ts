@@ -1,4 +1,5 @@
 import { ApiClient } from '../../../shared/api/client';
+import { normalizeMessageRole, type MessageSender } from '../../../shared/lib/message-role';
 import type { HistoryResponse, HistoryMessage } from '../../../shared/api/types';
 
 export async function fetchHistory(api: ApiClient, chatId: string): Promise<HistoryMessage[]> {
@@ -7,7 +8,7 @@ export async function fetchHistory(api: ApiClient, chatId: string): Promise<Hist
 }
 
 export interface GroupedMessage {
-  role: string;
+  role: MessageSender;
   content: string;
   metrics?: {
     token_in?: number;
@@ -20,11 +21,17 @@ export interface GroupedMessage {
 
 export function groupHistoryMessages(messages: HistoryMessage[]): GroupedMessage[] {
   const grouped: GroupedMessage[] = [];
+
   for (const msg of messages) {
+    const content = msg.content?.trim();
+    if (!content) continue;
+
+    const role = normalizeMessageRole(msg.role);
+    if (!role) continue;
+
     const last = grouped[grouped.length - 1];
-    if (last && last.role === msg.role) {
-      last.content += '\n\n' + msg.content;
-      // Keep the latest metrics
+    if (last && last.role === role) {
+      last.content += '\n\n' + content;
       if (msg.latency_ms) {
         last.metrics = {
           token_in: msg.token_in,
@@ -36,8 +43,8 @@ export function groupHistoryMessages(messages: HistoryMessage[]): GroupedMessage
       }
     } else {
       grouped.push({
-        role: msg.role,
-        content: msg.content,
+        role,
+        content,
         metrics: msg.latency_ms
           ? {
               token_in: msg.token_in,
@@ -50,5 +57,6 @@ export function groupHistoryMessages(messages: HistoryMessage[]): GroupedMessage
       });
     }
   }
+
   return grouped;
 }

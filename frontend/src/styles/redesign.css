@@ -387,7 +387,13 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
-.message.message-bot .msg-avatar {
+.message.message-bot .msg-content,
+.message.message-assistant .msg-content {
+  border-radius: 6px var(--radius-xl) var(--radius-xl) var(--radius-xl);
+}
+
+.message.message-bot .msg-avatar,
+.message.message-assistant .msg-avatar {
   border-radius: 12px;
   box-shadow: 0 4px 12px var(--accent-glow);
 }
