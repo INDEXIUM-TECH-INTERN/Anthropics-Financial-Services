@@ -210,6 +210,9 @@ func requireConfigSecret(next http.HandlerFunc) http.HandlerFunc {
 func enableCORS(w http.ResponseWriter, r *http.Request) {
 	origin := os.Getenv("ALLOWED_ORIGIN")
 	if origin == "" {
+		origin = r.Header.Get("Origin")
+	}
+	if origin == "" {
 		origin = "http://localhost:8080"
 	}
 	// Only set CORS for matching origin, never wildcard with credentials
