@@ -28,7 +28,7 @@
     </div>
 
     <!-- ═══ Mobile Sidebar Backdrop ═══ -->
-    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+    <div class="sidebar-backdrop hidden" id="sidebar-backdrop" aria-hidden="true"></div>
 
     <!-- ═══ Left Sidebar ═══ -->
     <aside class="sidebar" id="conversations-sidebar" aria-label="Danh sách cuộc trò chuyện">
@@ -40,6 +40,9 @@
                     <div class="sidebar-subtitle">Trợ lý tài chính AI</div>
                 </div>
             </div>
+            <button class="sidebar-close-btn" id="close-sidebar" type="button" title="Đóng danh sách" aria-label="Đóng danh sách">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
         </div>
         <div class="sidebar-search">
             <input type="text" class="sidebar-search-input" placeholder="Tìm kiếm cuộc trò chuyện..." id="search-input">

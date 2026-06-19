@@ -1,6 +1,6 @@
 import { atom } from 'nanostores';
 
-export const $sidebarOpen = atom<boolean>(true);
+export const $sidebarOpen = atom<boolean>(false);
 
 export function toggleSidebar() {
   $sidebarOpen.set(!$sidebarOpen.get());

@@ -130,12 +130,38 @@
 .sidebar-header {
   padding: 20px 18px 16px;
   border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .sidebar-brand {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+}
+
+.sidebar-close-btn {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-canvas);
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.sidebar-close-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
 }
 
 .sidebar-brand-icon {

@@ -1,22 +1,26 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { $sidebarOpen, toggleSidebar, setSidebarOpen } from './model';
 
 describe('sidebar toggle model', () => {
-  it('should default to open', () => {
-    expect($sidebarOpen.get()).toBe(true);
+  beforeEach(() => {
+    $sidebarOpen.set(false);
+  });
+
+  it('should default to closed', () => {
+    expect($sidebarOpen.get()).toBe(false);
   });
 
   it('should toggle sidebar state', () => {
     toggleSidebar();
-    expect($sidebarOpen.get()).toBe(false);
-    toggleSidebar();
     expect($sidebarOpen.get()).toBe(true);
+    toggleSidebar();
+    expect($sidebarOpen.get()).toBe(false);
   });
 
   it('should set sidebar open explicitly', () => {
-    setSidebarOpen(false);
-    expect($sidebarOpen.get()).toBe(false);
     setSidebarOpen(true);
     expect($sidebarOpen.get()).toBe(true);
+    setSidebarOpen(false);
+    expect($sidebarOpen.get()).toBe(false);
   });
 });

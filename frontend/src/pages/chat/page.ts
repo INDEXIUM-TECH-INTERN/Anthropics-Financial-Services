@@ -112,6 +112,7 @@ export function createChatPage(): ChatPage {
   const chatContainerEl = document.querySelector('.chat-container') as HTMLElement | null;
   const inputAreaEl = document.querySelector('.input-area') as HTMLElement | null;
   const toggleConversationsBtn = $('toggle-conversations');
+  const closeSidebarBtn = $('close-sidebar');
   const newsDateSelect = $<HTMLSelectElement>('news-date-select');
   let currentTab = 'chat';
 
@@ -123,16 +124,25 @@ export function createChatPage(): ChatPage {
     conversationsSidebar.classList.toggle('active', open);
 
     if (sidebarBackdrop) {
-      const showBackdrop = open && window.innerWidth <= 768;
-      sidebarBackdrop.classList.toggle('visible', showBackdrop);
-      sidebarBackdrop.classList.toggle('hidden', !showBackdrop);
+      sidebarBackdrop.classList.toggle('visible', open);
+      sidebarBackdrop.classList.toggle('hidden', !open);
     }
+
+    if (toggleConversationsBtn) {
+      toggleConversationsBtn.setAttribute('aria-expanded', String(open));
+      toggleConversationsBtn.title = open ? 'Ẩn danh sách' : 'Hiện danh sách';
+    }
+
+    conversationsSidebar.setAttribute('aria-hidden', String(!open));
   }
 
   // ═══ WIDGETS ═══
   const chatWidget = createChatViewWidget(chatContent, chatViewport);
   const sidebarWidget = createSidebarWidget(conversationsList, {
-    onSelect: (id) => switchChat(id),
+    onSelect: (id) => {
+      void switchChat(id);
+      if (window.innerWidth <= 768) setSidebarOpen(false);
+    },
     onDelete: (id) => deleteChat(id),
   });
   const pipelineTarget = pipelineSidebar?.querySelector('.pipeline-steps') as HTMLElement | null;
@@ -1078,6 +1088,10 @@ export function createChatPage(): ChatPage {
 
     toggleConversations?.addEventListener('click', () => {
       toggleSidebar();
+    });
+
+    closeSidebarBtn?.addEventListener('click', () => {
+      setSidebarOpen(false);
     });
 
     togglePipeline?.addEventListener('click', () => {

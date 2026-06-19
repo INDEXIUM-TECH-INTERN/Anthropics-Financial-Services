@@ -107,18 +107,23 @@
 }
 
 .sidebar-backdrop {
-  display: none;
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
   z-index: 150;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-base);
 }
 
-.sidebar-backdrop.active {
-  display: block;
+.sidebar-backdrop.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sidebar-backdrop.hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .sidebar-header {
