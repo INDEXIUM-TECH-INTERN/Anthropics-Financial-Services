@@ -24,12 +24,17 @@ export interface ChatViewWidget {
   destroy: () => void;
 }
 
-export function createChatViewWidget(container: HTMLElement, viewport: HTMLElement): ChatViewWidget {
+export function createChatViewWidget(container: HTMLElement, _viewport: HTMLElement): ChatViewWidget {
   let abortController: AbortController | null = null;
 
   function scrollToBottom() {
     requestAnimationFrame(() => {
-      viewport.scrollTop = viewport.scrollHeight;
+      const lastMessage = container.lastElementChild;
+      if (lastMessage) {
+        lastMessage.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        return;
+      }
+      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
     });
   }
 

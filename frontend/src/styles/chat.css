@@ -20,7 +20,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: min(420px, calc(100vh - 320px));
+  padding: 48px 0 32px;
   text-align: center;
   animation: fadeUp 0.6s var(--transition-slow) both;
 }
@@ -556,7 +556,7 @@ code { font-family: var(--font-mono); font-size: 12px; line-height: 1.7; }
 
 /* ── Scroll to Bottom ── */
 .scroll-to-bottom-btn {
-  position: absolute; bottom: 16px; right: 24px; width: 36px; height: 36px;
+  position: fixed; bottom: 24px; right: 24px; width: 36px; height: 36px;
   border: 1px solid var(--border-default); border-radius: 50%;
   background: var(--bg-canvas);
   color: var(--text-secondary); cursor: pointer; font-size: 16px;

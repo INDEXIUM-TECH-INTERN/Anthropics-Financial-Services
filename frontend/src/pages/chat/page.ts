@@ -1179,11 +1179,14 @@ export function createChatPage(): ChatPage {
     });
 
     // Scroll FAB
-    if (scrollToBottomBtn && chatViewport) {
-      chatViewport.addEventListener('scroll', () => {
-        const distance = chatViewport.scrollHeight - chatViewport.scrollTop - chatViewport.clientHeight;
+    if (scrollToBottomBtn) {
+      const updateScrollButton = () => {
+        const distance =
+          document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
         scrollToBottomBtn.classList.toggle('hidden', distance <= 200);
-      });
+      };
+      window.addEventListener('scroll', updateScrollButton, { passive: true });
+      updateScrollButton();
       scrollToBottomBtn.addEventListener('click', () => {
         chatWidget.scrollToBottom();
         scrollToBottomBtn.classList.add('hidden');

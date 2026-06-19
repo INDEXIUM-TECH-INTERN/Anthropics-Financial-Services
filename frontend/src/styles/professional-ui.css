@@ -150,16 +150,12 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
-  min-height: 0;
   position: relative;
   z-index: 1;
 }
 
 /* ── Enhanced Professional Chat Layout ── */
 .chat-container {
-  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
@@ -167,7 +163,6 @@
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
-  min-height: 0;
 }
 
 .chat-main {
@@ -176,13 +171,8 @@
   border: 1px solid var(--border-default);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  min-height: 0;
   box-shadow: var(--shadow-elevated);
   transition: all var(--transition-fast);
-  flex: 1 1 auto;
-  min-height: min(520px, calc(100vh - 220px));
-  max-height: calc(100vh - 180px);
 }
 
 .chat-main:hover {
@@ -190,30 +180,7 @@
 }
 
 .chat-viewport {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
   padding: var(--spacing-lg);
-  scrollbar-width: thin;
-  display: flex;
-  flex-direction: column;
-}
-
-.chat-viewport::-webkit-scrollbar {
-  width: 6px;
-}
-
-.chat-viewport::-webkit-scrollbar-track {
-  background: var(--bg-elevated);
-}
-
-.chat-viewport::-webkit-scrollbar-thumb {
-  background: var(--color-gray-600);
-  border-radius: 3px;
-}
-
-.chat-viewport::-webkit-scrollbar-thumb:hover {
-  background: var(--color-gray-500);
 }
 
 .chat-content {
@@ -226,11 +193,6 @@
 .input-area {
   border-top: 1px solid var(--border-default);
   padding: var(--spacing-md) var(--spacing-lg);
-  background: var(--bg-canvas);
-  position: sticky;
-  bottom: 0;
-  z-index: 50;
-  backdrop-filter: blur(10px);
   background: var(--bg-elevated);
 }
 

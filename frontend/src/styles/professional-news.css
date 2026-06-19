@@ -4,16 +4,12 @@
 
 /* ── World News Container ── */
 .world-news-container {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
   padding: var(--spacing-2xl) var(--spacing-lg);
   gap: var(--spacing-2xl);
   background: var(--bg-canvas);
   animation: fadeIn 0.5s ease-out;
-  min-height: 0;
 }
 
 .world-news-container > * {
