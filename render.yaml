@@ -71,11 +71,6 @@ services:
           type: web
           name: testai-backend
           property: port
-      - key: BACKEND_UPSTREAM
-        fromService:
-          type: web
-          name: testai-backend
-          property: hostport
 
   # ===== Redis =====
   - type: keyvalue

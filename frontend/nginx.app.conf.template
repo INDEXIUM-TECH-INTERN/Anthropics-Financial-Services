@@ -4,6 +4,10 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # Resolve upstream at request time (Render: 10.220.0.1, local Docker: 127.0.0.11)
+    resolver $DNS_RESOLVER valid=30s ipv6=off;
+    resolver_timeout 10s;
+
     gzip on;
     gzip_types text/plain text/css application/json application/javascript text/xml;
     gzip_min_length 256;
@@ -18,7 +22,8 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://$BACKEND_UPSTREAM/api/;
+        set $backend_upstream "$BACKEND_HOST:$BACKEND_PORT";
+        proxy_pass http://$backend_upstream/api/;
         proxy_http_version 1.1;
         proxy_set_header Host $BACKEND_HOST;
         proxy_set_header X-Real-IP $remote_addr;
@@ -34,7 +39,8 @@ server {
     }
 
     location /ws {
-        proxy_pass http://$BACKEND_UPSTREAM;
+        set $backend_upstream "$BACKEND_HOST:$BACKEND_PORT";
+        proxy_pass http://$backend_upstream;
         proxy_http_version 1.1;
         proxy_set_header Host $BACKEND_HOST;
         proxy_set_header Upgrade $http_upgrade;
