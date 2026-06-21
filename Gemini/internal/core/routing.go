@@ -62,7 +62,7 @@ func (a *Agent) selectRoutePlan() RoutePlan {
 
 	routerUserPrompt := buildRouterUserPrompt(a.userInput, tools.GetRoutingGuide(), now)
 
-	raw, err := a.routeWithProviderFallback(routerSystemPrompt, routerUserPrompt)
+	raw, err := a.GetProvider().GenerateText(routerSystemPrompt, routerUserPrompt)
 	var route RoutePlan
 	if err != nil {
 		fmt.Printf("⚠️ [Router] Provider error: %v. Falling back to heuristic router.\n", err)
@@ -157,9 +157,6 @@ func buildRouterUserPrompt(userInput, routingGuide string, now time.Time) string
 	})
 }
 
-func (a *Agent) routeWithProviderFallback(systemPrompt, userPrompt string) (string, error) {
-	return a.GetProvider().GenerateText(systemPrompt, userPrompt)
-}
 
 func fallbackRoutePlan() RoutePlan {
 	return RoutePlan{
