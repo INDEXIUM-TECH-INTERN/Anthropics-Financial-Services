@@ -100,6 +100,7 @@ type WatchlistItem struct {
 type DatesResponse struct {
 	Dates       []DateOption `json:"dates"`
 	DefaultDate string       `json:"defaultDate"`
+	HistoryDays int          `json:"historyDays"`
 }
 
 type DateOption struct {

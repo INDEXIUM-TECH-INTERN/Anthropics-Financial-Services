@@ -7,8 +7,11 @@ import (
 
 func TestGetAvailableDates(t *testing.T) {
 	resp := DefaultService.GetAvailableDates()
-	if len(resp.Dates) != 7 {
-		t.Fatalf("expected 7 dates, got %d", len(resp.Dates))
+	if len(resp.Dates) != ReportHistoryDays {
+		t.Fatalf("expected %d dates, got %d", ReportHistoryDays, len(resp.Dates))
+	}
+	if resp.HistoryDays != ReportHistoryDays {
+		t.Fatalf("expected historyDays %d, got %d", ReportHistoryDays, resp.HistoryDays)
 	}
 	if resp.DefaultDate == "" {
 		t.Fatal("expected default date")

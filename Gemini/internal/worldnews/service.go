@@ -8,6 +8,9 @@ import (
 	"time"
 )
 
+// ReportHistoryDays — số ngày lịch có thể chọn trong dropdown bản tin.
+const ReportHistoryDays = 30
+
 var (
 	vnTimezone = time.FixedZone("ICT", 7*3600)
 	usEastern  *time.Location
@@ -49,7 +52,7 @@ func (s *Service) GetAvailableDates() DatesResponse {
 	var dates []DateOption
 	today := now.Format("2006-01-02")
 
-	for i := 0; i < 7; i++ {
+	for i := 0; i < ReportHistoryDays; i++ {
 		d := now.AddDate(0, 0, -i)
 		value := d.Format("2006-01-02")
 		label := d.Format("02/01/2006")
@@ -63,7 +66,7 @@ func (s *Service) GetAvailableDates() DatesResponse {
 		})
 	}
 
-	return DatesResponse{Dates: dates, DefaultDate: dates[0].Value}
+	return DatesResponse{Dates: dates, DefaultDate: dates[0].Value, HistoryDays: ReportHistoryDays}
 }
 
 func (s *Service) GetReport(dateStr string) (*WorldNewsReport, error) {

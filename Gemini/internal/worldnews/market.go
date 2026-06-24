@@ -58,7 +58,7 @@ func (s *Service) fetchIntradayQuote(symbol, label string, tradingDay time.Time)
 
 func (s *Service) fetchDailyQuote(symbol, label string, tradingDay time.Time) (*quoteSnapshot, error) {
 	loc := usEastern
-	periodStart := time.Date(tradingDay.Year(), tradingDay.Month(), tradingDay.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -14)
+	periodStart := time.Date(tradingDay.Year(), tradingDay.Month(), tradingDay.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -45)
 	periodEnd := time.Date(tradingDay.Year(), tradingDay.Month(), tradingDay.Day(), 23, 59, 59, 0, loc).AddDate(0, 0, 2)
 	apiURL := fmt.Sprintf("%s/%s?period1=%d&period2=%d&interval=1d", yahooChartURL, symbol, periodStart.Unix(), periodEnd.Unix())
 	return s.parseChartResponse(symbol, label, apiURL, tradingDay, false)

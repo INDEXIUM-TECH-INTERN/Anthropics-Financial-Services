@@ -105,4 +105,5 @@ export interface WorldNewsDateOption {
 export interface WorldNewsDatesResponse {
   dates: WorldNewsDateOption[];
   defaultDate: string;
+  historyDays?: number;
 }

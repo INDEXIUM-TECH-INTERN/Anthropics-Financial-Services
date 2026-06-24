@@ -818,11 +818,13 @@ export function createChatPage(): ChatPage {
     return `${d}/${m}/${y}`;
   }
 
-  function buildClientDateOptions(): { value: string; label: string }[] {
+  const DEFAULT_NEWS_HISTORY_DAYS = 30;
+
+  function buildClientDateOptions(dayCount = DEFAULT_NEWS_HISTORY_DAYS): { value: string; label: string }[] {
     const todayIso = getVietnamTodayISO();
     const anchor = new Date(`${todayIso}T12:00:00+07:00`);
     const options: { value: string; label: string }[] = [];
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < dayCount; i++) {
       const d = new Date(anchor);
       d.setDate(d.getDate() - i);
       const value = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(d);
@@ -878,7 +880,7 @@ export function createChatPage(): ChatPage {
       if (defaultDate) newsDateSelect.value = defaultDate;
       worldNewsDatesLoaded = true;
     } catch {
-      const options = buildClientDateOptions();
+      const options = buildClientDateOptions(DEFAULT_NEWS_HISTORY_DAYS);
       newsDateSelect.innerHTML = options
         .map((d) => `<option value="${escHtml(d.value)}">${escHtml(d.label)}</option>`)
         .join('');
