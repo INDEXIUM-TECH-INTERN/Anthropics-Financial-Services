@@ -973,9 +973,6 @@ export function createChatPage(): ChatPage {
         .map(h => `<li class="summary-item">${escHtml(h)}</li>`)
         .join('');
     }
-    const stockThumbnail = $<HTMLImageElement>('stock-thumbnail');
-    if (stockThumbnail) stockThumbnail.src = report.stocks.thumbnail;
-
     // 4. Oil details WTI & Brent
     const oilPricesBadge = $('oil-prices-badge');
     if (oilPricesBadge) {
@@ -1002,9 +999,6 @@ export function createChatPage(): ChatPage {
         .map(h => `<li class="summary-item">${escHtml(h)}</li>`)
         .join('');
     }
-    const oilThumbnail = $<HTMLImageElement>('oil-thumbnail');
-    if (oilThumbnail) oilThumbnail.src = report.oil.thumbnail;
-
     // 5. Gold & USD
     const goldUsdSummaryList = $('gold-usd-summary-list');
     if (goldUsdSummaryList) {
@@ -1019,10 +1013,11 @@ export function createChatPage(): ChatPage {
       breakingNewsListEl.innerHTML = report.breakingNews
         .map(b => `
           <div class="breaking-news-item ${b.isUrgent ? 'urgent' : ''}">
-            <span class="breaking-time-badge">${escHtml(b.time)}</span>
             <div class="breaking-content-area">
               <div class="breaking-meta">
                 <span class="breaking-meta-source">${escHtml(b.source)}</span>
+                <span>•</span>
+                <span class="breaking-time-inline">${escHtml(b.time)}</span>
                 <span>• Breaking</span>
               </div>
               <div class="breaking-text">${escHtml(b.content)}</div>
