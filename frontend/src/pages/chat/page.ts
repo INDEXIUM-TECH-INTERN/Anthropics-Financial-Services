@@ -1011,7 +1011,23 @@ export function createChatPage(): ChatPage {
     const breakingNewsListEl = $('breaking-news-list');
     if (breakingNewsListEl) {
       breakingNewsListEl.innerHTML = report.breakingNews
-        .map(b => `
+        .map(b => {
+          if (b.url) {
+            return `
+          <a href="${escHtml(b.url)}" target="_blank" rel="noopener noreferrer" class="breaking-news-item breaking-news-item-link ${b.isUrgent ? 'urgent' : ''}">
+            <div class="breaking-content-area">
+              <div class="breaking-meta">
+                <span class="breaking-meta-source">${escHtml(b.source)}</span>
+                <span>•</span>
+                <span class="breaking-time-inline">${escHtml(b.time)}</span>
+                <span>• Breaking</span>
+              </div>
+              <div class="breaking-text">${escHtml(b.content)}</div>
+            </div>
+          </a>
+        `;
+          }
+          return `
           <div class="breaking-news-item ${b.isUrgent ? 'urgent' : ''}">
             <div class="breaking-content-area">
               <div class="breaking-meta">
@@ -1023,7 +1039,8 @@ export function createChatPage(): ChatPage {
               <div class="breaking-text">${escHtml(b.content)}</div>
             </div>
           </div>
-        `)
+        `;
+        })
         .join('');
     }
 

@@ -64,6 +64,7 @@ export interface BreakingNews {
   time: string;
   source: string;
   content: string;
+  url?: string;
   isUrgent: boolean;
 }
 

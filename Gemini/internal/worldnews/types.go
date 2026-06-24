@@ -86,6 +86,7 @@ type BreakingNews struct {
 	Time     string `json:"time"`
 	Source   string `json:"source"`
 	Content  string `json:"content"`
+	URL      string `json:"url,omitempty"`
 	IsUrgent bool   `json:"isUrgent"`
 }
 

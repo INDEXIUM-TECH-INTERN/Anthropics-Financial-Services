@@ -295,6 +295,22 @@
   line-height: 1.5;
 }
 
+.breaking-news-item-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.breaking-news-item-link:hover {
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.12);
+}
+
+.breaking-news-item-link:hover .breaking-text {
+  color: var(--color-primary-light);
+}
+
 /* ─── VTV News Specific Styles ─── */
 #vtv-news-list,
 #vn-finance-news-list {

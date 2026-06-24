@@ -319,6 +319,7 @@ func toBreakingNews(items []rssItem) []BreakingNews {
 			Time:     it.PubDate.In(vnTimezone).Format("15:04"),
 			Source:   it.Source,
 			Content:  it.Title,
+			URL:      it.Link,
 			IsUrgent: urgent,
 		})
 	}
