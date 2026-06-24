@@ -9,7 +9,7 @@ import (
 )
 
 // ReportHistoryDays — số ngày lịch có thể chọn trong dropdown bản tin.
-const ReportHistoryDays = 30
+const ReportHistoryDays = 90
 
 var (
 	vnTimezone = time.FixedZone("ICT", 7*3600)

@@ -818,7 +818,7 @@ export function createChatPage(): ChatPage {
     return `${d}/${m}/${y}`;
   }
 
-  const DEFAULT_NEWS_HISTORY_DAYS = 30;
+  const DEFAULT_NEWS_HISTORY_DAYS = 90;
 
   function buildClientDateOptions(dayCount = DEFAULT_NEWS_HISTORY_DAYS): { value: string; label: string }[] {
     const todayIso = getVietnamTodayISO();
