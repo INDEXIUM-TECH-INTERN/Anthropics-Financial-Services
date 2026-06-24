@@ -43,18 +43,28 @@ type quoteSnapshot struct {
 	ChartLabels  []string
 }
 
-func (s *Service) fetchQuote(symbol, label string, tradingDay time.Time) (*quoteSnapshot, error) {
-	isToday := sameTradingDay(tradingDay, time.Now().In(vnTimezone))
-	var apiURL string
-	if isToday {
-		apiURL = fmt.Sprintf("%s/%s?interval=30m&range=1d", yahooChartURL, symbol)
-	} else {
-		loc := usEastern
-		start := time.Date(tradingDay.Year(), tradingDay.Month(), tradingDay.Day(), 9, 0, 0, 0, loc)
-		end := time.Date(tradingDay.Year(), tradingDay.Month(), tradingDay.Day(), 17, 0, 0, 0, loc)
-		apiURL = fmt.Sprintf("%s/%s?period1=%d&period2=%d&interval=30m", yahooChartURL, symbol, start.Unix(), end.Unix())
+func (s *Service) fetchQuote(symbol, label string, calendarDay time.Time, live bool) (*quoteSnapshot, error) {
+	tradingDay := normalizeTradingDay(calendarDay)
+	if live {
+		return s.fetchIntradayQuote(symbol, label, tradingDay)
 	}
+	return s.fetchDailyQuote(symbol, label, tradingDay)
+}
 
+func (s *Service) fetchIntradayQuote(symbol, label string, tradingDay time.Time) (*quoteSnapshot, error) {
+	apiURL := fmt.Sprintf("%s/%s?interval=30m&range=1d", yahooChartURL, symbol)
+	return s.parseChartResponse(symbol, label, apiURL, tradingDay, true)
+}
+
+func (s *Service) fetchDailyQuote(symbol, label string, tradingDay time.Time) (*quoteSnapshot, error) {
+	loc := usEastern
+	periodStart := time.Date(tradingDay.Year(), tradingDay.Month(), tradingDay.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -14)
+	periodEnd := time.Date(tradingDay.Year(), tradingDay.Month(), tradingDay.Day(), 23, 59, 59, 0, loc).AddDate(0, 0, 2)
+	apiURL := fmt.Sprintf("%s/%s?period1=%d&period2=%d&interval=1d", yahooChartURL, symbol, periodStart.Unix(), periodEnd.Unix())
+	return s.parseChartResponse(symbol, label, apiURL, tradingDay, false)
+}
+
+func (s *Service) parseChartResponse(symbol, label, apiURL string, tradingDay time.Time, intraday bool) (*quoteSnapshot, error) {
 	body, err := s.httpGet(apiURL)
 	if err != nil {
 		return nil, err
@@ -69,25 +79,81 @@ func (s *Service) fetchQuote(symbol, label string, tradingDay time.Time) (*quote
 	}
 
 	result := data.Chart.Result[0]
-	meta := result.Meta
-	prev := meta.ChartPreviousClose
-	if prev == 0 {
-		prev = meta.PreviousClose
+	timestamps := result.Timestamp
+	closes := result.Indicators.Quote[0].Close
+	if len(timestamps) == 0 || len(closes) == 0 {
+		return nil, fmt.Errorf("no price data for %s on %s", symbol, tradingDay.Format("2006-01-02"))
 	}
 
-	price := meta.RegularMarketPrice
-	points, labels := extractSeries(result.Timestamp, result.Indicators.Quote[0].Close)
-	if len(points) > 0 {
-		price = points[len(points)-1]
+	loc := usEastern
+	targetKey := tradingDay.In(loc).Format("2006-01-02")
+
+	type bar struct {
+		ts    int64
+		close float64
+		day   string
 	}
-	if prev == 0 && len(points) > 1 {
-		prev = points[0]
+	var bars []bar
+	for i, c := range closes {
+		if c == 0 || i >= len(timestamps) {
+			continue
+		}
+		dayKey := time.Unix(timestamps[i], 0).In(loc).Format("2006-01-02")
+		bars = append(bars, bar{ts: timestamps[i], close: c, day: dayKey})
+	}
+	if len(bars) == 0 {
+		return nil, fmt.Errorf("no valid bars for %s", symbol)
+	}
+
+	idx := -1
+	for i, b := range bars {
+		if b.day == targetKey {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		idx = len(bars) - 1
+	}
+
+	price := bars[idx].close
+	prev := bars[idx].close
+	if idx > 0 {
+		prev = bars[idx-1].close
+	} else {
+		meta := result.Meta
+		if meta.ChartPreviousClose > 0 {
+			prev = meta.ChartPreviousClose
+		} else if meta.PreviousClose > 0 {
+			prev = meta.PreviousClose
+		}
 	}
 
 	change := price - prev
 	var pct float64
 	if prev != 0 {
 		pct = (change / prev) * 100
+	}
+
+	var points []float64
+	var labels []string
+	if intraday {
+		for i, c := range closes {
+			if c == 0 || i >= len(timestamps) {
+				continue
+			}
+			points = append(points, c)
+			labels = append(labels, time.Unix(timestamps[i], 0).In(loc).Format("15:04"))
+		}
+	} else {
+		start := idx - 7
+		if start < 0 {
+			start = 0
+		}
+		for i := start; i <= idx; i++ {
+			points = append(points, bars[i].close)
+			labels = append(labels, formatVNDateLabel(bars[i].day))
+		}
 	}
 
 	return &quoteSnapshot{
@@ -135,16 +201,17 @@ func formatChange(change, pct float64) (string, string, bool) {
 	if positive && change > 0 {
 		sign = "+"
 	}
-	absChange := change
-	if absChange < 0 {
-		absChange = -absChange
-	}
 	changeStr := fmt.Sprintf("%s%.2f", sign, change)
-	if strings.Contains(changeStr, "$") == false && absChange > 100 {
-		changeStr = fmt.Sprintf("%s%.2f", sign, change)
-	}
 	pctStr := fmt.Sprintf("%s%.2f%%", sign, pct)
 	return changeStr, pctStr, positive
+}
+
+func formatVNDateLabel(iso string) string {
+	parts := strings.Split(iso, "-")
+	if len(parts) != 3 {
+		return iso
+	}
+	return fmt.Sprintf("%s/%s", parts[2], parts[1])
 }
 
 func (s *Service) httpGet(url string) ([]byte, error) {

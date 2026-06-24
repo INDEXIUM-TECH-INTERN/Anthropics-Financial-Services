@@ -3,6 +3,7 @@ package worldnews
 import (
 	"encoding/xml"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -72,6 +73,99 @@ type atomLink struct {
 }
 
 var tagRe = regexp.MustCompile(`<[^>]+>`)
+
+func morningDigestWindow(calendarDay time.Time) (time.Time, time.Time) {
+	until := time.Date(calendarDay.Year(), calendarDay.Month(), calendarDay.Day(), 7, 0, 0, 0, vnTimezone)
+	since := until.Add(-24 * time.Hour)
+	return since, until
+}
+
+func (s *Service) fetchNewsForReport(calendarDay time.Time, live bool) []rssItem {
+	if live {
+		items, _ := s.fetchAllNews()
+		return filterNewsBetween(items, time.Now().Add(-24*time.Hour), time.Now())
+	}
+
+	since, until := morningDigestWindow(calendarDay)
+	items, _ := s.fetchAllNews()
+	filtered := filterNewsBetween(items, since, until)
+
+	if len(filtered) < 4 {
+		historical := s.fetchHistoricalGoogleNews(since, until)
+		filtered = dedupeNews(append(filtered, historical...))
+	}
+	return filtered
+}
+
+func (s *Service) fetchHistoricalGoogleNews(since, until time.Time) []rssItem {
+	after := since.Format("2006-01-02")
+	before := until.Format("2006-01-02")
+
+	queries := []struct {
+		query  string
+		name   string
+		kind   string
+	}{
+		{
+			query: fmt.Sprintf("(stock market OR S&P 500 OR Nasdaq) after:%s before:%s", after, before),
+			name:  "Google News (Thế giới)",
+			kind:  "breaking",
+		},
+		{
+			query: fmt.Sprintf("(oil OR crude OR gold OR USD) after:%s before:%s", after, before),
+			name:  "Google News (Hàng hóa)",
+			kind:  "global",
+		},
+		{
+			query: fmt.Sprintf("(kinh te OR tai chinh) after:%s before:%s", after, before),
+			name:  "Google News (Việt Nam)",
+			kind:  "vietnam",
+		},
+	}
+
+	var out []rssItem
+	for _, q := range queries {
+		src := feedSource{
+			Name: q.name,
+			URL:  fmt.Sprintf("https://news.google.com/rss/search?q=%s&hl=vi&gl=VN&ceid=VN:vi", url.QueryEscape(q.query)),
+			Kind: q.kind,
+		}
+		items, err := s.fetchFeed(src)
+		if err != nil {
+			continue
+		}
+		out = append(out, filterNewsBetween(items, since, until)...)
+	}
+	return dedupeNews(out)
+}
+
+func filterNewsBetween(items []rssItem, since, until time.Time) []rssItem {
+	var out []rssItem
+	for _, it := range items {
+		if it.PubDate.Before(since) || !it.PubDate.Before(until) {
+			continue
+		}
+		out = append(out, it)
+	}
+	return out
+}
+
+func dedupeNews(items []rssItem) []rssItem {
+	seen := make(map[string]struct{})
+	var out []rssItem
+	for _, it := range items {
+		key := strings.ToLower(strings.TrimSpace(it.Title))
+		if key == "" {
+			continue
+		}
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, it)
+	}
+	return out
+}
 
 func (s *Service) fetchAllNews() ([]rssItem, error) {
 	sources := append(append([]feedSource{}, globalFeeds...), vietnamFeeds...)
@@ -192,18 +286,22 @@ func filterRecent(items []rssItem, since time.Time, limit int) []rssItem {
 	return out
 }
 
-func toNewsArticles(items []rssItem) []NewsArticle {
+func toNewsArticles(items []rssItem, live bool) []NewsArticle {
 	out := make([]NewsArticle, 0, len(items))
 	for _, it := range items {
 		summary := it.Description
 		if len(summary) > 220 {
 			summary = summary[:217] + "..."
 		}
+		timeLabel := relativeTime(it.PubDate)
+		if !live {
+			timeLabel = it.PubDate.In(vnTimezone).Format("02/01/2006 15:04")
+		}
 		out = append(out, NewsArticle{
 			Title:   it.Title,
 			Summary: summary,
 			Source:  it.Source,
-			Time:    relativeTime(it.PubDate),
+			Time:    timeLabel,
 			URL:     it.Link,
 		})
 	}

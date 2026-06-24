@@ -51,9 +51,8 @@ func (s *Service) GetAvailableDates() DatesResponse {
 
 	for i := 0; i < 7; i++ {
 		d := now.AddDate(0, 0, -i)
-		trading := normalizeTradingDay(d)
-		value := trading.Format("2006-01-02")
-		label := trading.Format("02/01/2006")
+		value := d.Format("2006-01-02")
+		label := d.Format("02/01/2006")
 		if value == today {
 			label += " (Hôm nay)"
 		}
@@ -68,12 +67,11 @@ func (s *Service) GetAvailableDates() DatesResponse {
 }
 
 func (s *Service) GetReport(dateStr string) (*WorldNewsReport, error) {
-	tradingDay, err := parseDate(dateStr)
+	calendarDay, err := parseDate(dateStr)
 	if err != nil {
 		return nil, err
 	}
-	tradingDay = normalizeTradingDay(tradingDay)
-	key := tradingDay.Format("2006-01-02")
+	key := calendarDay.Format("2006-01-02")
 
 	s.mu.RLock()
 	if entry, ok := s.cache[key]; ok && time.Now().Before(entry.expiresAt) {
@@ -83,7 +81,7 @@ func (s *Service) GetReport(dateStr string) (*WorldNewsReport, error) {
 	}
 	s.mu.RUnlock()
 
-	report, err := s.buildReport(tradingDay)
+	report, err := s.buildReport(calendarDay)
 	if err != nil {
 		return nil, err
 	}
@@ -95,40 +93,41 @@ func (s *Service) GetReport(dateStr string) (*WorldNewsReport, error) {
 	return report, nil
 }
 
-func (s *Service) buildReport(tradingDay time.Time) (*WorldNewsReport, error) {
-	sp500, err := s.fetchQuote("%5EGSPC", "S&P 500", tradingDay)
+func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
+	calendarDay = calendarDay.In(vnTimezone)
+	tradingDay := normalizeTradingDay(calendarDay)
+	live := sameCalendarDay(calendarDay, time.Now().In(vnTimezone))
+	tradingLabel := formatVNDate(tradingDay)
+
+	sp500, err := s.fetchQuote("%5EGSPC", "S&P 500", calendarDay, live)
 	if err != nil {
 		return nil, fmt.Errorf("S&P 500: %w", err)
 	}
-	nasdaq, err := s.fetchQuote("%5EIXIC", "Nasdaq", tradingDay)
+	nasdaq, err := s.fetchQuote("%5EIXIC", "Nasdaq", calendarDay, live)
 	if err != nil {
 		nasdaq = nil
 	}
-	wti, err := s.fetchQuote("CL%3DF", "WTI", tradingDay)
+	wti, err := s.fetchQuote("CL%3DF", "WTI", calendarDay, live)
 	if err != nil {
 		return nil, fmt.Errorf("WTI: %w", err)
 	}
-	brent, err := s.fetchQuote("BZ%3DF", "Brent", tradingDay)
+	brent, err := s.fetchQuote("BZ%3DF", "Brent", calendarDay, live)
 	if err != nil {
 		brent = wti
 	}
-	gold, err := s.fetchQuote("GC%3DF", "Vàng", tradingDay)
+	gold, err := s.fetchQuote("GC%3DF", "Vàng", calendarDay, live)
 	if err != nil {
 		gold = nil
 	}
-	dxy, err := s.fetchQuote("DX-Y.NYB", "DXY", tradingDay)
+	dxy, err := s.fetchQuote("DX-Y.NYB", "DXY", calendarDay, live)
 	if err != nil {
 		dxy = nil
 	}
 
-	newsItems, _ := s.fetchAllNews()
-	since := time.Now().Add(-24 * time.Hour)
+	newsItems := s.fetchNewsForReport(calendarDay, live)
 
 	var vtvItems, vnItems, breakingItems []rssItem
 	for _, it := range newsItems {
-		if it.PubDate.Before(since) {
-			continue
-		}
 		switch it.Kind {
 		case "vtv":
 			if len(vtvItems) < 5 {
@@ -158,9 +157,20 @@ func (s *Service) buildReport(tradingDay time.Time) (*WorldNewsReport, error) {
 	wtiChg, wtiPct, wtiPos := formatChange(wti.Change, wti.ChangePct)
 	brentChg, brentPct, brentPos := formatChange(brent.Change, brent.ChangePct)
 
+	since, until := morningDigestWindow(calendarDay)
+	dataSource := fmt.Sprintf(
+		"Yahoo Finance (phiên %s) + tin tức %s–%s (GMT+7)",
+		tradingLabel,
+		since.In(vnTimezone).Format("02/01 15:04"),
+		until.In(vnTimezone).Format("02/01 15:04"),
+	)
+	if live {
+		dataSource = "Yahoo Finance (thị trường live) + RSS 24h gần nhất (CNBC, Bloomberg, FT, VNeconomy...)"
+	}
+
 	report := &WorldNewsReport{
-		Date: tradingDay.Format("2006-01-02"),
-		QuickHighlights: buildQuickHighlights(sp500, nasdaq, wti, brent, gold, dxy, breakingItems),
+		Date:            calendarDay.Format("2006-01-02"),
+		QuickHighlights: buildQuickHighlights(sp500, nasdaq, wti, brent, gold, dxy, breakingItems, tradingLabel, live),
 		KeyNumbers: []KeyNumber{
 			{
 				Label:      "S&P 500",
@@ -186,7 +196,7 @@ func (s *Service) buildReport(tradingDay time.Time) (*WorldNewsReport, error) {
 			ChartPoints:   sp500.ChartPoints,
 			ChartLabels:   sp500.ChartLabels,
 			Thumbnail:     "/images/cnbc_trader.png",
-			Highlights:    buildStockHighlights(sp500, nasdaq, breakingItems),
+			Highlights:    buildStockHighlights(sp500, nasdaq, breakingItems, tradingLabel, live),
 			CNBCUrl:       "https://www.cnbc.com/world/",
 			WSJUrl:        "https://www.wsj.com/finance/stocks?mod=nav_top_subsection",
 			ReutersUrl:    "https://www.reuters.com/markets/stocks/",
@@ -204,18 +214,18 @@ func (s *Service) buildReport(tradingDay time.Time) (*WorldNewsReport, error) {
 			ChartPointsBrent: brent.ChartPoints,
 			ChartLabels:      coalesceLabels(wti.ChartLabels, brent.ChartLabels),
 			Thumbnail:        "/images/reuters_oil.png",
-			Highlights:       buildOilHighlights(wti, brent, breakingItems),
+			Highlights:       buildOilHighlights(wti, brent, breakingItems, tradingLabel, live),
 			ReutersUrl:       "https://www.reuters.com/markets/",
 			NYTimesUrl:       "https://www.nytimes.com/section/business/energy-environment?page=2",
 			WSJUrl:           "https://www.wsj.com/business/energy-oil?mod=nav_top_subsection",
 		},
-		GoldUsd: buildGoldSection(gold, dxy, breakingItems),
-		VTVIndexNews:       toNewsArticles(vtvItems),
-		VietnamFinanceNews: toNewsArticles(vnItems),
+		GoldUsd:            buildGoldSection(gold, dxy, breakingItems, tradingLabel),
+		VTVIndexNews:       toNewsArticles(vtvItems, live),
+		VietnamFinanceNews: toNewsArticles(vnItems, live),
 		BreakingNews:       toBreakingNews(takeItems(breakingItems, 5)),
-		Watchlist:          buildWatchlist(breakingItems),
+		Watchlist:          buildWatchlist(breakingItems, calendarDay, live),
 		GeneratedAt:        time.Now().In(vnTimezone).Format(time.RFC3339),
-		DataSource:         "Yahoo Finance (thị trường) + RSS (CNBC, Bloomberg, FT, CNN, VNeconomy, VNExpress, Vietstock...)",
+		DataSource:         dataSource,
 	}
 
 	if gold != nil {
@@ -232,7 +242,11 @@ func (s *Service) buildReport(tradingDay time.Time) (*WorldNewsReport, error) {
 	return report, nil
 }
 
-func buildGoldSection(gold, dxy *quoteSnapshot, news []rssItem) GoldUSDSection {
+func formatVNDate(t time.Time) string {
+	return t.In(vnTimezone).Format("02/01/2006")
+}
+
+func buildGoldSection(gold, dxy *quoteSnapshot, news []rssItem, tradingLabel string) GoldUSDSection {
 	sec := GoldUSDSection{
 		ChartLabels: []string{},
 		Highlights:  []string{},
@@ -247,7 +261,7 @@ func buildGoldSection(gold, dxy *quoteSnapshot, news []rssItem) GoldUSDSection {
 		sec.ChartPointsGold = gold.ChartPoints
 		sec.ChartLabels = gold.ChartLabels
 		sec.Highlights = append(sec.Highlights,
-			fmt.Sprintf("Vàng giao dịch quanh %s (%s) — dữ liệu Yahoo Finance.", sec.GoldPrice, gPct))
+			fmt.Sprintf("Vàng phiên %s: %s (%s) — Yahoo Finance.", tradingLabel, sec.GoldPrice, gPct))
 	}
 	if dxy != nil {
 		dChg, dPct, dPos := formatChange(dxy.Change, dxy.ChangePct)
@@ -260,7 +274,7 @@ func buildGoldSection(gold, dxy *quoteSnapshot, news []rssItem) GoldUSDSection {
 			sec.ChartLabels = dxy.ChartLabels
 		}
 		sec.Highlights = append(sec.Highlights,
-			fmt.Sprintf("Chỉ số USD (DXY) ở mức %s (%s).", sec.DXYPrice, dPct))
+			fmt.Sprintf("DXY phiên %s: %s (%s).", tradingLabel, sec.DXYPrice, dPct))
 	}
 	for _, it := range news {
 		lower := strings.ToLower(it.Title)
@@ -274,7 +288,7 @@ func buildGoldSection(gold, dxy *quoteSnapshot, news []rssItem) GoldUSDSection {
 	return sec
 }
 
-func buildQuickHighlights(sp, nd, wti, brent, gold, dxy *quoteSnapshot, news []rssItem) []string {
+func buildQuickHighlights(sp, nd, wti, brent, gold, dxy *quoteSnapshot, news []rssItem, tradingLabel string, live bool) []string {
 	var out []string
 	if sp != nil {
 		dir := "giảm"
@@ -282,7 +296,11 @@ func buildQuickHighlights(sp, nd, wti, brent, gold, dxy *quoteSnapshot, news []r
 			dir = "tăng"
 		}
 		_, pct, _ := formatChange(sp.Change, sp.ChangePct)
-		out = append(out, fmt.Sprintf("S&P 500 %s %s, đóng cửa ở %s (Yahoo Finance).", dir, pct, formatPrice(sp.Symbol, sp.Price)))
+		session := "phiên gần nhất"
+		if !live {
+			session = "phiên " + tradingLabel
+		}
+		out = append(out, fmt.Sprintf("S&P 500 %s %s, đóng cửa %s ở %s.", dir, pct, session, formatPrice(sp.Symbol, sp.Price)))
 	}
 	if wti != nil && brent != nil {
 		_, wPct, _ := formatChange(wti.Change, wti.ChangePct)
@@ -306,7 +324,7 @@ func buildQuickHighlights(sp, nd, wti, brent, gold, dxy *quoteSnapshot, news []r
 	return out
 }
 
-func buildStockHighlights(sp, nd *quoteSnapshot, news []rssItem) []string {
+func buildStockHighlights(sp, nd *quoteSnapshot, news []rssItem, tradingLabel string, live bool) []string {
 	var out []string
 	if sp != nil {
 		dir := "điều chỉnh giảm"
@@ -314,7 +332,11 @@ func buildStockHighlights(sp, nd *quoteSnapshot, news []rssItem) []string {
 			dir = "tăng điểm"
 		}
 		_, pct, _ := formatChange(sp.Change, sp.ChangePct)
-		out = append(out, fmt.Sprintf("S&P 500 %s %s trong phiên gần nhất (dữ liệu Yahoo Finance).", dir, pct))
+		session := "phiên gần nhất"
+		if !live {
+			session = "phiên " + tradingLabel
+		}
+		out = append(out, fmt.Sprintf("S&P 500 %s %s trong %s.", dir, pct, session))
 	}
 	if nd != nil {
 		_, pct, _ := formatChange(nd.Change, nd.ChangePct)
@@ -332,7 +354,7 @@ func buildStockHighlights(sp, nd *quoteSnapshot, news []rssItem) []string {
 	return out
 }
 
-func buildOilHighlights(wti, brent *quoteSnapshot, news []rssItem) []string {
+func buildOilHighlights(wti, brent *quoteSnapshot, news []rssItem, tradingLabel string, live bool) []string {
 	var out []string
 	if wti != nil {
 		_, pct, pos := formatChange(wti.Change, wti.ChangePct)
@@ -340,7 +362,11 @@ func buildOilHighlights(wti, brent *quoteSnapshot, news []rssItem) []string {
 		if pos {
 			dir = "tăng"
 		}
-		out = append(out, fmt.Sprintf("Dầu WTI (NYMEX) %s %s, giá %s.", dir, pct, formatPrice(wti.Symbol, wti.Price)))
+		label := tradingLabel
+		if live {
+			label = "gần nhất"
+		}
+		out = append(out, fmt.Sprintf("Dầu WTI (NYMEX) %s %s, chốt phiên %s: %s.", dir, pct, label, formatPrice(wti.Symbol, wti.Price)))
 	}
 	if brent != nil {
 		_, pct, pos := formatChange(brent.Change, brent.ChangePct)
@@ -348,7 +374,11 @@ func buildOilHighlights(wti, brent *quoteSnapshot, news []rssItem) []string {
 		if pos {
 			dir = "tăng"
 		}
-		out = append(out, fmt.Sprintf("Dầu Brent (ICE) %s %s, giá %s.", dir, pct, formatPrice(brent.Symbol, brent.Price)))
+		label := tradingLabel
+		if live {
+			label = "gần nhất"
+		}
+		out = append(out, fmt.Sprintf("Dầu Brent (ICE) %s %s, chốt phiên %s: %s.", dir, pct, label, formatPrice(brent.Symbol, brent.Price)))
 	}
 	for _, it := range news {
 		lower := strings.ToLower(it.Title)
@@ -362,10 +392,14 @@ func buildOilHighlights(wti, brent *quoteSnapshot, news []rssItem) []string {
 	return out
 }
 
-func buildWatchlist(news []rssItem) []WatchlistItem {
+func buildWatchlist(news []rssItem, calendarDay time.Time, live bool) []WatchlistItem {
+	when := formatVNDate(calendarDay)
+	if live {
+		when = "Hôm nay"
+	}
 	items := []WatchlistItem{
-		{Event: "Theo dõi lịch kinh tế Mỹ & châu Âu", Time: "Hôm nay", Importance: "high", Source: "Bloomberg"},
-		{Event: "Diễn biến giá dầu & vàng sau phiên chốt", Time: "Sáng nay (GMT+7)", Importance: "medium", Source: "Reuters"},
+		{Event: "Theo dõi lịch kinh tế Mỹ & châu Âu", Time: when, Importance: "high", Source: "Bloomberg"},
+		{Event: "Diễn biến giá dầu & vàng sau phiên chốt", Time: when, Importance: "medium", Source: "Reuters"},
 	}
 	for _, it := range news {
 		lower := strings.ToLower(it.Title)
@@ -403,10 +437,10 @@ func normalizeTradingDay(d time.Time) time.Time {
 	return d
 }
 
-func sameTradingDay(a, b time.Time) bool {
+func sameCalendarDay(a, b time.Time) bool {
 	a = a.In(vnTimezone)
 	b = b.In(vnTimezone)
-	return a.Year() == b.Year() && a.YearDay() == b.YearDay()
+	return a.Year() == b.Year() && a.Month() == b.Month() && a.Day() == b.Day()
 }
 
 func joinValues(a, b string) string {
