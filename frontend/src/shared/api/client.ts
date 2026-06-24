@@ -13,6 +13,7 @@ import type {
   ConfigKeysResponse,
   SSEEventData,
 } from './types';
+import type { WorldNewsReport, WorldNewsDatesResponse } from './mock-news';
 import { retryWithBackoff } from '../lib/markdown';
 
 export class ApiError extends Error {
@@ -78,6 +79,29 @@ export class ApiClient {
     );
     if (!res.ok) throw new ApiError('Failed to save config keys', res.status);
     return res.json() as Promise<ConfigKeysResponse>;
+  }
+
+  async getWorldNews(date?: string): Promise<WorldNewsReport> {
+    const qs = date ? `?date=${encodeURIComponent(date)}` : '';
+    const res = await retryWithBackoff(() => fetch(`${this.baseUrl}/api/world-news${qs}`), {
+      maxRetries: 2,
+      initialDelay: 800,
+    });
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      const msg = (errBody as { error?: string }).error || 'Failed to fetch world news';
+      throw new ApiError(msg, res.status);
+    }
+    return res.json() as Promise<WorldNewsReport>;
+  }
+
+  async getWorldNewsDates(): Promise<WorldNewsDatesResponse> {
+    const res = await retryWithBackoff(() => fetch(`${this.baseUrl}/api/world-news/dates`), {
+      maxRetries: 2,
+      initialDelay: 800,
+    });
+    if (!res.ok) throw new ApiError('Failed to fetch world news dates', res.status);
+    return res.json() as Promise<WorldNewsDatesResponse>;
   }
 
   async streamChat(
