@@ -1,8 +1,10 @@
 # CLAUDE.md — TestAIFinance
 
-> **Indexium Financial AI Services** — Multi-provider LLM orchestrator với ReAct tool-calling, agent routing, và real-time market data. Tiếng Việt first.
+> **Indexium Financial AI Services** — Single-provider LLM orchestrator với ReAct tool-calling, key rotation, và real-time market data. Tiếng Việt first.
 
 ---
+
+Sử dụng tiếng việt để thảo luận với Boss
 
 ## 🏗 Architecture
 
@@ -33,14 +35,14 @@ Gemini/                      # Go backend
     main.go                  # Entry point (CLI + server)
   internal/
     api/                     # HTTP server + SSE hub
-    core/                    # Agent, Orchestrator, Router, Dispatcher
-    providers/               # Gemini, OpenRouter, MultiProvider
+    core/                    # Agent, Orchestrator, Dispatcher, ProviderManager
+    providers/               # Gemini provider với key rotation pool
     models/                  # API types
     tools/                   # Search, Scrape, Docs, Calculate
     prompt/                  # System prompts (Vietnamese)
     store/                   # Session store
     redis/                   # Redis client
-    utils/                   # Token estimation, env loading
+    utils/                   # Token estimation, env loading, key pool
     errors/                  # Error types
     logger/                  # Logging
     evaluator/               # Automated test suite
@@ -54,20 +56,22 @@ Gemini/                      # Go backend
 
 ## 🛠 Tech Stack
 
-| Layer | Tech |
-|-------|------|
-| **Frontend** | Vanilla TypeScript, Vite 6, Nanostores, Prism.js, Marked |
-| **Backend** | Go 1.25.6, Redis (go-redis/v9) |
-| **Testing** | Vitest (unit), Playwright (E2E) |
-| **Lint/Format** | ESLint 9, Prettier, Husky + lint-staged |
-| **Deploy** | Render (Go service + Redis) |
+| Layer           | Tech                                                     |
+| --------------- | -------------------------------------------------------- |
+| **Frontend**    | Vanilla TypeScript, Vite 6, Nanostores, Prism.js, Marked |
+| **Backend**     | Go 1.25.6, Redis (go-redis/v9)                           |
+| **Testing**     | Vitest (unit), Playwright (E2E)                          |
+| **Lint/Format** | ESLint 9, Prettier, Husky + lint-staged                  |
+| **Deploy**      | Render (Go service + Redis)                              |
 
 ---
 
 ## 📝 Quy ước
 
 ### Git Commit
+
 Dùng tiền tố conventional:
+
 - `feat:` — feature mới
 - `fix:` — sửa bug
 - `refactor:` — tái cấu trúc
@@ -76,11 +80,13 @@ Dùng tiền tố conventional:
 - `test:` — thêm/sửa tests
 
 ### Code Style
+
 - **Frontend:** ESLint + Prettier (đã cấu hình sẵn)
 - **Backend:** `gofmt` + `go vet`
 - **TypeScript:** strict mode, `noUnusedLocals`, `noUnusedParameters`
 
 ### Đường dẫn
+
 - Dùng đường dẫn tương đối từ project root
 - Frontend aliases: `@/*` → `frontend/src/*`
 
@@ -89,6 +95,7 @@ Dùng tiền tố conventional:
 ## 🔧 Commands
 
 ### Frontend
+
 ```bash
 cd frontend
 npm run dev          # Dev server (Vite)
@@ -102,6 +109,7 @@ npm run test:e2e     # Playwright (E2E)
 ```
 
 ### Backend
+
 ```bash
 cd Gemini
 go build ./...       # Build
@@ -112,6 +120,7 @@ go run cmd/gemini-cli/main.go "câu hỏi"   # One-shot
 ```
 
 ### Full Stack (PowerShell)
+
 ```powershell
 .\run-server.ps1     # Launch cả backend + frontend
 ```
@@ -124,25 +133,32 @@ File: `Gemini/.env`
 
 ```env
 GEMINI_API_KEY=...
-OPENROUTER_API_KEY=...
+GEMINI_API_KEY_2=...
+GEMINI_API_KEY_3=...
+GEMINI_API_KEY_4=...
+GEMINI_API_KEY_5=...
 SERPAPI_KEY=...
 TAVILY_API_KEY=...
 REDIS_ADDR=127.0.0.1:6379
-USE_OPENROUTER_ONLY=0
+GEMINI_MODEL=models/gemini-3.1-flash-lite
+CONTEXT_MAX_TOKENS=92000
+CONTEXT_KEEP_RECENT=7
+REACT_MAX_ITERATIONS=20
+STREAM_TIMEOUT_SECONDS=600
 ```
 
 ---
 
 ## 📚 Docs
 
-| File | Mô tả |
-|------|--------|
+| File                   | Mô tả                                        |
+| ---------------------- | -------------------------------------------- |
 | `docs/ARCHITECTURE.md` | Kiến trúc chi tiết, ReAct loop, routing flow |
-| `docs/AGENTS.md` | 10 specialist agents, skills, slash commands |
-| `docs/TOOLS.md` | Tool reference, caching, SSRF protection |
-| `docs/API.md` | REST endpoints, SSE events, metrics |
-| `docs/PROVIDERS.md` | LLM providers, multi-provider failover |
-| `docs/CONTEXT.md` | Domain glossary |
+| `docs/AGENTS.md`       | 10 specialist agents, skills, slash commands |
+| `docs/TOOLS.md`        | Tool reference, caching, SSRF protection     |
+| `docs/API.md`          | REST endpoints, SSE events, metrics          |
+| `docs/PROVIDERS.md`    | Gemini provider với key rotation            |
+| `docs/CONTEXT.md`      | Domain glossary                              |
 
 ---
 
