@@ -10,7 +10,7 @@ Sau khi phân tích kiến trúc hiện tại, tôi sẽ thiết kế một ki�
 - **Agent**: Facade tổng điều phối, quản lý conversation và providers
 - **Orchestrator**: Điều phối ReAct loop, handle tool calls
 - **Dispatcher**: Xử lý tool execution với LRU cache
-- **Providers**: Gemini, OpenRouter với failover
+- **Providers**: Gemini với key rotation
 - **Tools**: Financial research, scrape, calculate, handoff...
 - **API Layer**: HTTP server với SSE streaming
 
@@ -84,8 +84,7 @@ Sau khi phân tích kiến trúc hiện tại, tôi sẽ thiết kế một ki�
 // internal/infrastructure/
 - providers/
   - gemini_provider.go     // Gemini provider implementation
-  - openrouter_provider.go // OpenRouter provider
-  - provider_factory.go   // Provider factory
+  - simple_gemini_pool.go  // Key pool for multiple API keys
 - tools/
   - financial_tools.go     // Financial research tools
   - calculation_tools.go   // Calculation tools
