@@ -95,12 +95,6 @@ type atomLink struct {
 
 var tagRe = regexp.MustCompile(`<[^>]+>`)
 
-func morningDigestWindow(calendarDay time.Time) (time.Time, time.Time) {
-	until := time.Date(calendarDay.Year(), calendarDay.Month(), calendarDay.Day(), 7, 0, 0, 0, vnTimezone)
-	since := until.Add(-24 * time.Hour)
-	return since, until
-}
-
 func isAllowedStockNewsSource(it rssItem) bool {
 	allowedHosts := map[string]struct{}{
 		"cnbc.com":   {},
@@ -131,7 +125,9 @@ func filterStockNewsSources(items []rssItem) []rssItem {
 	return out
 }
 
-func (s *Service) fetchStockNewsForReport(calendarDay time.Time, live bool) []rssItem {
+func (s *Service) fetchStockNewsForReport(calendarDay time.Time) []rssItem {
+	since, until := morningDigestWindow(calendarDay)
+
 	var items []rssItem
 	for _, src := range stockFeeds {
 		feedItems, err := s.fetchFeed(src)
@@ -141,15 +137,10 @@ func (s *Service) fetchStockNewsForReport(calendarDay time.Time, live bool) []rs
 		items = append(items, feedItems...)
 	}
 
-	if live {
-		items = filterNewsBetween(items, time.Now().Add(-24*time.Hour), time.Now())
-	} else {
-		since, until := morningDigestWindow(calendarDay)
-		items = filterNewsBetween(items, since, until)
-		if len(items) < 2 {
-			historical := s.fetchHistoricalStockGoogleNews(since, until)
-			items = dedupeNews(append(items, historical...))
-		}
+	items = filterNewsBetween(items, since, until)
+	if len(items) < 2 {
+		historical := s.fetchHistoricalStockGoogleNews(since, until)
+		items = dedupeNews(append(items, historical...))
 	}
 
 	return s.enrichItemMedia(filterStockNewsSources(dedupeNews(items)), 4)
@@ -174,22 +165,15 @@ func (s *Service) fetchHistoricalStockGoogleNews(since, until time.Time) []rssIt
 	return filterNewsBetween(items, since, until)
 }
 
-func (s *Service) fetchNewsForReport(calendarDay time.Time, live bool) []rssItem {
-	var items []rssItem
-	if live {
-		items, _ = s.fetchAllNews()
-		items = filterNewsBetween(items, time.Now().Add(-24*time.Hour), time.Now())
-	} else {
-		since, until := morningDigestWindow(calendarDay)
-		items, _ = s.fetchAllNews()
-		filtered := filterNewsBetween(items, since, until)
-		if len(filtered) < 4 {
-			historical := s.fetchHistoricalGoogleNews(since, until)
-			filtered = dedupeNews(append(filtered, historical...))
-		}
-		items = filtered
+func (s *Service) fetchNewsForReport(calendarDay time.Time) []rssItem {
+	since, until := morningDigestWindow(calendarDay)
+	items, _ := s.fetchAllNews()
+	filtered := filterNewsBetween(items, since, until)
+	if len(filtered) < 4 {
+		historical := s.fetchHistoricalGoogleNews(since, until)
+		filtered = dedupeNews(append(filtered, historical...))
 	}
-	return s.enrichItemMedia(items, 6)
+	return s.enrichItemMedia(filtered, 6)
 }
 
 func (s *Service) fetchHistoricalGoogleNews(since, until time.Time) []rssItem {
@@ -416,17 +400,14 @@ func filterRecent(items []rssItem, since time.Time, limit int) []rssItem {
 	return out
 }
 
-func toNewsArticles(items []rssItem, live bool) []NewsArticle {
+func toNewsArticles(items []rssItem) []NewsArticle {
 	out := make([]NewsArticle, 0, len(items))
 	for _, it := range items {
 		summary := it.Description
 		if len(summary) > 220 {
 			summary = summary[:217] + "..."
 		}
-		timeLabel := relativeTime(it.PubDate)
-		if !live {
-			timeLabel = it.PubDate.In(vnTimezone).Format("02/01/2006 15:04")
-		}
+		timeLabel := it.PubDate.In(vnTimezone).Format("02/01/2006 15:04")
 		out = append(out, NewsArticle{
 			Title:     it.Title,
 			Summary:   summary,

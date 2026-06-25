@@ -60,11 +60,8 @@ type quoteSnapshot struct {
 	ChartLabels  []string
 }
 
-func (s *Service) fetchQuote(symbol, label string, calendarDay time.Time, live bool) (*quoteSnapshot, error) {
+func (s *Service) fetchQuote(symbol, label string, calendarDay time.Time) (*quoteSnapshot, error) {
 	tradingDay := normalizeTradingDay(calendarDay)
-	if live {
-		return s.fetchIntradayQuote(symbol, label, tradingDay)
-	}
 	return s.fetchDailyQuote(symbol, label, tradingDay)
 }
 

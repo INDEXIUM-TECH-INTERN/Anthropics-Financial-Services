@@ -42,7 +42,7 @@ func quoteToStockInstrument(q *quoteSnapshot) StockInstrument {
 	}
 }
 
-func (s *Service) fetchWorldStockQuotes(calendarDay time.Time, live bool) (map[string]*quoteSnapshot, []StockInstrument) {
+func (s *Service) fetchWorldStockQuotes(calendarDay time.Time) (map[string]*quoteSnapshot, []StockInstrument) {
 	type result struct {
 		key   string
 		quote *quoteSnapshot
@@ -57,7 +57,7 @@ func (s *Service) fetchWorldStockQuotes(calendarDay time.Time, live bool) (map[s
 		wg.Add(1)
 		go func(order int, def stockSymbolDef) {
 			defer wg.Done()
-			q, err := s.fetchQuote(def.Encoded, def.Label, calendarDay, live)
+			q, err := s.fetchQuote(def.Encoded, def.Label, calendarDay)
 			if err != nil {
 				ch <- result{key: def.Encoded, order: order, ok: false}
 				return

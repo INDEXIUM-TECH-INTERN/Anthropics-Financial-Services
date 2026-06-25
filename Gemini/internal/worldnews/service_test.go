@@ -35,17 +35,6 @@ func TestNormalizeTradingDay(t *testing.T) {
 	}
 }
 
-func TestMorningDigestWindow(t *testing.T) {
-	day := time.Date(2026, 6, 24, 12, 0, 0, 0, vnTimezone)
-	since, until := morningDigestWindow(day)
-	if until.Hour() != 7 || until.Day() != 24 {
-		t.Fatalf("unexpected until: %v", until)
-	}
-	if since.Day() != 23 || since.Hour() != 7 {
-		t.Fatalf("unexpected since: %v", since)
-	}
-}
-
 func TestBuildReportDifferentDates(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping network integration test")

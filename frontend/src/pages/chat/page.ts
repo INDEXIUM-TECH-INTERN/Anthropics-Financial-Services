@@ -839,15 +839,25 @@ export function createChatPage(): ChatPage {
     `;
   }
 
-  function buildDataSourceHtml(dataSource: string, generatedAt?: string): string {
+  function buildDataSourceHtml(
+    dataSource: string,
+    generatedAt?: string,
+    digestUntil?: string,
+    digestWindow?: string,
+  ): string {
     const linked = escHtml(dataSource).replace(
       /Yahoo Finance/g,
       '<a href="https://finance.yahoo.com" target="_blank" rel="noopener noreferrer" class="data-reference-link">Yahoo Finance</a>',
     );
+    const digestNote = digestUntil
+      ? ` | Chốt tổng hợp trước: ${escHtml(digestUntil)}`
+      : digestWindow
+        ? ` | Khung tin: ${escHtml(digestWindow)} (GMT+7)`
+        : '';
     const updatedAt = generatedAt
-      ? ` | Cập nhật: ${escHtml(new Date(generatedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }))}`
+      ? ` | Tải lúc: ${escHtml(new Date(generatedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }))}`
       : '';
-    return `Nguồn: ${linked}${updatedAt}`;
+    return `Nguồn: ${linked}${digestNote}${updatedAt}`;
   }
 
   function renderSectionSourceBadges(
@@ -1155,7 +1165,12 @@ export function createChatPage(): ChatPage {
       newsReportTitleEl.textContent = `Bản tin Tài chính Thế giới sáng — ${formatReportDateLabel(report.date)}`;
     }
     if (newsDataSourceEl && report.dataSource) {
-      newsDataSourceEl.innerHTML = buildDataSourceHtml(report.dataSource, report.generatedAt);
+      newsDataSourceEl.innerHTML = buildDataSourceHtml(
+        report.dataSource,
+        report.generatedAt,
+        report.digestUntil,
+        report.digestWindow,
+      );
     }
 
     // Add visual transition class

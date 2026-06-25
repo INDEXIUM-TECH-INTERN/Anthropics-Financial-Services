@@ -125,6 +125,8 @@ export interface WorldNewsReport {
   watchlist: WatchlistItem[];
   generatedAt?: string;
   dataSource?: string;
+  digestWindow?: string;
+  digestUntil?: string;
 }
 
 export interface WorldNewsDateOption {

@@ -14,6 +14,8 @@ type WorldNewsReport struct {
 	Watchlist           []WatchlistItem `json:"watchlist"`
 	GeneratedAt         string       `json:"generatedAt,omitempty"`
 	DataSource          string       `json:"dataSource,omitempty"`
+	DigestWindow        string       `json:"digestWindow,omitempty"`
+	DigestUntil         string       `json:"digestUntil,omitempty"`
 }
 
 type KeyNumber struct {
