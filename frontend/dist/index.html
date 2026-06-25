@@ -15,8 +15,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw444OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
-  <script type="module" crossorigin src="/assets/main-BrE4h7-y.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-Ck_X_yQO.css">
+  <script type="module" crossorigin src="/assets/main-CHlUIyWY.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-BHURNGUF.css">
 </head>
 <body>
 <a href="#chat-viewport" class="skip-link">Chuyển đến nội dung chính</a>
@@ -123,21 +123,17 @@
                         <button class="attach-btn" id="attach-btn" title="Đính kèm tệp">📎</button>
                         <input type="file" id="file-input" hidden multiple>
                         <textarea id="chat-input" rows="1" placeholder="Hỏi về dữ liệu tài chính, báo cáo, phân tích ngành..."></textarea>
+                        <select class="backend-select" id="backend-select" title="Chọn model">
+                            <option value="gemini">Gemini</option>
+                            <option value="claude">Claude</option>
+                        </select>
                         <button class="send-button" id="send-btn" title="Gửi">
                             <span>Gửi</span>
                             <span>↑</span>
                         </button>
                     </div>
                     <div class="input-toolbar">
-                        <div class="input-toolbar-left">
-                            <select class="backend-select" id="backend-select">
-                                <option value="gemini">Gemini</option>
-                                <option value="claude">Claude</option>
-                            </select>
-                        </div>
-                        <div class="input-toolbar-right">
-                            <span class="shortcut-hint"><kbd>Enter</kbd> gửi - <kbd>Shift+Enter</kbd> xuống dòng</span>
-                        </div>
+                        <span class="shortcut-hint"><kbd>Enter</kbd> gửi · <kbd>Shift+Enter</kbd> xuống dòng</span>
                     </div>
                     <div class="input-hint">Indexium AI có thể mắc lỗi. Xác minh thông tin quan trọng.</div>
                 </div>

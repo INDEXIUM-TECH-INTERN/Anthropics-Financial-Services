@@ -425,6 +425,8 @@
 }
 
 .chat-input-container {
+  display: flex;
+  gap: 8px;
   background: var(--bg-canvas);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-xl);
@@ -484,13 +486,38 @@
   border-top: none;
   margin-top: 10px;
   padding-top: 0;
+  justify-content: flex-end;
 }
 
 .backend-select {
-  border-radius: var(--radius-full);
-  padding: 5px 12px;
-  background: var(--bg-canvas);
+  flex-shrink: 0;
+  height: 42px;
+  border-radius: var(--radius-lg);
+  padding: 0 28px 0 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 13px;
   font-weight: 500;
+  font-family: var(--font-body);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%238a919b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.backend-select:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.backend-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
 }
 
 .shortcut-hint kbd {
@@ -642,5 +669,17 @@
   .welcome-chip {
     min-height: auto;
     padding: 14px 16px;
+  }
+
+  .backend-select {
+    height: 38px;
+    padding: 0 24px 0 10px;
+    font-size: 12px;
+  }
+
+  .send-button {
+    min-width: 72px;
+    height: 38px;
+    padding: 0 12px;
   }
 }

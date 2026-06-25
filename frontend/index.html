@@ -121,21 +121,17 @@
                         <button class="attach-btn" id="attach-btn" title="Đính kèm tệp">📎</button>
                         <input type="file" id="file-input" hidden multiple>
                         <textarea id="chat-input" rows="1" placeholder="Hỏi về dữ liệu tài chính, báo cáo, phân tích ngành..."></textarea>
+                        <select class="backend-select" id="backend-select" title="Chọn model">
+                            <option value="gemini">Gemini</option>
+                            <option value="claude">Claude</option>
+                        </select>
                         <button class="send-button" id="send-btn" title="Gửi">
                             <span>Gửi</span>
                             <span>↑</span>
                         </button>
                     </div>
                     <div class="input-toolbar">
-                        <div class="input-toolbar-left">
-                            <select class="backend-select" id="backend-select">
-                                <option value="gemini">Gemini</option>
-                                <option value="claude">Claude</option>
-                            </select>
-                        </div>
-                        <div class="input-toolbar-right">
-                            <span class="shortcut-hint"><kbd>Enter</kbd> gửi - <kbd>Shift+Enter</kbd> xuống dòng</span>
-                        </div>
+                        <span class="shortcut-hint"><kbd>Enter</kbd> gửi · <kbd>Shift+Enter</kbd> xuống dòng</span>
                     </div>
                     <div class="input-hint">Indexium AI có thể mắc lỗi. Xác minh thông tin quan trọng.</div>
                 </div>
