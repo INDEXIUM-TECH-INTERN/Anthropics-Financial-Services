@@ -36,7 +36,7 @@ import { fetchSessions, createNewSession, removeSession as deleteSession } from 
 import { fetchHistory, groupHistoryMessages } from '../../entities/chat/api/history';
 
 import { $sidebarOpen, toggleSidebar, setSidebarOpen } from '../../features/sidebar/toggle/model';
-import { $settingsOpen, closeSettings } from '../../features/settings/modal/model';
+import { closeSettings } from '../../features/settings/modal/model';
 import { setTheme, type ThemeMode } from '../../features/theme/toggle';
 
 export interface ChatPage {
@@ -93,7 +93,6 @@ export function createChatPage(): ChatPage {
   const scrollToBottomBtn = $('scroll-to-bottom');
   const sidebarBackdrop = $('sidebar-backdrop');
   const settingsModal = $('settings-modal')!;
-  const settingsTrigger = $('settings-trigger');
   const closeSettingsBtn = $('close-settings');
   const closeSettingsBtn2 = $('close-settings-btn');
   const saveSettingsBtn = $('save-settings-btn');
@@ -1251,7 +1250,6 @@ export function createChatPage(): ChatPage {
     window.addEventListener('resize', () => syncSidebarUI(), { passive: true });
 
     // Settings
-    settingsTrigger?.addEventListener('click', () => $settingsOpen.set(true));
     closeSettingsBtn?.addEventListener('click', () => closeSettings());
     closeSettingsBtn2?.addEventListener('click', () => closeSettings());
     settingsModal?.addEventListener('click', (e) => {
