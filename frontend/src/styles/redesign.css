@@ -570,6 +570,20 @@
   box-shadow: var(--shadow-elevated);
 }
 
+.key-metrics-row .metric-card {
+  padding: 10px 12px 8px;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.key-metrics-row .metric-card-value {
+  font-size: 15px;
+}
+
+.key-metrics-row .metric-card-visual {
+  height: 26px;
+}
+
 .metric-card::before {
   transform: scaleY(1);
   width: 100%;

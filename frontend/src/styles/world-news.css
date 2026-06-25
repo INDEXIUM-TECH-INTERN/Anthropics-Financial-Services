@@ -68,17 +68,72 @@
   color: white;
 }
 
+/* ─── Key Metrics Row (compact sparklines) ─── */
+.key-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0 8px;
+}
+
+.key-metrics-row .metric-card {
+  padding: 10px 12px 8px;
+  border-radius: 12px;
+}
+
+.key-metrics-row .metric-card::before {
+  height: 2px;
+}
+
+.key-metrics-row .metric-card-header {
+  margin-bottom: 4px;
+  gap: 6px;
+}
+
+.key-metrics-row .metric-card-label {
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.key-metrics-row .metric-card-change {
+  font-size: 10px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+
+.key-metrics-row .metric-card-value-area {
+  margin-bottom: 4px;
+}
+
+.key-metrics-row .metric-card-value {
+  font-size: 15px;
+  margin-bottom: 0;
+  line-height: 1.2;
+}
+
+.key-metrics-row .metric-card-visual {
+  height: 26px;
+  margin-top: 2px;
+}
+
+.key-metrics-row .metric-card:hover {
+  transform: translateY(-1px);
+}
+
 /* ─── Canvas Chart Drawing Styles ─── */
 .chart-canvas {
   border-radius: 8px;
   width: 100%;
-  height: 200px;
+  height: 120px;
 }
 
 .chart-container {
   position: relative;
   width: 100%;
-  margin: 16px 0;
+  margin: 10px 0;
 }
 
 .news-thumbnail {
@@ -278,12 +333,13 @@
 
 .media-and-chart-block {
   display: block;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .media-and-chart-block .chart-container {
   width: 100%;
-  min-height: 180px;
+  min-height: 0;
+  margin: 0;
 }
 
 /* ─── Breaking News Styles ─── */
@@ -453,6 +509,32 @@
 }
 
 @media (max-width: 640px) {
+  .key-metrics-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 12px 0 6px;
+  }
+
+  .key-metrics-row .metric-card {
+    padding: 8px 8px 6px;
+  }
+
+  .key-metrics-row .metric-card-label {
+    font-size: 10px;
+  }
+
+  .key-metrics-row .metric-card-value {
+    font-size: 13px;
+  }
+
+  .key-metrics-row .metric-card-visual {
+    height: 22px;
+  }
+
+  .chart-canvas {
+    height: 100px;
+  }
+
   .news-column-left,
   .news-column-right {
     width: 100%;
