@@ -307,34 +307,54 @@ func buildGoldSection(gold, dxy *quoteSnapshot, news []rssItem, tradingLabel str
 	return sec
 }
 
-func buildQuickHighlights(sp, nd, wti, brent, gold, dxy *quoteSnapshot, news []rssItem, tradingLabel string) []string {
-	var out []string
+func buildQuickHighlights(sp, nd, wti, brent, gold, dxy *quoteSnapshot, news []rssItem, tradingLabel string) []QuickHighlight {
+	var out []QuickHighlight
 	if sp != nil {
 		dir := "giảm"
 		if sp.IsPositive {
 			dir = "tăng"
 		}
 		_, pct, _ := formatChange(sp.Change, sp.ChangePct)
-		out = append(out, fmt.Sprintf("S&P 500 %s %s, đóng cửa phiên %s ở %s.", dir, pct, tradingLabel, formatPrice(sp.Symbol, sp.Price)))
+		out = append(out, QuickHighlight{
+			Text:   fmt.Sprintf("S&P 500 %s %s, đóng cửa phiên %s ở %s.", dir, pct, tradingLabel, formatPrice(sp.Symbol, sp.Price)),
+			Source: "CNBC",
+			URL:    "https://www.cnbc.com/world/",
+		})
 	}
 	if wti != nil && brent != nil {
 		_, wPct, _ := formatChange(wti.Change, wti.ChangePct)
 		_, bPct, _ := formatChange(brent.Change, brent.ChangePct)
-		out = append(out, fmt.Sprintf("Dầu WTI %s, Brent %s — WTI %s, Brent %s.", wPct, bPct, formatPrice(wti.Symbol, wti.Price), formatPrice(brent.Symbol, brent.Price)))
+		out = append(out, QuickHighlight{
+			Text:   fmt.Sprintf("Dầu WTI %s, Brent %s — WTI %s, Brent %s.", wPct, bPct, formatPrice(wti.Symbol, wti.Price), formatPrice(brent.Symbol, brent.Price)),
+			Source: marketDataSource,
+			URL:    yahooFinanceQuoteURL("CL%3DF"),
+		})
 	}
 	if gold != nil {
 		_, gPct, _ := formatChange(gold.Change, gold.ChangePct)
-		out = append(out, fmt.Sprintf("Vàng thế giới %s (%s).", formatPrice(gold.Symbol, gold.Price), gPct))
+		out = append(out, QuickHighlight{
+			Text:   fmt.Sprintf("Vàng thế giới %s (%s).", formatPrice(gold.Symbol, gold.Price), gPct),
+			Source: marketDataSource,
+			URL:    yahooFinanceQuoteURL("GC%3DF"),
+		})
 	}
 	if dxy != nil {
 		_, dPct, _ := formatChange(dxy.Change, dxy.ChangePct)
-		out = append(out, fmt.Sprintf("USD Index (DXY) %s.", dPct))
+		out = append(out, QuickHighlight{
+			Text:   fmt.Sprintf("USD Index (DXY) %s.", dPct),
+			Source: marketDataSource,
+			URL:    yahooFinanceQuoteURL("DX-Y.NYB"),
+		})
 	}
 	for _, it := range news {
 		if len(out) >= 6 {
 			break
 		}
-		out = append(out, fmt.Sprintf("[%s] %s", it.Source, it.Title))
+		out = append(out, QuickHighlight{
+			Text:   it.Title,
+			Source: it.Source,
+			URL:    it.Link,
+		})
 	}
 	return out
 }

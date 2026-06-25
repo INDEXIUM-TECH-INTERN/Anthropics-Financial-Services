@@ -3,7 +3,7 @@ package worldnews
 // WorldNewsReport mirrors the frontend dashboard schema.
 type WorldNewsReport struct {
 	Date                string       `json:"date"`
-	QuickHighlights     []string     `json:"quickHighlights"`
+	QuickHighlights     []QuickHighlight `json:"quickHighlights"`
 	KeyNumbers          []KeyNumber  `json:"keyNumbers"`
 	Stocks              StockSection `json:"stocks"`
 	Oil                 OilSection   `json:"oil"`
@@ -16,6 +16,12 @@ type WorldNewsReport struct {
 	DataSource          string       `json:"dataSource,omitempty"`
 	DigestWindow        string       `json:"digestWindow,omitempty"`
 	DigestUntil         string       `json:"digestUntil,omitempty"`
+}
+
+type QuickHighlight struct {
+	Text   string `json:"text"`
+	URL    string `json:"url,omitempty"`
+	Source string `json:"source,omitempty"`
 }
 
 type KeyNumber struct {

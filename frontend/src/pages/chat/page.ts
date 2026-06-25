@@ -902,6 +902,25 @@ export function createChatPage(): ChatPage {
     ref.innerHTML = `Dữ liệu biểu đồ: <a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer" class="data-reference-link">${escHtml(source)}${symbolPart}</a>`;
   }
 
+  function renderQuickHighlightItem(h: { text: string; url?: string; source?: string }): string {
+    const text = escHtml(h.text);
+    if (h.url) {
+      const sourceBadge = h.source
+        ? `<span class="highlights-item-source">${escHtml(h.source)}</span>`
+        : '';
+      return `
+        <li class="highlights-item highlights-item-link">
+          <a href="${escHtml(h.url)}" target="_blank" rel="noopener noreferrer" class="highlights-item-anchor">
+            ${sourceBadge}
+            <span class="highlights-item-text">${text}</span>
+          </a>
+        </li>
+      `;
+    }
+    const prefix = h.source ? `[${escHtml(h.source)}] ` : '';
+    return `<li class="highlights-item">${prefix}${text}</li>`;
+  }
+
   function renderMetricRef(source?: string, url?: string, symbol?: string): string {
     if (!url) return '';
     const label = source || 'Nguồn';
@@ -1182,7 +1201,7 @@ export function createChatPage(): ChatPage {
     const quickHighlightsList = $('quick-highlights-list');
     if (quickHighlightsList) {
       quickHighlightsList.innerHTML = report.quickHighlights
-        .map(h => `<li class="highlights-item">${escHtml(h)}</li>`)
+        .map((h) => renderQuickHighlightItem(h))
         .join('');
     }
 

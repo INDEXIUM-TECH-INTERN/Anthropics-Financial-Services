@@ -112,9 +112,15 @@ export interface WatchlistItem {
   source: string;
 }
 
+export interface QuickHighlight {
+  text: string;
+  url?: string;
+  source?: string;
+}
+
 export interface WorldNewsReport {
   date: string;
-  quickHighlights: string[];
+  quickHighlights: QuickHighlight[];
   keyNumbers: KeyNumberMetric[];
   stocks: StockMarketData;
   oil: OilMarketData;
