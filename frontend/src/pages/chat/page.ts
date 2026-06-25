@@ -5,9 +5,10 @@ import { ApiClient } from '../../shared/api/client';
 import { SSEManager } from '../../shared/api/sse';
 import { $, escHtml, readFileAsBase64 } from '../../shared/lib/dom';
 import {
-  fileToDisplayAttachment,
+  inferMimeType,
   payloadToDisplayAttachment,
 } from '../../shared/lib/message-attachments';
+import { createImageLightbox } from '../../shared/ui/image-lightbox';
 import { renderMarkdown } from '../../shared/lib/markdown';
 import { showToast } from '../../shared/ui/toast';
 import type { ChatSession, AttachmentPayload, TokenMetrics } from '../../shared/api/types';
@@ -147,6 +148,7 @@ export function createChatPage(): ChatPage {
 
   // ═══ WIDGETS ═══
   const chatWidget = createChatViewWidget(chatContent, chatViewport);
+  const imageLightbox = createImageLightbox();
   const sidebarWidget = createSidebarWidget(conversationsList, {
     onSelect: (id) => {
       void switchChat(id);
@@ -436,14 +438,24 @@ export function createChatPage(): ChatPage {
     if (welcomeState) welcomeState.style.display = 'none';
 
     const files = [...pendingAttachments];
+    pendingAttachments = [];
+    renderAttachments();
+
+    const attachmentPayloads: AttachmentPayload[] = [];
+    for (const file of files) {
+      attachmentPayloads.push({
+        name: file.name,
+        type: inferMimeType(file.name, file.type),
+        data: await readFileAsBase64(file),
+      });
+    }
+
+    const displayAttachments = attachmentPayloads.map(payloadToDisplayAttachment);
 
     if (textOverride === null) {
       if (!$currentChatId.get()) await createNewChat();
-      const displayAttachments = files.map(fileToDisplayAttachment);
       chatWidget.appendMessage(text, 'user', false, undefined, displayAttachments);
     }
-    pendingAttachments = [];
-    renderAttachments();
 
     if (chatInput) {
       chatInput.value = '';
@@ -490,16 +502,11 @@ export function createChatPage(): ChatPage {
     abortController = new AbortController();
 
     try {
-      const att: AttachmentPayload[] = [];
-      for (const f of files) {
-        att.push({ name: f.name, type: f.type, data: await readFileAsBase64(f) });
-      }
-
       fullText = '';
       await api.streamChat(
         text,
         $currentChatId.get() || undefined,
-        att,
+        attachmentPayloads,
         abortController.signal,
         (tok) => {
           if (typingEl.parentNode) typingEl.remove();
@@ -1365,7 +1372,8 @@ export function createChatPage(): ChatPage {
         pipelineSidebar?.classList.toggle('collapsed');
       }
       if (e.key === 'Escape') {
-        if (settingsModal && !settingsModal.classList.contains('hidden')) closeSettings();
+        if (imageLightbox.isOpen()) imageLightbox.close();
+        else if (settingsModal && !settingsModal.classList.contains('hidden')) closeSettings();
         else if (shortcutsPanel && !shortcutsPanel.classList.contains('hidden')) shortcutsPanel.classList.add('hidden');
         else if ($sidebarOpen.get() && currentTab === 'chat') setSidebarOpen(false);
       }
@@ -1374,6 +1382,14 @@ export function createChatPage(): ChatPage {
     closeShortcuts?.addEventListener('click', () => shortcutsPanel?.classList.add('hidden'));
     shortcutsPanel?.addEventListener('click', (e) => {
       if (e.target === shortcutsPanel) shortcutsPanel.classList.add('hidden');
+    });
+
+    chatContent.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('.msg-attachment-image-btn');
+      if (!btn) return;
+      const img = btn.querySelector<HTMLImageElement>('.msg-attachment-image');
+      if (!img?.src) return;
+      imageLightbox.open(img.src, img.alt || 'Ảnh đính kèm');
     });
 
     // Attachments
@@ -1417,6 +1433,7 @@ export function createChatPage(): ChatPage {
 
   function destroy() {
     chatWidget.destroy();
+    imageLightbox.destroy();
     sidebarWidget.destroy();
     if (pipelineWidget) pipelineWidget.destroy();
     sseManager.disconnect();

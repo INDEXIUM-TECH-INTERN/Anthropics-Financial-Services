@@ -320,3 +320,73 @@
   font-weight: 600;
   color: var(--text-primary);
 }
+
+/* ── Image Lightbox ── */
+.image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: fadeIn var(--transition-base) ease both;
+}
+
+.image-lightbox-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: min(96vw, 1200px);
+  max-height: 92vh;
+}
+
+.image-lightbox-img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(92vh - 72px);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  background: var(--bg-canvas);
+}
+
+.image-lightbox-caption {
+  margin: 0;
+  max-width: 100%;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.82);
+  text-align: center;
+  word-break: break-word;
+}
+
+.image-lightbox-close {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.image-lightbox-close:hover {
+  background: rgba(0, 0, 0, 0.75);
+  transform: scale(1.05);
+}
