@@ -6,7 +6,6 @@ import { SSEManager } from '../../shared/api/sse';
 import { $, escHtml, readFileAsBase64 } from '../../shared/lib/dom';
 import { renderMarkdown } from '../../shared/lib/markdown';
 import { showToast } from '../../shared/ui/toast';
-import { createConnectionStatus } from '../../shared/ui/connection-status';
 import type { ChatSession, AttachmentPayload, TokenMetrics } from '../../shared/api/types';
 
 import { createChatViewWidget } from '../../widgets/chat-view/compose';
@@ -153,41 +152,6 @@ export function createChatPage(): ChatPage {
   });
   const pipelineTarget = pipelineSidebar?.querySelector('.pipeline-steps') as HTMLElement | null;
   const pipelineWidget = pipelineTarget ? createPipelineWidget(pipelineTarget) : null;
-
-  // ═══ CONNECTION STATUS ═══
-  const headerEl = document.querySelector('.header-right') as HTMLElement | null;
-  let connStatus: ReturnType<typeof createConnectionStatus> | null = null;
-
-  function initConnectionStatus() {
-    if (!headerEl) return;
-    connStatus = createConnectionStatus(headerEl, {
-      onReconnect() {
-        connStatus?.setStatus('reconnecting');
-        sseManager.disconnect();
-        sseManager.connect(currentBaseUrl, {
-          onMessage: (d) => handleSSEMessage(d),
-          onError: (msg) => {
-            addLogEntry(msg, 'error');
-            connStatus?.setStatus('disconnected');
-          },
-        });
-        fetch(`${currentBaseUrl}/health`, { signal: AbortSignal.timeout(5000) })
-          .then((res) => {
-            connStatus?.setStatus(res.ok ? 'connected' : 'disconnected');
-          })
-          .catch(() => {
-            connStatus?.setStatus('disconnected');
-          });
-      },
-    });
-    fetch(`${currentBaseUrl}/health`, { signal: AbortSignal.timeout(5000) })
-      .then((res) => {
-        connStatus?.setStatus(res.ok ? 'connected' : 'disconnected');
-      })
-      .catch(() => {
-        connStatus?.setStatus('disconnected');
-      });
-  }
 
   // ═══ SSE ═══
   function handleSSEMessage(d: Record<string, unknown>) {
@@ -1413,7 +1377,6 @@ export function createChatPage(): ChatPage {
 
   // ═══ INIT ═══
   async function init() {
-    initConnectionStatus();
     setupEventListeners();
     syncSidebarUI();
 
@@ -1446,7 +1409,6 @@ export function createChatPage(): ChatPage {
     if (pipelineWidget) pipelineWidget.destroy();
     sseManager.disconnect();
     if (abortController) abortController.abort();
-    if (connStatus) connStatus.destroy();
   }
 
   return { init, destroy };
