@@ -5,6 +5,9 @@
 /* ── Chat Viewport ── */
 .chat-viewport {
   scroll-behavior: smooth;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .chat-content {
@@ -578,7 +581,7 @@ code { font-family: var(--font-mono); font-size: 12px; line-height: 1.7; }
 
 /* ── Scroll to Bottom ── */
 .scroll-to-bottom-btn {
-  position: fixed; bottom: 24px; right: 24px; width: 36px; height: 36px;
+  position: fixed; bottom: 148px; right: 24px; width: 36px; height: 36px;
   border: 1px solid var(--border-default); border-radius: 50%;
   background: var(--bg-canvas);
   color: var(--text-secondary); cursor: pointer; font-size: 16px;

@@ -5,7 +5,10 @@
 /* ── Container (class="input-area" in HTML) ── */
 .input-area {
   padding: 0 24px 24px;
-  position: relative;
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  flex-shrink: 0;
   max-width: 828px; /* 780px content + 48px padding to align with .chat-content */
   margin: 0 auto;
   width: 100%;

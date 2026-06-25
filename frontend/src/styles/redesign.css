@@ -9,8 +9,12 @@
     radial-gradient(ellipse 50% 40% at 100% 0%, rgba(99, 102, 241, 0.1), transparent 50%),
     radial-gradient(ellipse 40% 35% at 0% 100%, rgba(6, 182, 212, 0.08), transparent 45%),
     var(--bg-void);
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-height: 100dvh;
   min-height: 100dvh;
-  overflow-x: clip;
+  overflow: hidden;
 }
 
 .glass-orb { opacity: 0.45; filter: blur(120px); }
@@ -21,6 +25,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;
   background: transparent;
 }
 
@@ -303,6 +308,9 @@
   flex: 1 1 auto;
   min-height: 0;
   padding: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .chat-content {
@@ -405,12 +413,15 @@
   box-shadow: 0 4px 12px var(--accent-glow);
 }
 
-/* ── Input area ── */
+/* ── Input area — pinned to bottom ── */
 .input-area {
   flex-shrink: 0;
   padding: 14px 24px 20px;
   background: transparent;
   border-top: none;
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
 }
 
 .chat-input-container {

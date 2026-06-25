@@ -25,11 +25,15 @@ export interface ChatViewWidget {
   destroy: () => void;
 }
 
-export function createChatViewWidget(container: HTMLElement, _viewport: HTMLElement): ChatViewWidget {
+export function createChatViewWidget(container: HTMLElement, viewport: HTMLElement): ChatViewWidget {
   let abortController: AbortController | null = null;
 
   function scrollToBottom() {
     requestAnimationFrame(() => {
+      if (viewport) {
+        viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+        return;
+      }
       const lastMessage = container.lastElementChild;
       if (lastMessage) {
         lastMessage.scrollIntoView({ behavior: 'smooth', block: 'end' });

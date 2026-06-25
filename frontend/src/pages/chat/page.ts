@@ -1361,10 +1361,10 @@ export function createChatPage(): ChatPage {
     if (scrollToBottomBtn) {
       const updateScrollButton = () => {
         const distance =
-          document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
+          chatViewport.scrollHeight - chatViewport.scrollTop - chatViewport.clientHeight;
         scrollToBottomBtn.classList.toggle('hidden', distance <= 200);
       };
-      window.addEventListener('scroll', updateScrollButton, { passive: true });
+      chatViewport.addEventListener('scroll', updateScrollButton, { passive: true });
       updateScrollButton();
       scrollToBottomBtn.addEventListener('click', () => {
         chatWidget.scrollToBottom();
