@@ -8,7 +8,7 @@
   flex-direction: column;
   padding: var(--spacing-2xl) var(--spacing-lg);
   gap: var(--spacing-2xl);
-  background: var(--bg-canvas);
+  background: transparent;
   animation: fadeIn 0.5s ease-out;
 }
 
