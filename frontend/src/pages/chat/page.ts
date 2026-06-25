@@ -836,15 +836,6 @@ export function createChatPage(): ChatPage {
     `;
   }
 
-  function renderTopicIcon(thumbnail?: string, logo?: string, title?: string): string {
-    const src = thumbnail || logo;
-    if (!src) {
-      return `<span class="news-topic-fallback" aria-hidden="true">📰</span>`;
-    }
-    const alt = escHtml(title || 'Ảnh bài viết');
-    return `<img class="news-topic-icon" src="${escHtml(src)}" alt="${alt}" width="28" height="28" loading="lazy" decoding="async" onerror="this.outerHTML='<span class=\\'news-topic-fallback\\' aria-hidden=\\'true\\'>📰</span>'">`;
-  }
-
   function renderSourceBadge(source: string, logo?: string): string {
     return `
       <span class="news-item-source">
@@ -856,12 +847,8 @@ export function createChatPage(): ChatPage {
 
   function renderNewsCard(n: { title: string; summary: string; source: string; time: string; url?: string; thumbnail?: string; logo?: string }): string {
     const titleText = escHtml(n.title);
-    const icon = renderTopicIcon(n.thumbnail, n.logo, n.title);
     const inner = `
-      <div class="news-item-preview">
-        ${icon}
-        <h5 class="news-item-title">${titleText}</h5>
-      </div>
+      <h5 class="news-item-title">${titleText}</h5>
       ${n.summary ? `<p class="news-item-desc">${escHtml(n.summary)}</p>` : ''}
       <div class="news-item-footer">
         ${renderSourceBadge(n.source, n.logo)}
