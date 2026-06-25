@@ -4,6 +4,10 @@
 import { ApiClient } from '../../shared/api/client';
 import { SSEManager } from '../../shared/api/sse';
 import { $, escHtml, readFileAsBase64 } from '../../shared/lib/dom';
+import {
+  fileToDisplayAttachment,
+  payloadToDisplayAttachment,
+} from '../../shared/lib/message-attachments';
 import { renderMarkdown } from '../../shared/lib/markdown';
 import { showToast } from '../../shared/ui/toast';
 import type { ChatSession, AttachmentPayload, TokenMetrics } from '../../shared/api/types';
@@ -401,7 +405,14 @@ export function createChatPage(): ChatPage {
       let hasMessages = false;
       let idx = 0;
       for (const g of grouped) {
-        chatWidget.appendMessage(g.content, g.role, false, g.metrics as TokenMetrics | undefined);
+        const historyAttachments = g.attachments?.map(payloadToDisplayAttachment);
+        chatWidget.appendMessage(
+          g.content,
+          g.role,
+          false,
+          g.metrics as TokenMetrics | undefined,
+          historyAttachments,
+        );
         const msgs = chatContent.querySelectorAll('.message');
         (msgs[msgs.length - 1] as HTMLElement).style.animationDelay = `${idx * 0.06}s`;
         idx++;
@@ -424,12 +435,13 @@ export function createChatPage(): ChatPage {
 
     if (welcomeState) welcomeState.style.display = 'none';
 
+    const files = [...pendingAttachments];
+
     if (textOverride === null) {
       if (!$currentChatId.get()) await createNewChat();
-      chatWidget.appendMessage(text, 'user');
+      const displayAttachments = files.map(fileToDisplayAttachment);
+      chatWidget.appendMessage(text, 'user', false, undefined, displayAttachments);
     }
-
-    const files = [...pendingAttachments];
     pendingAttachments = [];
     renderAttachments();
 

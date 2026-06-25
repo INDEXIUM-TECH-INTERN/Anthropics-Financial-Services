@@ -51,6 +51,20 @@ describe('groupHistoryMessages', () => {
     expect(result[0]?.role).toBe('user');
   });
 
+  it('should keep image-only user messages', () => {
+    const messages: HistoryMessage[] = [
+      {
+        role: 'user',
+        content: '',
+        attachments: [{ name: 'chart.png', type: 'image/png', data: 'aGVsbG8=' }],
+      },
+    ];
+    const result = groupHistoryMessages(messages);
+    expect(result.length).toBe(1);
+    expect(result[0]?.attachments?.length).toBe(1);
+    expect(result[0]?.attachments?.[0]?.name).toBe('chart.png');
+  });
+
   it('should keep latest metrics when grouping', () => {
     const messages: HistoryMessage[] = [
       { role: 'assistant', content: 'First', latency_ms: 100, token_in: 10, token_out: 5, ram_mb: '100' },

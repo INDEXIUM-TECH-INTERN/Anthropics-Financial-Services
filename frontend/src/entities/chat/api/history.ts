@@ -1,6 +1,6 @@
 import { ApiClient } from '../../../shared/api/client';
 import { normalizeMessageRole, type MessageSender } from '../../../shared/lib/message-role';
-import type { HistoryResponse, HistoryMessage } from '../../../shared/api/types';
+import type { HistoryResponse, HistoryMessage, AttachmentPayload } from '../../../shared/api/types';
 
 export async function fetchHistory(api: ApiClient, chatId: string): Promise<HistoryMessage[]> {
   const res: HistoryResponse = await api.getHistory(chatId);
@@ -10,6 +10,7 @@ export async function fetchHistory(api: ApiClient, chatId: string): Promise<Hist
 export interface GroupedMessage {
   role: MessageSender;
   content: string;
+  attachments?: AttachmentPayload[];
   metrics?: {
     token_in?: number;
     token_out?: number;
@@ -45,8 +46,8 @@ export function groupHistoryMessages(messages: HistoryMessage[]): GroupedMessage
 
   for (const msg of messages) {
     if (isInternalHistoryMessage(msg)) continue;
-    let content = msg.content?.trim();
-    if (!content) continue;
+    let content = msg.content?.trim() || '';
+    if (!content && !msg.attachments?.length) continue;
     if (msg.role === 'assistant') {
       content = stripLeakedSkillPrefix(content);
     }
@@ -57,6 +58,9 @@ export function groupHistoryMessages(messages: HistoryMessage[]): GroupedMessage
     const last = grouped[grouped.length - 1];
     if (last && last.role === role) {
       last.content += '\n\n' + content;
+      if (msg.attachments?.length) {
+        last.attachments = [...(last.attachments || []), ...msg.attachments];
+      }
       if (msg.latency_ms) {
         last.metrics = {
           token_in: msg.token_in,
@@ -70,6 +74,7 @@ export function groupHistoryMessages(messages: HistoryMessage[]): GroupedMessage
       grouped.push({
         role,
         content,
+        attachments: msg.attachments?.length ? [...msg.attachments] : undefined,
         metrics: msg.latency_ms
           ? {
               token_in: msg.token_in,

@@ -5,6 +5,10 @@ import { renderMarkdown, highlightCode } from '../../shared/lib/markdown';
 import { renderErrorHTML, diagnoseError } from '../../shared/lib/errors';
 import { createMessageSkeleton } from '../../shared/ui/skeleton';
 import { escHtml } from '../../shared/lib/dom';
+import {
+  appendAttachmentsToElement,
+  type MessageDisplayAttachment,
+} from '../../shared/lib/message-attachments';
 import { normalizeMessageRole, type MessageSender } from '../../shared/lib/message-role';
 import type { TokenMetrics } from '../../shared/api/types';
 
@@ -14,6 +18,7 @@ export interface ChatViewWidget {
     sender: 'user' | 'bot',
     isStreaming?: boolean,
     metrics?: TokenMetrics,
+    attachments?: MessageDisplayAttachment[],
   ) => { el: HTMLElement | null; content: HTMLElement | null; footer: HTMLElement | null };
   appendStreamingBotMessage: () => { el: HTMLElement; content: HTMLElement; footer: HTMLElement };
   finalizeStreaming: (fullText: string, metrics: TokenMetrics, elapsed: string) => void;
@@ -48,6 +53,7 @@ export function createChatViewWidget(container: HTMLElement, viewport: HTMLEleme
     sender: MessageSender | string,
     _isStreaming = false,
     metrics?: TokenMetrics,
+    attachments?: MessageDisplayAttachment[],
   ): { el: HTMLElement | null; content: HTMLElement | null; footer: HTMLElement | null } {
     const role = typeof sender === 'string' ? normalizeMessageRole(sender) ?? 'bot' : sender;
     const el = document.createElement('div');
@@ -63,6 +69,7 @@ export function createChatViewWidget(container: HTMLElement, viewport: HTMLEleme
     const content = document.createElement('div');
     content.className = 'msg-content';
     if (text) content.innerHTML = role === 'bot' ? renderMarkdown(text) : escHtml(text);
+    if (attachments?.length) appendAttachmentsToElement(content, attachments);
 
     body.appendChild(content);
 
