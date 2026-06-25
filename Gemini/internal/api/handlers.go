@@ -438,6 +438,50 @@ func handleWorldNewsDates(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(worldnews.DefaultService.GetAvailableDates())
 }
 
+func handleWorldNewsFavicon(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w, r)
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	host := strings.TrimSpace(r.URL.Query().Get("host"))
+	data, mime, err := worldnews.DefaultService.FetchFavicon(host)
+	if err != nil {
+		http.Error(w, "favicon not found", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", mime)
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
+}
+
+func handleWorldNewsImage(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w, r)
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	imageURL := strings.TrimSpace(r.URL.Query().Get("url"))
+	data, mime, err := worldnews.DefaultService.FetchProxiedImage(imageURL)
+	if err != nil {
+		http.Error(w, "image not found", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", mime)
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
+}
+
 func handleConfigKeys(agent AgentInterface) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		enableCORS(w, r)

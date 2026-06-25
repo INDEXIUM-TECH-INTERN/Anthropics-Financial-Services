@@ -57,6 +57,7 @@ export interface NewsArticle {
   source: string;
   time: string;
   url?: string;
+  thumbnail?: string;
   logo?: string;
 }
 
@@ -65,6 +66,8 @@ export interface BreakingNews {
   source: string;
   content: string;
   url?: string;
+  thumbnail?: string;
+  logo?: string;
   isUrgent: boolean;
 }
 

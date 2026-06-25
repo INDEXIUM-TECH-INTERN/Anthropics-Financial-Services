@@ -75,19 +75,23 @@ type GoldUSDSection struct {
 }
 
 type NewsArticle struct {
-	Title   string `json:"title"`
-	Summary string `json:"summary"`
-	Source  string `json:"source"`
-	Time    string `json:"time"`
-	URL     string `json:"url,omitempty"`
+	Title     string `json:"title"`
+	Summary   string `json:"summary"`
+	Source    string `json:"source"`
+	Time      string `json:"time"`
+	URL       string `json:"url,omitempty"`
+	Thumbnail string `json:"thumbnail,omitempty"`
+	Logo      string `json:"logo,omitempty"`
 }
 
 type BreakingNews struct {
-	Time     string `json:"time"`
-	Source   string `json:"source"`
-	Content  string `json:"content"`
-	URL      string `json:"url,omitempty"`
-	IsUrgent bool   `json:"isUrgent"`
+	Time      string `json:"time"`
+	Source    string `json:"source"`
+	Content   string `json:"content"`
+	URL       string `json:"url,omitempty"`
+	Thumbnail string `json:"thumbnail,omitempty"`
+	Logo      string `json:"logo,omitempty"`
+	IsUrgent  bool   `json:"isUrgent"`
 }
 
 type WatchlistItem struct {

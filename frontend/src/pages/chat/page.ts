@@ -820,6 +820,31 @@ export function createChatPage(): ChatPage {
 
   const DEFAULT_NEWS_HISTORY_DAYS = 90;
 
+  function renderPublisherLogo(logo?: string, source?: string): string {
+    if (!logo) return '';
+    const alt = escHtml(source || 'Nguồn tin');
+    return `<img class="news-publisher-logo" src="${escHtml(logo)}" alt="${alt}" width="20" height="20" loading="lazy" decoding="async" onerror="this.remove()">`;
+  }
+
+  function renderArticleThumbnail(thumbnail?: string, title?: string): string {
+    if (!thumbnail) return '';
+    const alt = escHtml(title || 'Ảnh bài viết');
+    return `
+      <div class="news-thumb-wrap">
+        <img class="news-article-thumb" src="${escHtml(thumbnail)}" alt="${alt}" loading="lazy" decoding="async" onerror="this.closest('.news-thumb-wrap')?.remove()">
+      </div>
+    `;
+  }
+
+  function renderSourceBadge(source: string, logo?: string): string {
+    return `
+      <span class="news-item-source">
+        ${renderPublisherLogo(logo, source)}
+        <span>${escHtml(source)}</span>
+      </span>
+    `;
+  }
+
   function buildClientDateOptions(dayCount = DEFAULT_NEWS_HISTORY_DAYS): { value: string; label: string }[] {
     const todayIso = getVietnamTodayISO();
     const anchor = new Date(`${todayIso}T12:00:00+07:00`);
@@ -1014,12 +1039,16 @@ export function createChatPage(): ChatPage {
     if (breakingNewsListEl) {
       breakingNewsListEl.innerHTML = report.breakingNews
         .map(b => {
+          const thumb = renderArticleThumbnail(b.thumbnail, b.content);
+          const logo = renderPublisherLogo(b.logo, b.source);
+          const metaSource = `<span class="breaking-meta-source">${logo}<span>${escHtml(b.source)}</span></span>`;
           if (b.url) {
             return `
           <a href="${escHtml(b.url)}" target="_blank" rel="noopener noreferrer" class="breaking-news-item breaking-news-item-link ${b.isUrgent ? 'urgent' : ''}">
+            ${thumb}
             <div class="breaking-content-area">
               <div class="breaking-meta">
-                <span class="breaking-meta-source">${escHtml(b.source)}</span>
+                ${metaSource}
                 <span>•</span>
                 <span class="breaking-time-inline">${escHtml(b.time)}</span>
                 <span>• Breaking</span>
@@ -1031,9 +1060,10 @@ export function createChatPage(): ChatPage {
           }
           return `
           <div class="breaking-news-item ${b.isUrgent ? 'urgent' : ''}">
+            ${thumb}
             <div class="breaking-content-area">
               <div class="breaking-meta">
-                <span class="breaking-meta-source">${escHtml(b.source)}</span>
+                ${metaSource}
                 <span>•</span>
                 <span class="breaking-time-inline">${escHtml(b.time)}</span>
                 <span>• Breaking</span>
@@ -1057,10 +1087,11 @@ export function createChatPage(): ChatPage {
               : escHtml(n.title);
             return `
             <div class="news-item">
+              ${renderArticleThumbnail(n.thumbnail, n.title)}
               <h5 class="news-item-title">${titleHtml}</h5>
               <p class="news-item-desc">${escHtml(n.summary)}</p>
               <div class="news-item-footer">
-                <span class="news-item-source">📺 ${escHtml(n.source)}</span>
+                ${renderSourceBadge(n.source, n.logo)}
                 <span>${escHtml(n.time)}</span>
               </div>
             </div>
@@ -1082,10 +1113,11 @@ export function createChatPage(): ChatPage {
             : escHtml(n.title);
           return `
           <div class="news-item">
+            ${renderArticleThumbnail(n.thumbnail, n.title)}
             <h5 class="news-item-title">${titleHtml}</h5>
             <p class="news-item-desc">${escHtml(n.summary)}</p>
             <div class="news-item-footer">
-              <span class="news-item-source">📰 ${escHtml(n.source)}</span>
+              ${renderSourceBadge(n.source, n.logo)}
               <span>${escHtml(n.time)}</span>
             </div>
           </div>

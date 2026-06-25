@@ -38,13 +38,19 @@ var vtvFeed = feedSource{
 }
 
 type rssItem struct {
-	Title       string
-	Link        string
-	Description string
-	PubDate     time.Time
-	Source      string
-	Kind        string
+	Title         string
+	Link          string
+	Description   string
+	PubDate       time.Time
+	Source        string
+	Kind          string
+	Thumbnail     string
+	PublisherHost string
+	RawXML        string
 }
+
+var itemBlockRe = regexp.MustCompile(`(?is)<item\b[^>]*>(.*?)</item>`)
+var atomEntryRe = regexp.MustCompile(`(?is)<entry\b[^>]*>(.*?)</entry>`)
 
 type rss2Channel struct {
 	Items []rss2Item `xml:"channel>item"`
@@ -81,20 +87,21 @@ func morningDigestWindow(calendarDay time.Time) (time.Time, time.Time) {
 }
 
 func (s *Service) fetchNewsForReport(calendarDay time.Time, live bool) []rssItem {
+	var items []rssItem
 	if live {
-		items, _ := s.fetchAllNews()
-		return filterNewsBetween(items, time.Now().Add(-24*time.Hour), time.Now())
+		items, _ = s.fetchAllNews()
+		items = filterNewsBetween(items, time.Now().Add(-24*time.Hour), time.Now())
+	} else {
+		since, until := morningDigestWindow(calendarDay)
+		items, _ = s.fetchAllNews()
+		filtered := filterNewsBetween(items, since, until)
+		if len(filtered) < 4 {
+			historical := s.fetchHistoricalGoogleNews(since, until)
+			filtered = dedupeNews(append(filtered, historical...))
+		}
+		items = filtered
 	}
-
-	since, until := morningDigestWindow(calendarDay)
-	items, _ := s.fetchAllNews()
-	filtered := filterNewsBetween(items, since, until)
-
-	if len(filtered) < 4 {
-		historical := s.fetchHistoricalGoogleNews(since, until)
-		filtered = dedupeNews(append(filtered, historical...))
-	}
-	return filtered
+	return s.enrichItemMedia(items, 6)
 }
 
 func (s *Service) fetchHistoricalGoogleNews(since, until time.Time) []rssItem {
@@ -191,55 +198,90 @@ func (s *Service) fetchFeed(src feedSource) ([]rssItem, error) {
 }
 
 func parseFeedBody(body []byte, src feedSource) []rssItem {
-	var rss rss2Channel
-	if err := xml.Unmarshal(body, &rss); err == nil && len(rss.Items) > 0 {
-		return mapRSS2Items(rss.Items, src)
+	raw := string(body)
+	if blocks := itemBlockRe.FindAllString(raw, -1); len(blocks) > 0 {
+		var rss rss2Channel
+		if err := xml.Unmarshal(body, &rss); err == nil && len(rss.Items) > 0 {
+			return mapRSS2Items(rss.Items, src, blocks)
+		}
 	}
-
-	var atom atomFeed
-	if err := xml.Unmarshal(body, &atom); err == nil && len(atom.Entries) > 0 {
-		return mapAtomEntries(atom.Entries, src)
+	if blocks := atomEntryRe.FindAllString(raw, -1); len(blocks) > 0 {
+		var atom atomFeed
+		if err := xml.Unmarshal(body, &atom); err == nil && len(atom.Entries) > 0 {
+			return mapAtomEntries(atom.Entries, src, blocks)
+		}
 	}
 	return nil
 }
 
-func mapRSS2Items(items []rss2Item, src feedSource) []rssItem {
+func mapRSS2Items(items []rss2Item, src feedSource, rawBlocks []string) []rssItem {
 	out := make([]rssItem, 0, len(items))
-	for _, it := range items {
+	for i, it := range items {
 		title := cleanText(it.Title)
 		if title == "" {
 			continue
 		}
+		raw := ""
+		if i < len(rawBlocks) {
+			raw = rawBlocks[i]
+		}
+		sourceName := src.Name
+		if pub := publisherFromGoogleTitle(title); pub != "" {
+			sourceName = pub
+		}
+		link := strings.TrimSpace(it.Link)
+		host := extractPublisherHost(raw, link, sourceName)
+		thumb := extractThumbnailFromItemXML(raw)
 		out = append(out, rssItem{
-			Title:       title,
-			Link:        strings.TrimSpace(it.Link),
-			Description: cleanText(it.Description),
-			PubDate:     parsePubDate(it.PubDate),
-			Source:      src.Name,
-			Kind:        src.Kind,
+			Title:         title,
+			Link:          link,
+			Description:   cleanText(it.Description),
+			PubDate:       parsePubDate(it.PubDate),
+			Source:        sourceName,
+			Kind:          src.Kind,
+			Thumbnail:     thumb,
+			PublisherHost: host,
+			RawXML:        raw,
 		})
 	}
 	return out
 }
 
-func mapAtomEntries(entries []atomEntry, src feedSource) []rssItem {
+func mapAtomEntries(entries []atomEntry, src feedSource, rawBlocks []string) []rssItem {
 	out := make([]rssItem, 0, len(entries))
-	for _, e := range entries {
+	for i, e := range entries {
 		title := cleanText(e.Title)
 		if title == "" {
 			continue
 		}
 		pub := parsePubDate(e.Updated)
+		raw := ""
+		if i < len(rawBlocks) {
+			raw = rawBlocks[i]
+		}
+		link := strings.TrimSpace(e.Link.Href)
+		host := extractPublisherHost(raw, link, src.Name)
+		thumb := extractThumbnailFromItemXML(raw)
 		out = append(out, rssItem{
-			Title:       title,
-			Link:        strings.TrimSpace(e.Link.Href),
-			Description: cleanText(e.Summary),
-			PubDate:     pub,
-			Source:      src.Name,
-			Kind:        src.Kind,
+			Title:         title,
+			Link:          link,
+			Description:   cleanText(e.Summary),
+			PubDate:       pub,
+			Source:        src.Name,
+			Kind:          src.Kind,
+			Thumbnail:     thumb,
+			PublisherHost: host,
+			RawXML:        raw,
 		})
 	}
 	return out
+}
+
+func publisherFromGoogleTitle(title string) string {
+	if idx := strings.LastIndex(title, " - "); idx >= 0 {
+		return strings.TrimSpace(title[idx+3:])
+	}
+	return ""
 }
 
 func cleanText(s string) string {
@@ -298,11 +340,13 @@ func toNewsArticles(items []rssItem, live bool) []NewsArticle {
 			timeLabel = it.PubDate.In(vnTimezone).Format("02/01/2006 15:04")
 		}
 		out = append(out, NewsArticle{
-			Title:   it.Title,
-			Summary: summary,
-			Source:  it.Source,
-			Time:    timeLabel,
-			URL:     it.Link,
+			Title:     it.Title,
+			Summary:   summary,
+			Source:    it.Source,
+			Time:      timeLabel,
+			URL:       it.Link,
+			Thumbnail: mediaField(it.Thumbnail, true),
+			Logo:      mediaField(it.PublisherHost, false),
 		})
 	}
 	return out
@@ -316,11 +360,13 @@ func toBreakingNews(items []rssItem) []BreakingNews {
 			strings.Contains(strings.ToLower(it.Title), "oil") ||
 			strings.Contains(strings.ToLower(it.Title), "war")
 		out = append(out, BreakingNews{
-			Time:     it.PubDate.In(vnTimezone).Format("15:04"),
-			Source:   it.Source,
-			Content:  it.Title,
-			URL:      it.Link,
-			IsUrgent: urgent,
+			Time:      it.PubDate.In(vnTimezone).Format("15:04"),
+			Source:    it.Source,
+			Content:   it.Title,
+			URL:       it.Link,
+			Thumbnail: mediaField(it.Thumbnail, true),
+			Logo:      mediaField(it.PublisherHost, false),
+			IsUrgent:  urgent,
 		})
 	}
 	return out
@@ -348,5 +394,15 @@ func relativeTime(t time.Time) string {
 
 func fmtDuration(n int, unit string) string {
 	return fmt.Sprintf("%d %s trước", n, unit)
+}
+
+func mediaField(value string, isImage bool) string {
+	if value == "" {
+		return ""
+	}
+	if isImage {
+		return ImageProxyPath(value)
+	}
+	return FaviconProxyPath(value)
 }
 

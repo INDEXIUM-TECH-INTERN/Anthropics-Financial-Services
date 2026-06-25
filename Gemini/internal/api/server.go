@@ -130,6 +130,8 @@ func StartServer(agent AgentInterface) {
 	mux.HandleFunc("/api/config/keys", requireConfigSecret(handleConfigKeys(agent)))
 	mux.HandleFunc("/api/world-news", handleWorldNews)
 	mux.HandleFunc("/api/world-news/dates", handleWorldNewsDates)
+	mux.HandleFunc("/api/world-news/favicon", handleWorldNewsFavicon)
+	mux.HandleFunc("/api/world-news/image", handleWorldNewsImage)
 
 	// Static files
 	frontendDir := resolveFrontendDir()
