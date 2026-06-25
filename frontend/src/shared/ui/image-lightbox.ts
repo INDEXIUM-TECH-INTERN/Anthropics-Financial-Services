@@ -15,11 +15,17 @@ export function createImageLightbox(): ImageLightboxController {
   const panel = document.createElement('div');
   panel.className = 'image-lightbox-panel';
 
+  const header = document.createElement('div');
+  header.className = 'image-lightbox-header';
+
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
   closeBtn.className = 'image-lightbox-close';
   closeBtn.setAttribute('aria-label', 'Đóng');
   closeBtn.textContent = '×';
+
+  const body = document.createElement('div');
+  body.className = 'image-lightbox-body';
 
   const img = document.createElement('img');
   img.className = 'image-lightbox-img';
@@ -28,8 +34,10 @@ export function createImageLightbox(): ImageLightboxController {
   const caption = document.createElement('p');
   caption.className = 'image-lightbox-caption';
 
-  panel.appendChild(closeBtn);
-  panel.appendChild(img);
+  header.appendChild(closeBtn);
+  body.appendChild(img);
+  panel.appendChild(header);
+  panel.appendChild(body);
   panel.appendChild(caption);
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
