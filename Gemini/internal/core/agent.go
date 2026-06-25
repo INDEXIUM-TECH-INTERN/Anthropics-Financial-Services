@@ -235,9 +235,20 @@ func readUserInput() (string, bool) {
 // appendUserTextInternal appends a user message to the conversation history.
 // Must be called with a.mu held (write lock).
 func (a *Agent) appendUserTextInternal(text string, atts []messaging.Attachment) {
+	a.appendUserTextInternalWithFlags(text, atts, false)
+}
+
+// appendInternalContext appends bootstrap/agent/skill context hidden from chat UI.
+// Must be called with a.mu held (write lock).
+func (a *Agent) appendInternalContext(text string) {
+	a.appendUserTextInternalWithFlags(text, nil, true)
+}
+
+func (a *Agent) appendUserTextInternalWithFlags(text string, atts []messaging.Attachment, internal bool) {
 	msg := messaging.Message{
-		Role:    messaging.RoleUser,
-		Content: text,
+		Role:     messaging.RoleUser,
+		Content:  text,
+		Internal: internal,
 	}
 	if len(atts) > 0 {
 		msg.Attachments = make([]messaging.Attachment, len(atts))

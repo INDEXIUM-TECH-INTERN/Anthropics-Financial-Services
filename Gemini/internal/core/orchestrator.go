@@ -246,7 +246,7 @@ func (o *Orchestrator) streamFinalResponse(ctx context.Context, onChunk func(str
 		}
 
 		// Append vào history (write lock)
-		finalText := fullText.String()
+		finalText := messaging.SanitizeAssistantContent(stripThinkingTags(fullText.String()))
 		msg := messaging.Message{
 			Role:             messaging.RoleAssistant,
 			Content:          finalText,
@@ -289,9 +289,7 @@ func (o *Orchestrator) streamFinalResponse(ctx context.Context, onChunk func(str
 
 		// Send only the final response to client (skip thinking/tool-call preamble)
 		if !hasToolCall && finalText != "" {
-			// Strip any leaked thinking HTML blocks that may have been prepended
-			cleaned := stripThinkingTags(finalText)
-			cleaned = strings.TrimSpace(cleaned)
+			cleaned := strings.TrimSpace(finalText)
 			if cleaned != "" {
 				runes := []rune(cleaned)
 				chunkSize := 3
@@ -405,6 +403,7 @@ func (o *Orchestrator) runConversationLoopInternal(ctx context.Context) (string,
 		}
 
 		// === BƯỚC 5: Append response (write lock), then handle tool calls (outside lock) ===
+		aiMessage.Content = messaging.SanitizeAssistantContent(stripThinkingTags(aiMessage.Content))
 		o.agent.mu.Lock()
 		o.agent.conversation.ContextWindow.History = append(o.agent.conversation.ContextWindow.History, aiMessage)
 		o.agent.mu.Unlock()
@@ -451,7 +450,7 @@ func extractHistoryTexts(msgs []messaging.Message) []string {
 }
 
 func extractResponseText(aiMessage messaging.Message) string {
-	return strings.TrimSpace(stripThinkingTags(aiMessage.Content))
+	return strings.TrimSpace(messaging.SanitizeAssistantContent(stripThinkingTags(aiMessage.Content)))
 }
 
 // getEnvInt đọc biến môi trường dạng int, fallback nếu không có hoặc lỗi

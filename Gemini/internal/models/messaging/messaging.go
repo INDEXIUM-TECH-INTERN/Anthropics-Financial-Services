@@ -30,6 +30,7 @@ type Attachment struct {
 type Message struct {
 	Role             Role           `json:"role"`
 	Content          string         `json:"content"`
+	Internal         bool           `json:"internal,omitempty"`
 	ToolCalls        []ToolCall     `json:"tool_calls,omitempty"`
 	ToolResponses    []ToolResponse `json:"tool_responses,omitempty"`
 	ThoughtSignature string         `json:"thought_signature,omitempty"`

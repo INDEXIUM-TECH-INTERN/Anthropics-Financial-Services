@@ -19,12 +19,37 @@ export interface GroupedMessage {
   };
 }
 
+function isInternalHistoryMessage(msg: HistoryMessage): boolean {
+  if (msg.internal) return true;
+  const content = (msg.content || '').toLowerCase();
+  return (
+    content.includes('anthropic agent configuration') ||
+    content.includes('system prompt (from agents/') ||
+    content.includes('skill markdown (')
+  );
+}
+
+function stripLeakedSkillPrefix(content: string): string {
+  const marker = 'Chào bạn';
+  const idx = content.indexOf(marker);
+  if (idx <= 0) return content;
+  const head = content.slice(0, idx);
+  if (/### Step \d+:|## Important Notes/i.test(head)) {
+    return content.slice(idx).trim();
+  }
+  return content;
+}
+
 export function groupHistoryMessages(messages: HistoryMessage[]): GroupedMessage[] {
   const grouped: GroupedMessage[] = [];
 
   for (const msg of messages) {
-    const content = msg.content?.trim();
+    if (isInternalHistoryMessage(msg)) continue;
+    let content = msg.content?.trim();
     if (!content) continue;
+    if (msg.role === 'assistant') {
+      content = stripLeakedSkillPrefix(content);
+    }
 
     const role = normalizeMessageRole(msg.role);
     if (!role) continue;

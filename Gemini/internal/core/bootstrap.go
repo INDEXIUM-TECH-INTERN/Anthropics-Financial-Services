@@ -26,7 +26,7 @@ func ExecuteBootstrapWithRoute(agent *Agent, route RoutePlan) {
 	fmt.Printf("🧭 [Context] Orchestrator: Loading %s configuration...\n", route.Agent)
 	contextParts := BuildBootstrapContext(agent, route)
 	bootstrapPayload := strings.Join(contextParts, "\n\n")
-	agent.appendUserTextInternal(bootstrapPayload, nil)
+	agent.appendInternalContext(bootstrapPayload)
 }
 
 // BuildBootstrapContext assembles the bootstrap context strings for a given

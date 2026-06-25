@@ -392,7 +392,7 @@ func handleHistory(agent AgentInterface) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"history": history,
+			"history": messaging.FilterPublicHistory(history),
 		})
 	}
 }

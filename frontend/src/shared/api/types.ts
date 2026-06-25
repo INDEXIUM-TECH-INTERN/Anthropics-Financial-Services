@@ -39,6 +39,7 @@ export interface TokenMetrics {
 export interface HistoryMessage {
   role: string;
   content: string;
+  internal?: boolean;
   latency_ms?: number;
   token_in?: number;
   token_out?: number;
