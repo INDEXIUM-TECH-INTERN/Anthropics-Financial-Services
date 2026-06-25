@@ -27,16 +27,29 @@ type KeyNumber struct {
 	Symbol     string    `json:"symbol,omitempty"`
 }
 
-type StockSection struct {
-	IndexName     string   `json:"indexName"`
-	Value         string   `json:"value"`
-	Change        string   `json:"change"`
-	ChangePercent string   `json:"changePercent"`
-	IsPositive    bool     `json:"isPositive"`
+type StockInstrument struct {
+	Symbol        string    `json:"symbol"`
+	Label         string    `json:"label"`
+	Value         string    `json:"value"`
+	Change        string    `json:"change"`
+	ChangePercent string    `json:"changePercent"`
+	IsPositive    bool      `json:"isPositive"`
 	ChartPoints   []float64 `json:"chartPoints"`
-	ChartLabels   []string `json:"chartLabels"`
-	Thumbnail     string   `json:"thumbnail"`
-	Highlights    []string `json:"highlights"`
+	ChartLabels   []string  `json:"chartLabels"`
+	QuoteURL      string    `json:"quoteUrl,omitempty"`
+}
+
+type StockSection struct {
+	IndexName     string            `json:"indexName"`
+	Value         string            `json:"value"`
+	Change        string            `json:"change"`
+	ChangePercent string            `json:"changePercent"`
+	IsPositive    bool              `json:"isPositive"`
+	ChartPoints   []float64         `json:"chartPoints"`
+	ChartLabels   []string          `json:"chartLabels"`
+	Instruments   []StockInstrument `json:"instruments"`
+	Thumbnail     string            `json:"thumbnail"`
+	Highlights    []string          `json:"highlights"`
 	CNBCUrl       string   `json:"cnbcUrl"`
 	WSJUrl        string   `json:"wsjUrl"`
 	ReutersUrl    string   `json:"reutersUrl"`

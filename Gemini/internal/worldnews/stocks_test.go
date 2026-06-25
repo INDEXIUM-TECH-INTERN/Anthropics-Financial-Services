@@ -23,6 +23,29 @@ func TestIsAllowedStockNewsSource(t *testing.T) {
 	}
 }
 
+func TestQuoteToStockInstrument(t *testing.T) {
+	q := &quoteSnapshot{
+		Symbol:      "%5EGSPC",
+		Label:       "S&P 500",
+		Price:       5400.5,
+		Change:      12.3,
+		ChangePct:   0.23,
+		IsPositive:  true,
+		ChartPoints: []float64{5380, 5390, 5400.5},
+		ChartLabels: []string{"01/06", "02/06", "03/06"},
+	}
+	inst := quoteToStockInstrument(q)
+	if inst.Symbol != "^GSPC" {
+		t.Fatalf("expected ^GSPC, got %s", inst.Symbol)
+	}
+	if len(inst.ChartPoints) != 3 {
+		t.Fatalf("expected chart points, got %d", len(inst.ChartPoints))
+	}
+	if inst.QuoteURL == "" {
+		t.Fatal("expected quote url")
+	}
+}
+
 func TestFilterStockNewsSources(t *testing.T) {
 	items := []rssItem{
 		{Title: "A", Source: "CNBC", PublisherHost: "cnbc.com"},

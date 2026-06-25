@@ -102,14 +102,12 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 	live := sameCalendarDay(calendarDay, time.Now().In(vnTimezone))
 	tradingLabel := formatVNDate(tradingDay)
 
-	sp500, err := s.fetchQuote("%5EGSPC", "S&P 500", calendarDay, live)
-	if err != nil {
-		return nil, fmt.Errorf("S&P 500: %w", err)
+	stockQuotes, stockInstruments := s.fetchWorldStockQuotes(calendarDay, live)
+	sp500 := stockQuotes["%5EGSPC"]
+	if sp500 == nil {
+		return nil, fmt.Errorf("S&P 500: no quote data")
 	}
-	nasdaq, err := s.fetchQuote("%5EIXIC", "Nasdaq", calendarDay, live)
-	if err != nil {
-		nasdaq = nil
-	}
+	nasdaq := stockQuotes["%5EIXIC"]
 	wti, err := s.fetchQuote("CL%3DF", "WTI", calendarDay, live)
 	if err != nil {
 		return nil, fmt.Errorf("WTI: %w", err)
@@ -198,13 +196,14 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 			},
 		},
 		Stocks: StockSection{
-			IndexName:     "S&P 500 & Nasdaq Composite",
+			IndexName:     "Chỉ số & cổ phiếu theo dõi",
 			Value:         joinValues(formatPrice(sp500.Symbol, sp500.Price), nasdaqVal),
 			Change:        joinValues(stockChange, nasdaqChg),
 			ChangePercent: joinValues(stockPct, nasdaqPct),
 			IsPositive:    stockPos,
 			ChartPoints:   sp500.ChartPoints,
 			ChartLabels:   sp500.ChartLabels,
+			Instruments:   stockInstruments,
 			Thumbnail:     FaviconProxyPath("cnbc.com"),
 			Highlights:    buildStockHighlights(sp500, nasdaq, stockNewsItems, tradingLabel, live),
 			CNBCUrl:       "https://www.cnbc.com/world/",

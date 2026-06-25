@@ -1,6 +1,18 @@
 // ═══ World News Types ═══
 // Type definitions for the World Finance News Dashboard (data from /api/world-news).
 
+export interface StockInstrument {
+  symbol: string;
+  label: string;
+  value: string;
+  change: string;
+  changePercent: string;
+  isPositive: boolean;
+  chartPoints: number[];
+  chartLabels: string[];
+  quoteUrl?: string;
+}
+
 export interface StockMarketData {
   indexName: string;
   value: string;
@@ -9,6 +21,7 @@ export interface StockMarketData {
   isPositive: boolean;
   chartPoints: number[];
   chartLabels: string[];
+  instruments: StockInstrument[];
   thumbnail: string;
   highlights: string[];
   cnbcUrl: string;

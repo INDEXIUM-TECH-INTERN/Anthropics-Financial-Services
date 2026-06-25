@@ -864,38 +864,6 @@ export function createChatPage(): ChatPage {
       .join('');
   }
 
-  function setChartMultiSourceRef(
-    canvasId: string,
-    sources: { label: string; url?: string }[],
-    prefix = 'Nguồn tổng hợp',
-  ): void {
-    const canvas = $(canvasId);
-    const block = canvas?.closest('.media-and-chart-block');
-    if (!block) return;
-
-    let ref = block.querySelector('.chart-data-ref') as HTMLElement | null;
-    if (!ref) {
-      ref = document.createElement('p');
-      ref.className = 'chart-data-ref';
-      block.appendChild(ref);
-    }
-
-    const visible = sources.filter((s) => s.url);
-    if (visible.length === 0) {
-      ref.innerHTML = '';
-      return;
-    }
-
-    const links = visible
-      .map(
-        (s) =>
-          `<a href="${escHtml(s.url!)}" target="_blank" rel="noopener noreferrer" class="data-reference-link">${escHtml(s.label)}</a>`,
-      )
-      .join(' · ');
-
-    ref.innerHTML = `${prefix}: ${links}`;
-  }
-
   function setChartDataRef(
     canvasId: string,
     source?: string,
@@ -927,6 +895,84 @@ export function createChatPage(): ChatPage {
     const label = source || 'Nguồn';
     const symbolPart = symbol ? ` · ${escHtml(symbol)}` : '';
     return `<a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer" class="metric-card-ref">${escHtml(label)}${symbolPart}</a>`;
+  }
+
+  function setSectionSourceRef(
+    elementId: string,
+    sources: { label: string; url?: string }[],
+    prefix = 'Nguồn tổng hợp',
+  ): void {
+    const el = $(elementId);
+    if (!el) return;
+    const visible = sources.filter((s) => s.url);
+    if (visible.length === 0) {
+      el.innerHTML = '';
+      return;
+    }
+    const links = visible
+      .map(
+        (s) =>
+          `<a href="${escHtml(s.url!)}" target="_blank" rel="noopener noreferrer" class="data-reference-link">${escHtml(s.label)}</a>`,
+      )
+      .join(' · ');
+    el.innerHTML = `${prefix}: ${links}`;
+  }
+
+  function renderStockInstrumentCharts(
+    stocks: WorldNewsReport['stocks'],
+  ): void {
+    const grid = $('stock-charts-grid');
+    if (!grid) return;
+
+    const instruments =
+      stocks.instruments?.length > 0
+        ? stocks.instruments
+        : [
+            {
+              symbol: '^GSPC',
+              label: 'S&P 500',
+              value: stocks.value,
+              change: stocks.change,
+              changePercent: stocks.changePercent,
+              isPositive: stocks.isPositive,
+              chartPoints: stocks.chartPoints,
+              chartLabels: stocks.chartLabels,
+            },
+          ];
+
+    grid.innerHTML = instruments
+      .map((inst, i) => {
+        const changeClass = inst.isPositive ? 'positive' : 'negative';
+        const symbolMarkup = inst.quoteUrl
+          ? `<a href="${escHtml(inst.quoteUrl)}" target="_blank" rel="noopener noreferrer" class="stock-instrument-symbol">${escHtml(inst.symbol)}</a>`
+          : `<span class="stock-instrument-symbol">${escHtml(inst.symbol)}</span>`;
+        return `
+          <article class="stock-instrument-card">
+            <div class="stock-instrument-header">
+              <div class="stock-instrument-title-wrap">
+                <h4 class="stock-instrument-label">${escHtml(inst.label)}</h4>
+                ${symbolMarkup}
+              </div>
+              <span class="stock-instrument-change ${changeClass}">
+                ${inst.isPositive ? '▲' : '▼'} ${escHtml(inst.changePercent)}
+              </span>
+            </div>
+            <div class="stock-instrument-value">${escHtml(inst.value)}</div>
+            <div class="chart-container stock-instrument-chart-wrap">
+              <canvas id="stock-chart-${i}" class="chart-canvas stock-instrument-chart-canvas" aria-label="Biểu đồ ${escHtml(inst.symbol)}"></canvas>
+            </div>
+          </article>
+        `;
+      })
+      .join('');
+
+    setTimeout(() => {
+      instruments.forEach((inst, i) => {
+        if (!inst.chartPoints?.length) return;
+        const color = inst.isPositive ? '#00e676' : '#ff5252';
+        drawCanvasChart(`stock-chart-${i}`, inst.chartPoints, inst.chartLabels, color);
+      });
+    }, 150);
   }
 
   function renderNewsCard(n: { title: string; summary: string; source: string; time: string; url?: string; thumbnail?: string; logo?: string }): string {
@@ -964,6 +1010,7 @@ export function createChatPage(): ChatPage {
     const ids = [
       'quick-highlights-list',
       'key-metrics-row',
+      'stock-charts-grid',
       'stock-summary-list',
       'oil-prices-badge',
       'oil-summary-list',
@@ -1107,7 +1154,8 @@ export function createChatPage(): ChatPage {
       { label: 'Reuters', url: report.goldUsd.reutersUrl },
     ]);
 
-    setChartMultiSourceRef('stock-chart', [
+    renderStockInstrumentCharts(report.stocks);
+    setSectionSourceRef('stock-section-chart-ref', [
       { label: 'CNBC', url: report.stocks.cnbcUrl },
       { label: 'WSJ', url: report.stocks.wsjUrl },
       { label: 'Reuters', url: report.stocks.reutersUrl },
@@ -1245,10 +1293,6 @@ export function createChatPage(): ChatPage {
 
     // Render Canvas Charts (with a small timeout to let the container size settle)
     setTimeout(() => {
-      // Stock chart (S&P 500)
-      const stockColor = report.stocks.isPositive ? '#00e676' : '#ff5252';
-      drawCanvasChart('stock-chart', report.stocks.chartPoints, report.stocks.chartLabels, stockColor);
-
       // Oil chart WTI & Brent
       drawCanvasChart(
         'oil-chart',

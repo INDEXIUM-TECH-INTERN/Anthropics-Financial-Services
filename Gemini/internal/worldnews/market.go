@@ -208,7 +208,7 @@ func formatPrice(symbol string, price float64) string {
 	case strings.Contains(symbol, "=F"):
 		return fmt.Sprintf("$%.2f", price)
 	default:
-		return fmt.Sprintf("%.2f", price)
+		return fmt.Sprintf("$%.2f", price)
 	}
 }
 
