@@ -109,9 +109,8 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
     `}function An(f){const d=z(f.title),M=`
       <div class="news-item-preview">
         ${Kn(f.thumbnail,f.logo,f.title)}
-        <span class="news-item-title-inline">${d}</span>
+        <h5 class="news-item-title">${d}</h5>
       </div>
-      <h5 class="news-item-title">${d}</h5>
       ${f.summary?`<p class="news-item-desc">${z(f.summary)}</p>`:""}
       <div class="news-item-footer">
         ${Sn(f.source,f.logo)}

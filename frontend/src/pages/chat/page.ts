@@ -860,9 +860,8 @@ export function createChatPage(): ChatPage {
     const inner = `
       <div class="news-item-preview">
         ${icon}
-        <span class="news-item-title-inline">${titleText}</span>
+        <h5 class="news-item-title">${titleText}</h5>
       </div>
-      <h5 class="news-item-title">${titleText}</h5>
       ${n.summary ? `<p class="news-item-desc">${escHtml(n.summary)}</p>` : ''}
       <div class="news-item-footer">
         ${renderSourceBadge(n.source, n.logo)}
