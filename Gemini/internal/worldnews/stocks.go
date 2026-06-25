@@ -10,6 +10,9 @@ type stockSymbolDef struct {
 	Label   string
 }
 
+// PrimaryStockDisplayCount — số mã hiển thị ở tab 1; phần còn lại sang tab 2.
+const PrimaryStockDisplayCount = 4
+
 // WorldStockSymbols — các mã hiển thị biểu đồ trong mục Chứng khoán Thế giới.
 var WorldStockSymbols = []stockSymbolDef{
 	{Encoded: "%5EGSPC", Label: "S&P 500"},
@@ -83,4 +86,11 @@ func (s *Service) fetchWorldStockQuotes(calendarDay time.Time, live bool) (map[s
 		}
 	}
 	return quotes, instruments
+}
+
+func splitStockInstruments(all []StockInstrument) (primary, more []StockInstrument) {
+	if len(all) <= PrimaryStockDisplayCount {
+		return all, nil
+	}
+	return all[:PrimaryStockDisplayCount], all[PrimaryStockDisplayCount:]
 }

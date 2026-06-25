@@ -22,6 +22,7 @@ export interface StockMarketData {
   chartPoints: number[];
   chartLabels: string[];
   instruments: StockInstrument[];
+  moreInstruments?: StockInstrument[];
   thumbnail: string;
   highlights: string[];
   cnbcUrl: string;

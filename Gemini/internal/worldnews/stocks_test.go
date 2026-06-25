@@ -1,6 +1,9 @@
 package worldnews
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestIsAllowedStockNewsSource(t *testing.T) {
 	cases := []struct {
@@ -43,6 +46,20 @@ func TestQuoteToStockInstrument(t *testing.T) {
 	}
 	if inst.QuoteURL == "" {
 		t.Fatal("expected quote url")
+	}
+}
+
+func TestSplitStockInstruments(t *testing.T) {
+	all := make([]StockInstrument, 9)
+	for i := range all {
+		all[i] = StockInstrument{Symbol: fmt.Sprintf("SYM%d", i)}
+	}
+	primary, more := splitStockInstruments(all)
+	if len(primary) != PrimaryStockDisplayCount {
+		t.Fatalf("expected %d primary, got %d", PrimaryStockDisplayCount, len(primary))
+	}
+	if len(more) != 5 {
+		t.Fatalf("expected 5 more, got %d", len(more))
 	}
 }
 

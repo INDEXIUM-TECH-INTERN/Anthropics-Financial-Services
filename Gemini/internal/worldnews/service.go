@@ -170,6 +170,8 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 		dataSource = "Yahoo Finance (thị trường live) + RSS 24h gần nhất (CNBC, Bloomberg, FT, VNeconomy...)"
 	}
 
+	primaryStockInstruments, moreStockInstruments := splitStockInstruments(stockInstruments)
+
 	report := &WorldNewsReport{
 		Date:            calendarDay.Format("2006-01-02"),
 		QuickHighlights: buildQuickHighlights(sp500, nasdaq, wti, brent, gold, dxy, breakingItems, tradingLabel, live),
@@ -203,7 +205,8 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 			IsPositive:    stockPos,
 			ChartPoints:   sp500.ChartPoints,
 			ChartLabels:   sp500.ChartLabels,
-			Instruments:   stockInstruments,
+			Instruments:     primaryStockInstruments,
+			MoreInstruments: moreStockInstruments,
 			Thumbnail:     FaviconProxyPath("cnbc.com"),
 			Highlights:    buildStockHighlights(sp500, nasdaq, stockNewsItems, tradingLabel, live),
 			CNBCUrl:       "https://www.cnbc.com/world/",

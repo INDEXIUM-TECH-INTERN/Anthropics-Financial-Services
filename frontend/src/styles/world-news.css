@@ -373,11 +373,63 @@
   margin-top: 16px;
 }
 
+.stock-charts-tabs {
+  margin: 8px 0 4px;
+}
+
+.stock-charts-tab-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.stock-charts-tab {
+  flex: 1;
+  border: 1px solid rgba(59, 130, 246, 0.28);
+  background: rgba(10, 22, 40, 0.45);
+  color: var(--text-secondary);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.stock-charts-tab:hover {
+  color: var(--text-primary);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+.stock-charts-tab.active {
+  color: var(--text-primary);
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.65);
+}
+
+.stock-charts-tab.hidden {
+  display: none;
+}
+
+.stock-charts-panel {
+  display: none;
+}
+
+.stock-charts-panel.active {
+  display: block;
+}
+
+.stock-charts-empty {
+  margin: 0;
+  padding: 12px 0;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
 .stock-charts-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  margin: 8px 0 4px;
 }
 
 .stock-instrument-card {

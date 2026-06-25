@@ -47,8 +47,9 @@ type StockSection struct {
 	IsPositive    bool              `json:"isPositive"`
 	ChartPoints   []float64         `json:"chartPoints"`
 	ChartLabels   []string          `json:"chartLabels"`
-	Instruments   []StockInstrument `json:"instruments"`
-	Thumbnail     string            `json:"thumbnail"`
+	Instruments     []StockInstrument `json:"instruments"`
+	MoreInstruments []StockInstrument `json:"moreInstruments,omitempty"`
+	Thumbnail       string            `json:"thumbnail"`
 	Highlights    []string          `json:"highlights"`
 	CNBCUrl       string   `json:"cnbcUrl"`
 	WSJUrl        string   `json:"wsjUrl"`
