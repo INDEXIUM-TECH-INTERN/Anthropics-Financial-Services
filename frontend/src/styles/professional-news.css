@@ -51,6 +51,11 @@
   margin: -12px 0 0;
   font-size: 12px;
   color: var(--text-tertiary);
+  line-height: 1.5;
+}
+
+.news-data-source a {
+  color: var(--color-primary-light);
 }
 
 .world-news-error {

@@ -22,6 +22,9 @@ type KeyNumber struct {
 	Change     string    `json:"change"`
 	IsPositive bool      `json:"isPositive"`
 	Sparkline  []float64 `json:"sparkline"`
+	Source     string    `json:"source,omitempty"`
+	URL        string    `json:"url,omitempty"`
+	Symbol     string    `json:"symbol,omitempty"`
 }
 
 type StockSection struct {
@@ -37,6 +40,9 @@ type StockSection struct {
 	CNBCUrl       string   `json:"cnbcUrl"`
 	WSJUrl        string   `json:"wsjUrl"`
 	ReutersUrl    string   `json:"reutersUrl"`
+	MarketSource  string   `json:"marketSource,omitempty"`
+	MarketURL     string   `json:"marketUrl,omitempty"`
+	MarketSymbol  string   `json:"marketSymbol,omitempty"`
 }
 
 type OilSection struct {
@@ -56,6 +62,9 @@ type OilSection struct {
 	ReutersUrl       string    `json:"reutersUrl"`
 	NYTimesUrl       string    `json:"nytimesUrl"`
 	WSJUrl           string    `json:"wsjUrl"`
+	MarketSource     string    `json:"marketSource,omitempty"`
+	MarketURL        string    `json:"marketUrl,omitempty"`
+	MarketSymbol     string    `json:"marketSymbol,omitempty"`
 }
 
 type GoldUSDSection struct {
@@ -72,6 +81,9 @@ type GoldUSDSection struct {
 	ChartLabels       []string  `json:"chartLabels"`
 	Highlights        []string  `json:"highlights"`
 	ReutersUrl        string    `json:"reutersUrl"`
+	MarketSource      string    `json:"marketSource,omitempty"`
+	MarketURL         string    `json:"marketUrl,omitempty"`
+	MarketSymbol      string    `json:"marketSymbol,omitempty"`
 }
 
 type NewsArticle struct {

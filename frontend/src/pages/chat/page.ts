@@ -837,6 +837,66 @@ export function createChatPage(): ChatPage {
     `;
   }
 
+  function buildDataSourceHtml(dataSource: string, generatedAt?: string): string {
+    const linked = escHtml(dataSource).replace(
+      /Yahoo Finance/g,
+      '<a href="https://finance.yahoo.com" target="_blank" rel="noopener noreferrer" class="data-reference-link">Yahoo Finance</a>',
+    );
+    const updatedAt = generatedAt
+      ? ` | Cập nhật: ${escHtml(new Date(generatedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }))}`
+      : '';
+    return `Nguồn: ${linked}${updatedAt}`;
+  }
+
+  function renderSectionSourceBadges(
+    containerId: string,
+    badges: { label: string; url?: string }[],
+  ): void {
+    const el = $(containerId);
+    if (!el) return;
+    const visible = badges.filter((b) => b.url);
+    if (visible.length === 0) return;
+    el.innerHTML = visible
+      .map(
+        (b) =>
+          `<a href="${escHtml(b.url!)}" target="_blank" rel="noopener noreferrer" class="source-badge">${escHtml(b.label)}</a>`,
+      )
+      .join('');
+  }
+
+  function setChartDataRef(
+    canvasId: string,
+    source?: string,
+    url?: string,
+    symbol?: string,
+  ): void {
+    const canvas = $(canvasId);
+    const block = canvas?.closest('.media-and-chart-block');
+    if (!block) return;
+
+    let ref = block.querySelector('.chart-data-ref') as HTMLElement | null;
+    if (!ref) {
+      ref = document.createElement('p');
+      ref.className = 'chart-data-ref';
+      block.appendChild(ref);
+    }
+
+    if (!source || !url) {
+      ref.innerHTML = '';
+      return;
+    }
+
+    const symbolPart = symbol ? ` · ${escHtml(symbol)}` : '';
+    ref.innerHTML = `Dữ liệu biểu đồ: <a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer" class="data-reference-link">${escHtml(source)}${symbolPart}</a>`;
+  }
+
+  function renderMetricRef(source?: string, url?: string, symbol?: string): string {
+    if (!url) return '';
+    const label = source || 'Nguồn';
+    const symbolPart = symbol ? ` · ${escHtml(symbol)}` : '';
+    return `<a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer" class="metric-card-ref">${escHtml(label)}${symbolPart}</a>`;
+  }
+
   function renderNewsCard(n: { title: string; summary: string; source: string; time: string; url?: string; thumbnail?: string; logo?: string }): string {
     const titleText = escHtml(n.title);
     const inner = `
@@ -952,10 +1012,7 @@ export function createChatPage(): ChatPage {
       newsReportTitleEl.textContent = `Bản tin Tài chính Thế giới sáng — ${formatReportDateLabel(report.date)}`;
     }
     if (newsDataSourceEl && report.dataSource) {
-      const updatedAt = report.generatedAt
-        ? ` | Cập nhật: ${new Date(report.generatedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`
-        : '';
-      newsDataSourceEl.textContent = `Nguồn: ${report.dataSource}${updatedAt}`;
+      newsDataSourceEl.innerHTML = buildDataSourceHtml(report.dataSource, report.generatedAt);
     }
 
     // Add visual transition class
@@ -995,11 +1052,43 @@ export function createChatPage(): ChatPage {
                   <path d="${pathStr}" fill="none" stroke="${strokeColor}" stroke-width="1.8" stroke-linecap="round" />
                 </svg>
               </div>
+              ${renderMetricRef(m.source, m.url, m.symbol)}
             </div>
           `;
         })
         .join('');
     }
+
+    renderSectionSourceBadges('stock-section-sources', [
+      { label: 'Yahoo Finance', url: report.stocks.marketUrl },
+      { label: 'CNBC', url: report.stocks.cnbcUrl },
+      { label: 'WSJ', url: report.stocks.wsjUrl },
+      { label: 'Reuters', url: report.stocks.reutersUrl },
+    ]);
+    renderSectionSourceBadges('oil-section-sources', [
+      { label: 'Yahoo Finance', url: report.oil.marketUrl },
+      { label: 'Reuters', url: report.oil.reutersUrl },
+      { label: 'NYTimes', url: report.oil.nytimesUrl },
+      { label: 'WSJ', url: report.oil.wsjUrl },
+    ]);
+    renderSectionSourceBadges('gold-section-sources', [
+      { label: 'Yahoo Finance', url: report.goldUsd.marketUrl },
+      { label: 'Reuters', url: report.goldUsd.reutersUrl },
+    ]);
+
+    setChartDataRef(
+      'stock-chart',
+      report.stocks.marketSource,
+      report.stocks.marketUrl,
+      report.stocks.marketSymbol,
+    );
+    setChartDataRef('oil-chart', report.oil.marketSource, report.oil.marketUrl, report.oil.marketSymbol);
+    setChartDataRef(
+      'gold-chart',
+      report.goldUsd.marketSource,
+      report.goldUsd.marketUrl,
+      report.goldUsd.marketSymbol,
+    );
 
     // 3. Stocks detail
     const stockSummaryList = $('stock-summary-list');

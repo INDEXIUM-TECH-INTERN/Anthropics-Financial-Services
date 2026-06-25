@@ -5,11 +5,28 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
 
-const yahooChartURL = "https://query1.finance.yahoo.com/v8/finance/chart"
+const (
+	yahooChartURL  = "https://query1.finance.yahoo.com/v8/finance/chart"
+	yahooFinanceURL = "https://finance.yahoo.com"
+	marketDataSource = "Yahoo Finance"
+)
+
+func yahooFinanceQuoteURL(encodedSymbol string) string {
+	return yahooFinanceURL + "/quote/" + encodedSymbol
+}
+
+func yahooFinanceDisplaySymbol(encodedSymbol string) string {
+	decoded, err := url.PathUnescape(encodedSymbol)
+	if err != nil || decoded == "" {
+		return encodedSymbol
+	}
+	return decoded
+}
 
 type yahooChartResponse struct {
 	Chart struct {

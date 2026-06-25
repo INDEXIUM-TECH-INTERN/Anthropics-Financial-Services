@@ -123,6 +123,48 @@
   transform: translateY(-1px);
 }
 
+.key-metrics-row .metric-card-ref {
+  display: block;
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.key-metrics-row .metric-card-ref:hover {
+  color: var(--color-primary-light);
+  text-decoration: underline;
+}
+
+.chart-data-ref {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  line-height: 1.4;
+}
+
+.data-reference-link {
+  color: var(--color-primary-light);
+  text-decoration: none;
+}
+
+.data-reference-link:hover {
+  text-decoration: underline;
+}
+
+.news-data-source .data-reference-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.news-data-source .data-reference-link:hover {
+  color: var(--color-primary-light);
+}
+
 /* ─── Canvas Chart Drawing Styles ─── */
 .chart-canvas {
   border-radius: 8px;

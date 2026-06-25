@@ -14,6 +14,9 @@ export interface StockMarketData {
   cnbcUrl: string;
   wsjUrl: string;
   reutersUrl: string;
+  marketSource?: string;
+  marketUrl?: string;
+  marketSymbol?: string;
 }
 
 export interface OilMarketData {
@@ -33,6 +36,9 @@ export interface OilMarketData {
   reutersUrl: string;
   nytimesUrl: string;
   wsjUrl: string;
+  marketSource?: string;
+  marketUrl?: string;
+  marketSymbol?: string;
 }
 
 export interface GoldUSDData {
@@ -49,6 +55,20 @@ export interface GoldUSDData {
   chartLabels: string[];
   highlights: string[];
   reutersUrl: string;
+  marketSource?: string;
+  marketUrl?: string;
+  marketSymbol?: string;
+}
+
+export interface KeyNumberMetric {
+  label: string;
+  value: string;
+  change: string;
+  isPositive: boolean;
+  sparkline: number[];
+  source?: string;
+  url?: string;
+  symbol?: string;
 }
 
 export interface NewsArticle {
@@ -81,13 +101,7 @@ export interface WatchlistItem {
 export interface WorldNewsReport {
   date: string;
   quickHighlights: string[];
-  keyNumbers: {
-    label: string;
-    value: string;
-    change: string;
-    isPositive: boolean;
-    sparkline: number[];
-  }[];
+  keyNumbers: KeyNumberMetric[];
   stocks: StockMarketData;
   oil: OilMarketData;
   goldUsd: GoldUSDData;

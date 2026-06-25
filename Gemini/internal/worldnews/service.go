@@ -181,6 +181,9 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 				Change:     stockPct,
 				IsPositive: stockPos,
 				Sparkline:  sp500.ChartPoints,
+				Source:     marketDataSource,
+				URL:        yahooFinanceQuoteURL("%5EGSPC"),
+				Symbol:     yahooFinanceDisplaySymbol("%5EGSPC"),
 			},
 			{
 				Label:      "Dầu Brent",
@@ -188,6 +191,9 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 				Change:     brentPct,
 				IsPositive: brentPos,
 				Sparkline:  brent.ChartPoints,
+				Source:     marketDataSource,
+				URL:        yahooFinanceQuoteURL("BZ%3DF"),
+				Symbol:     yahooFinanceDisplaySymbol("BZ%3DF"),
 			},
 		},
 		Stocks: StockSection{
@@ -203,6 +209,9 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 			CNBCUrl:       "https://www.cnbc.com/world/",
 			WSJUrl:        "https://www.wsj.com/finance/stocks?mod=nav_top_subsection",
 			ReutersUrl:    "https://www.reuters.com/markets/stocks/",
+			MarketSource:  marketDataSource,
+			MarketURL:     yahooFinanceQuoteURL("%5EGSPC"),
+			MarketSymbol:  yahooFinanceDisplaySymbol("%5EGSPC") + ", " + yahooFinanceDisplaySymbol("%5EIXIC"),
 		},
 		Oil: OilSection{
 			WTIPrice:         formatPrice(wti.Symbol, wti.Price),
@@ -221,6 +230,9 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 			ReutersUrl:       "https://www.reuters.com/markets/",
 			NYTimesUrl:       "https://www.nytimes.com/section/business/energy-environment?page=2",
 			WSJUrl:           "https://www.wsj.com/business/energy-oil?mod=nav_top_subsection",
+			MarketSource:     marketDataSource,
+			MarketURL:        yahooFinanceQuoteURL("CL%3DF"),
+			MarketSymbol:     yahooFinanceDisplaySymbol("CL%3DF") + ", " + yahooFinanceDisplaySymbol("BZ%3DF"),
 		},
 		GoldUsd:            buildGoldSection(gold, dxy, breakingItems, tradingLabel),
 		VTVIndexNews:       toNewsArticles(vtvItems, live),
@@ -239,6 +251,9 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 			Change:     goldPct,
 			IsPositive: goldPos,
 			Sparkline:  gold.ChartPoints,
+			Source:     marketDataSource,
+			URL:        yahooFinanceQuoteURL("GC%3DF"),
+			Symbol:     yahooFinanceDisplaySymbol("GC%3DF"),
 		})
 	}
 
@@ -251,9 +266,12 @@ func formatVNDate(t time.Time) string {
 
 func buildGoldSection(gold, dxy *quoteSnapshot, news []rssItem, tradingLabel string) GoldUSDSection {
 	sec := GoldUSDSection{
-		ChartLabels: []string{},
-		Highlights:  []string{},
-		ReutersUrl:  "https://www.reuters.com/markets/",
+		ChartLabels:  []string{},
+		Highlights:   []string{},
+		ReutersUrl:   "https://www.reuters.com/markets/",
+		MarketSource: marketDataSource,
+		MarketURL:    yahooFinanceQuoteURL("GC%3DF"),
+		MarketSymbol: yahooFinanceDisplaySymbol("GC%3DF") + ", " + yahooFinanceDisplaySymbol("DX-Y.NYB"),
 	}
 	if gold != nil {
 		gChg, gPct, gPos := formatChange(gold.Change, gold.ChangePct)
