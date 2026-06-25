@@ -98,24 +98,73 @@
 }
 
 .news-item {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: 12px;
-  padding: 16px;
+  background: rgba(10, 22, 40, 0.92);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  border-radius: 14px;
+  padding: 18px 20px;
   transition: all var(--transition-fast);
 }
 
-.news-item:hover {
-  border-color: var(--accent);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+.news-item-card-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.news-item:hover,
+.news-item-card-link:hover {
+  border-color: rgba(59, 130, 246, 0.65);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.12);
+}
+
+.news-item-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.news-topic-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+}
+
+.news-topic-fallback {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.news-item-title-inline {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+  flex: 1;
+  min-width: 0;
+}
+
+.news-item-title-inline .news-item-link {
+  color: inherit;
 }
 
 .news-item-title {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 8px;
-  line-height: 1.4;
+  margin: 0 0 10px;
+  line-height: 1.35;
 }
 
 .news-item-desc {
@@ -140,11 +189,11 @@
 }
 
 .news-publisher-logo {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 4px;
   object-fit: contain;
-  background: var(--bg-surface);
+  background: transparent;
   flex-shrink: 0;
 }
 
@@ -163,8 +212,14 @@
 }
 
 .news-item-time {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.news-item-card-link:hover .news-item-title,
+.news-item-card-link:hover .news-item-title-inline .news-item-link {
+  color: var(--color-primary-light);
 }
 
 /* ─── Summary List Styles ─── */

@@ -836,6 +836,15 @@ export function createChatPage(): ChatPage {
     `;
   }
 
+  function renderTopicIcon(thumbnail?: string, logo?: string, title?: string): string {
+    const src = thumbnail || logo;
+    if (!src) {
+      return `<span class="news-topic-fallback" aria-hidden="true">📰</span>`;
+    }
+    const alt = escHtml(title || 'Ảnh bài viết');
+    return `<img class="news-topic-icon" src="${escHtml(src)}" alt="${alt}" width="28" height="28" loading="lazy" decoding="async" onerror="this.outerHTML='<span class=\\'news-topic-fallback\\' aria-hidden=\\'true\\'>📰</span>'">`;
+  }
+
   function renderSourceBadge(source: string, logo?: string): string {
     return `
       <span class="news-item-source">
@@ -843,6 +852,27 @@ export function createChatPage(): ChatPage {
         <span>${escHtml(source)}</span>
       </span>
     `;
+  }
+
+  function renderNewsCard(n: { title: string; summary: string; source: string; time: string; url?: string; thumbnail?: string; logo?: string }): string {
+    const titleText = escHtml(n.title);
+    const icon = renderTopicIcon(n.thumbnail, n.logo, n.title);
+    const inner = `
+      <div class="news-item-preview">
+        ${icon}
+        <span class="news-item-title-inline">${titleText}</span>
+      </div>
+      <h5 class="news-item-title">${titleText}</h5>
+      ${n.summary ? `<p class="news-item-desc">${escHtml(n.summary)}</p>` : ''}
+      <div class="news-item-footer">
+        ${renderSourceBadge(n.source, n.logo)}
+        <span class="news-item-time">${escHtml(n.time)}</span>
+      </div>
+    `;
+    if (n.url) {
+      return `<a href="${escHtml(n.url)}" target="_blank" rel="noopener noreferrer" class="news-item news-item-card news-item-card-link">${inner}</a>`;
+    }
+    return `<div class="news-item news-item-card">${inner}</div>`;
   }
 
   function buildClientDateOptions(dayCount = DEFAULT_NEWS_HISTORY_DAYS): { value: string; label: string }[] {
@@ -1081,22 +1111,7 @@ export function createChatPage(): ChatPage {
     if (vtvNewsList) {
       if (report.vtvIndexNews && report.vtvIndexNews.length > 0) {
         vtvNewsList.innerHTML = report.vtvIndexNews
-          .map(n => {
-            const titleHtml = n.url
-              ? `<a href="${escHtml(n.url)}" target="_blank" rel="noopener noreferrer" class="news-item-link">${escHtml(n.title)}</a>`
-              : escHtml(n.title);
-            return `
-            <div class="news-item">
-              ${renderArticleThumbnail(n.thumbnail, n.title)}
-              <h5 class="news-item-title">${titleHtml}</h5>
-              <p class="news-item-desc">${escHtml(n.summary)}</p>
-              <div class="news-item-footer">
-                ${renderSourceBadge(n.source, n.logo)}
-                <span>${escHtml(n.time)}</span>
-              </div>
-            </div>
-          `;
-          })
+          .map((n) => renderNewsCard(n))
           .join('');
       } else {
         vtvNewsList.innerHTML = '<div style="font-size:12px; color:var(--text-tertiary); padding:8px 0;">Không có tin tiêu điểm trong ngày.</div>';
@@ -1107,22 +1122,7 @@ export function createChatPage(): ChatPage {
     const vnFinanceNewsList = $('vn-finance-news-list');
     if (vnFinanceNewsList) {
       vnFinanceNewsList.innerHTML = report.vietnamFinanceNews
-        .map(n => {
-          const titleHtml = n.url
-            ? `<a href="${escHtml(n.url)}" target="_blank" rel="noopener noreferrer" class="news-item-link">${escHtml(n.title)}</a>`
-            : escHtml(n.title);
-          return `
-          <div class="news-item">
-            ${renderArticleThumbnail(n.thumbnail, n.title)}
-            <h5 class="news-item-title">${titleHtml}</h5>
-            <p class="news-item-desc">${escHtml(n.summary)}</p>
-            <div class="news-item-footer">
-              ${renderSourceBadge(n.source, n.logo)}
-              <span>${escHtml(n.time)}</span>
-            </div>
-          </div>
-        `;
-        })
+        .map((n) => renderNewsCard(n))
         .join('');
     }
 
