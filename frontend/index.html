@@ -155,12 +155,17 @@
                 <div class="date-picker-wrapper">
                     <span class="date-picker-label">Bản tin ngày:</span>
                     <select class="date-picker-select" id="news-date-select">
-                        <option value="2026-06-17">17/06/2026 (Hôm nay)</option>
-                        <option value="2026-06-16">16/06/2026</option>
-                        <option value="2026-06-15">15/06/2026</option>
+                        <option value="">Đang tải...</option>
                     </select>
                 </div>
             </div>
+
+            <div class="world-news-loading hidden" id="world-news-loading">
+                <div class="world-news-loading-spinner"></div>
+                <span>Đang tổng hợp dữ liệu thị trường và tin tức thật...</span>
+            </div>
+            <p class="news-data-source" id="news-data-source"></p>
+            <div class="world-news-error hidden" id="world-news-error"></div>
 
             <!-- Quick Summary / Highlights -->
             <div class="highlights-box">
@@ -198,10 +203,7 @@
                         </div>
                         <div class="section-body">
                             <div class="media-and-chart-block">
-                                <div class="thumbnail-container">
-                                    <img src="/images/cnbc_trader.png" class="news-thumbnail" id="stock-thumbnail" alt="CNBC Trader">
-                                </div>
-                                <div class="chart-container" title="Biểu đồ dao động S&P 500 chốt phiên (Dữ liệu FactSet dựng bởi WSJ)">
+                                <div class="chart-container" title="Biểu đồ dao động S&P 500 chốt phiên">
                                     <canvas id="stock-chart" class="chart-canvas"></canvas>
                                 </div>
                             </div>
@@ -230,9 +232,6 @@
                                 <!-- Dynamic price badges WTI & Brent -->
                             </div>
                             <div class="media-and-chart-block">
-                                <div class="thumbnail-container">
-                                    <img src="/images/reuters_oil.png" class="news-thumbnail" id="oil-thumbnail" alt="Reuters Oil">
-                                </div>
                                 <div class="chart-container" title="Biểu đồ biến động giá dầu WTI & Brent">
                                     <canvas id="oil-chart" class="chart-canvas"></canvas>
                                 </div>
@@ -257,9 +256,6 @@
                         </div>
                         <div class="section-body">
                             <div class="media-and-chart-block">
-                                <div class="thumbnail-container">
-                                    <img src="/images/gold_dollar.png" class="news-thumbnail" id="gold-usd-thumbnail" alt="Gold & Dollar">
-                                </div>
                                 <div class="chart-container" title="Biểu đồ xu hướng Vàng & Dollar Index">
                                     <canvas id="gold-chart" class="chart-canvas"></canvas>
                                 </div>

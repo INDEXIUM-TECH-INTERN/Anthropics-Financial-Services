@@ -128,6 +128,8 @@ func StartServer(agent AgentInterface) {
 	mux.HandleFunc("/api/chat/stream", handleChatStream(agent))
 	mux.HandleFunc("/api/history", handleHistory(agent))
 	mux.HandleFunc("/api/config/keys", requireConfigSecret(handleConfigKeys(agent)))
+	mux.HandleFunc("/api/world-news", handleWorldNews)
+	mux.HandleFunc("/api/world-news/dates", handleWorldNewsDates)
 
 	// Static files
 	frontendDir := resolveFrontendDir()

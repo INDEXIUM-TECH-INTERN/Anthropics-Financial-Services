@@ -70,6 +70,20 @@ try {
     $tcpClient.Close()
 }
 
+$FrontendPath = Join-Path $RootPath "frontend"
+if (Test-Path $FrontendPath) {
+    Write-Host "[Build] Building Frontend (dist)..." -ForegroundColor Yellow
+    Push-Location $FrontendPath
+    npm run build
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "[Error] Frontend build failed." -ForegroundColor Red
+        Pop-Location
+        exit $LASTEXITCODE
+    }
+    Pop-Location
+    Write-Host "[Success] Frontend built." -ForegroundColor Green
+}
+
 Write-Host "[Build] Building/Verifying Backend Executable..." -ForegroundColor Yellow
 go build -o server.exe cmd/gemini-cli/main.go
 if ($LASTEXITCODE -ne 0) {

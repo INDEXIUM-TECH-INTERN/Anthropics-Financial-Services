@@ -1,0 +1,93 @@
+# Render Blueprint for TestAIFinance
+# Multi-service deployment with Go backend + Frontend SPA
+
+services:
+  # ===== API Backend Service (Go) — private, internal only =====
+  - type: pserv
+    name: testai-backend
+    runtime: docker
+    region: singapore
+    plan: starter
+    dockerfilePath: ./Gemini/Dockerfile
+    dockerContext: ./Gemini
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      # Gemini API keys (round-robin pool: GEMINI_API_KEY, GEMINI_API_KEY_2, ...)
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY_2
+        sync: false
+      - key: GEMINI_API_KEY_3
+        sync: false
+      - key: GEMINI_API_KEY_4
+        sync: false
+      - key: GEMINI_API_KEY_5
+        sync: false
+
+      # Gemini model
+      - key: GEMINI_MODEL
+        value: gemini-3.1-flash-lite
+
+      # SerpAPI keys
+      - key: SERPAPI_KEY
+        sync: false
+      - key: SERPAPI_KEY_2
+        sync: false
+
+      # Tavily keys
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY_2
+        sync: false
+
+      # Redis (wired from Key Value instance)
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: testai-redis
+          property: connectionString
+
+      # App settings (PORT is injected automatically by Render)
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+
+  # ===== Redis Service =====
+  - type: keyvalue
+    name: testai-redis
+    plan: free
+    region: singapore
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
+  # ===== Frontend Service (Nginx) — public entry point =====
+  - type: web
+    name: testai-frontend
+    runtime: docker
+    region: singapore
+    plan: free
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    healthCheckPath: /
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Wire backend host/port for nginx proxy on Render private network
+      - key: BACKEND_HOST
+        fromService:
+          type: pserv
+          name: testai-backend
+          property: host
+      - key: BACKEND_PORT
+        fromService:
+          type: pserv
+          name: testai-backend
+          property: port
+
+# Notes:
+# 1. Manually set secret env vars in the Render dashboard (sync: false).
+# 2. Backend is a private service (pserv); only frontend is public.
+# 3. SPA routing is handled by nginx in frontend/Dockerfile (not Blueprint routes).

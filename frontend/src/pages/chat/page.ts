@@ -12,7 +12,7 @@ import type { ChatSession, AttachmentPayload, TokenMetrics } from '../../shared/
 import { createChatViewWidget } from '../../widgets/chat-view/compose';
 import { createSidebarWidget } from '../../widgets/sidebar/compose';
 import { createPipelineWidget } from '../../widgets/pipeline/compose';
-import { MOCK_NEWS_DATA } from '../../shared/api/mock-news';
+import type { WorldNewsReport } from '../../shared/api/mock-news';
 import { getApiBaseUrl } from '../../shared/lib/api-base';
 
 
@@ -114,7 +114,13 @@ export function createChatPage(): ChatPage {
   const toggleConversationsBtn = $('toggle-conversations');
   const closeSidebarBtn = $('close-sidebar');
   const newsDateSelect = $<HTMLSelectElement>('news-date-select');
+  const newsLoadingEl = $('world-news-loading');
+  const newsDataSourceEl = $('news-data-source');
+  const newsErrorEl = $('world-news-error');
+  const newsReportTitleEl = $('news-report-title');
   let currentTab = 'chat';
+  let worldNewsLoading = false;
+  let worldNewsDatesLoaded = false;
 
   function syncSidebarUI() {
     if (!conversationsSidebar) return;
@@ -802,13 +808,121 @@ export function createChatPage(): ChatPage {
     }
   }
 
+  function getVietnamTodayISO(): string {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+  }
+
+  function formatReportDateLabel(isoDate: string): string {
+    const [y, m, d] = isoDate.split('-');
+    if (!y || !m || !d) return isoDate;
+    return `${d}/${m}/${y}`;
+  }
+
+  const DEFAULT_NEWS_HISTORY_DAYS = 90;
+
+  function buildClientDateOptions(dayCount = DEFAULT_NEWS_HISTORY_DAYS): { value: string; label: string }[] {
+    const todayIso = getVietnamTodayISO();
+    const anchor = new Date(`${todayIso}T12:00:00+07:00`);
+    const options: { value: string; label: string }[] = [];
+    for (let i = 0; i < dayCount; i++) {
+      const d = new Date(anchor);
+      d.setDate(d.getDate() - i);
+      const value = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(d);
+      let label = formatReportDateLabel(value);
+      if (value === todayIso) label += ' (Hôm nay)';
+      options.push({ value, label });
+    }
+    return options;
+  }
+
+  function clearWorldNewsDashboard() {
+    const ids = [
+      'quick-highlights-list',
+      'key-metrics-row',
+      'stock-summary-list',
+      'oil-prices-badge',
+      'oil-summary-list',
+      'gold-usd-summary-list',
+      'breaking-news-list',
+      'vtv-news-list',
+      'vn-finance-news-list',
+      'upcoming-watchlist',
+    ];
+    for (const id of ids) {
+      const el = $(id);
+      if (el) el.innerHTML = '';
+    }
+    if (newsDataSourceEl) newsDataSourceEl.textContent = '';
+    if (newsReportTitleEl) newsReportTitleEl.textContent = 'Bản tin Tài chính Thế giới sáng';
+  }
+
+  function showWorldNewsError(message: string) {
+    clearWorldNewsDashboard();
+    newsErrorEl?.classList.remove('hidden');
+    if (newsErrorEl) {
+      newsErrorEl.innerHTML = `${escHtml(message)}<br><br><strong>Gợi ý:</strong> Chạy backend đúng bằng <code>.\run-server.ps1</code> hoặc <code>server.exe -server</code> (không dùng gemini-server demo). Sau đó tải lại trang (Ctrl+Shift+R).`;
+    }
+  }
+
+  function hideWorldNewsError() {
+    newsErrorEl?.classList.add('hidden');
+    if (newsErrorEl) newsErrorEl.innerHTML = '';
+  }
+
+  // ═══ WORLD NEWS DATE PICKER ═══
+  async function loadWorldNewsDates() {
+    if (worldNewsDatesLoaded || !newsDateSelect) return;
+    try {
+      const { dates, defaultDate } = await api.getWorldNewsDates();
+      newsDateSelect.innerHTML = dates
+        .map((d) => `<option value="${escHtml(d.value)}">${escHtml(d.label)}</option>`)
+        .join('');
+      if (defaultDate) newsDateSelect.value = defaultDate;
+      worldNewsDatesLoaded = true;
+    } catch {
+      const options = buildClientDateOptions(DEFAULT_NEWS_HISTORY_DAYS);
+      newsDateSelect.innerHTML = options
+        .map((d) => `<option value="${escHtml(d.value)}">${escHtml(d.label)}</option>`)
+        .join('');
+      newsDateSelect.value = options[0]?.value ?? getVietnamTodayISO();
+    }
+  }
+
+  function setWorldNewsLoading(loading: boolean) {
+    worldNewsLoading = loading;
+    newsLoadingEl?.classList.toggle('hidden', !loading);
+    worldNewsContainer?.classList.toggle('is-loading', loading);
+  }
+
   // ═══ RENDER NEWS DASHBOARD ═══
-  function renderWorldNews() {
-    const selectedDate = newsDateSelect?.value || '2026-06-17';
-    const report = MOCK_NEWS_DATA[selectedDate];
-    if (!report) {
-      addLogEntry(`Không tìm thấy bản tin ngày ${selectedDate}`, 'error');
+  async function renderWorldNews() {
+    if (worldNewsLoading) return;
+    await loadWorldNewsDates();
+    const selectedDate = newsDateSelect?.value || getVietnamTodayISO();
+
+    hideWorldNewsError();
+    setWorldNewsLoading(true);
+    let report: WorldNewsReport;
+    try {
+      report = await api.getWorldNews(selectedDate);
+    } catch (err) {
+      setWorldNewsLoading(false);
+      const msg = err instanceof Error ? err.message : 'Không tải được bản tin';
+      addLogEntry(`Lỗi bản tin thế giới: ${msg}`, 'error');
+      showToast({ message: msg, type: 'error' });
+      showWorldNewsError(`Không tải được bản tin ngày ${formatReportDateLabel(selectedDate)}: ${msg}`);
       return;
+    }
+    setWorldNewsLoading(false);
+
+    if (newsReportTitleEl) {
+      newsReportTitleEl.textContent = `Bản tin Tài chính Thế giới sáng — ${formatReportDateLabel(report.date)}`;
+    }
+    if (newsDataSourceEl && report.dataSource) {
+      const updatedAt = report.generatedAt
+        ? ` | Cập nhật: ${new Date(report.generatedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`
+        : '';
+      newsDataSourceEl.textContent = `Nguồn: ${report.dataSource}${updatedAt}`;
     }
 
     // Add visual transition class
@@ -861,9 +975,6 @@ export function createChatPage(): ChatPage {
         .map(h => `<li class="summary-item">${escHtml(h)}</li>`)
         .join('');
     }
-    const stockThumbnail = $<HTMLImageElement>('stock-thumbnail');
-    if (stockThumbnail) stockThumbnail.src = report.stocks.thumbnail;
-
     // 4. Oil details WTI & Brent
     const oilPricesBadge = $('oil-prices-badge');
     if (oilPricesBadge) {
@@ -890,9 +1001,6 @@ export function createChatPage(): ChatPage {
         .map(h => `<li class="summary-item">${escHtml(h)}</li>`)
         .join('');
     }
-    const oilThumbnail = $<HTMLImageElement>('oil-thumbnail');
-    if (oilThumbnail) oilThumbnail.src = report.oil.thumbnail;
-
     // 5. Gold & USD
     const goldUsdSummaryList = $('gold-usd-summary-list');
     if (goldUsdSummaryList) {
@@ -905,18 +1013,36 @@ export function createChatPage(): ChatPage {
     const breakingNewsListEl = $('breaking-news-list');
     if (breakingNewsListEl) {
       breakingNewsListEl.innerHTML = report.breakingNews
-        .map(b => `
-          <div class="breaking-news-item ${b.isUrgent ? 'urgent' : ''}">
-            <span class="breaking-time-badge">${escHtml(b.time)}</span>
+        .map(b => {
+          if (b.url) {
+            return `
+          <a href="${escHtml(b.url)}" target="_blank" rel="noopener noreferrer" class="breaking-news-item breaking-news-item-link ${b.isUrgent ? 'urgent' : ''}">
             <div class="breaking-content-area">
               <div class="breaking-meta">
                 <span class="breaking-meta-source">${escHtml(b.source)}</span>
+                <span>•</span>
+                <span class="breaking-time-inline">${escHtml(b.time)}</span>
+                <span>• Breaking</span>
+              </div>
+              <div class="breaking-text">${escHtml(b.content)}</div>
+            </div>
+          </a>
+        `;
+          }
+          return `
+          <div class="breaking-news-item ${b.isUrgent ? 'urgent' : ''}">
+            <div class="breaking-content-area">
+              <div class="breaking-meta">
+                <span class="breaking-meta-source">${escHtml(b.source)}</span>
+                <span>•</span>
+                <span class="breaking-time-inline">${escHtml(b.time)}</span>
                 <span>• Breaking</span>
               </div>
               <div class="breaking-text">${escHtml(b.content)}</div>
             </div>
           </div>
-        `)
+        `;
+        })
         .join('');
     }
 
@@ -925,16 +1051,21 @@ export function createChatPage(): ChatPage {
     if (vtvNewsList) {
       if (report.vtvIndexNews && report.vtvIndexNews.length > 0) {
         vtvNewsList.innerHTML = report.vtvIndexNews
-          .map(n => `
+          .map(n => {
+            const titleHtml = n.url
+              ? `<a href="${escHtml(n.url)}" target="_blank" rel="noopener noreferrer" class="news-item-link">${escHtml(n.title)}</a>`
+              : escHtml(n.title);
+            return `
             <div class="news-item">
-              <h5 class="news-item-title">${escHtml(n.title)}</h5>
+              <h5 class="news-item-title">${titleHtml}</h5>
               <p class="news-item-desc">${escHtml(n.summary)}</p>
               <div class="news-item-footer">
                 <span class="news-item-source">📺 ${escHtml(n.source)}</span>
                 <span>${escHtml(n.time)}</span>
               </div>
             </div>
-          `)
+          `;
+          })
           .join('');
       } else {
         vtvNewsList.innerHTML = '<div style="font-size:12px; color:var(--text-tertiary); padding:8px 0;">Không có tin tiêu điểm trong ngày.</div>';
@@ -945,16 +1076,21 @@ export function createChatPage(): ChatPage {
     const vnFinanceNewsList = $('vn-finance-news-list');
     if (vnFinanceNewsList) {
       vnFinanceNewsList.innerHTML = report.vietnamFinanceNews
-        .map(n => `
+        .map(n => {
+          const titleHtml = n.url
+            ? `<a href="${escHtml(n.url)}" target="_blank" rel="noopener noreferrer" class="news-item-link">${escHtml(n.title)}</a>`
+            : escHtml(n.title);
+          return `
           <div class="news-item">
-            <h5 class="news-item-title">${escHtml(n.title)}</h5>
+            <h5 class="news-item-title">${titleHtml}</h5>
             <p class="news-item-desc">${escHtml(n.summary)}</p>
             <div class="news-item-footer">
               <span class="news-item-source">📰 ${escHtml(n.source)}</span>
               <span>${escHtml(n.time)}</span>
             </div>
           </div>
-        `)
+        `;
+        })
         .join('');
     }
 

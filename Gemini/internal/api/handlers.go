@@ -13,6 +13,7 @@ import (
 	"gemini-cli/internal/pubsub"
 	"gemini-cli/internal/store"
 	"gemini-cli/internal/utils"
+	"gemini-cli/internal/worldnews"
 )
 
 func generateSessionID() string {
@@ -397,6 +398,46 @@ func handleHistory(agent AgentInterface) http.HandlerFunc {
 }
 
 // ── Config Keys handler ──
+// ── World News handlers ──
+func handleWorldNews(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w, r)
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	date := strings.TrimSpace(r.URL.Query().Get("date"))
+	report, err := worldnews.DefaultService.GetReport(date)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadGateway)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(report)
+}
+
+func handleWorldNewsDates(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w, r)
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(worldnews.DefaultService.GetAvailableDates())
+}
+
 func handleConfigKeys(agent AgentInterface) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		enableCORS(w, r)

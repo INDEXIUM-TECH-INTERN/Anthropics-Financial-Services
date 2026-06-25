@@ -238,14 +238,13 @@
 }
 
 .media-and-chart-block {
-  display: flex;
-  gap: 20px;
-  align-items: center;
+  display: block;
   margin-bottom: 20px;
 }
 
-.thumbnail-container {
-  flex-shrink: 0;
+.media-and-chart-block .chart-container {
+  width: 100%;
+  min-height: 180px;
 }
 
 /* ─── Breaking News Styles ─── */
@@ -256,8 +255,6 @@
 }
 
 .breaking-news-item {
-  display: flex;
-  gap: 12px;
   padding: 16px;
   background: var(--bg-elevated);
   border-radius: 12px;
@@ -269,13 +266,10 @@
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
 }
 
-.breaking-time-badge {
+.breaking-time-inline {
   font-size: 11px;
   font-weight: 600;
   color: var(--danger);
-  background: rgba(239, 68, 68, 0.1);
-  padding: 4px 8px;
-  border-radius: 4px;
   white-space: nowrap;
 }
 
@@ -299,6 +293,22 @@
   font-size: 14px;
   color: var(--text-primary);
   line-height: 1.5;
+}
+
+.breaking-news-item-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.breaking-news-item-link:hover {
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.12);
+}
+
+.breaking-news-item-link:hover .breaking-text {
+  color: var(--color-primary-light);
 }
 
 /* ─── VTV News Specific Styles ─── */
@@ -385,10 +395,6 @@
 }
 
 @media (max-width: 640px) {
-  .media-and-chart-block {
-    flex-direction: column;
-  }
-
   .news-column-left,
   .news-column-right {
     width: 100%;
