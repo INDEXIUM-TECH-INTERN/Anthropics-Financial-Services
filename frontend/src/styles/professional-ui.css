@@ -15,7 +15,7 @@
 /* ── Enhanced Header ── */
 .header {
   background: var(--bg-elevated);
-  border-bottom: 1px solid var(--border-default);
+  border-bottom: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -194,15 +194,11 @@
 .chat-main {
   background: var(--bg-elevated);
   border-radius: var(--radius-lg);
-  border: 1px solid var(--border-default);
+  border: none;
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-elevated);
+  box-shadow: none;
   transition: all var(--transition-fast);
-}
-
-.chat-main:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
 .chat-viewport {
@@ -217,7 +213,7 @@
 
 /* ── Enhanced Professional Chat Input ── */
 .input-area {
-  border-top: 1px solid var(--border-default);
+  border-top: none;
   padding: var(--spacing-md) var(--spacing-lg);
   background: var(--bg-elevated);
 }
