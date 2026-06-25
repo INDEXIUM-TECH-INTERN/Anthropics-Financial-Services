@@ -458,6 +458,8 @@ export function createChatPage(): ChatPage {
     const text = textOverride ?? (chatInput?.value.trim() || '');
     if (!text && pendingAttachments.length === 0) return;
 
+    if (welcomeState) welcomeState.style.display = 'none';
+
     if (textOverride === null) {
       if (!$currentChatId.get()) await createNewChat();
       chatWidget.appendMessage(text, 'user');
