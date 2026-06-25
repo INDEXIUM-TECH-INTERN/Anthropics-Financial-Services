@@ -28,6 +28,7 @@ import {
   setChatTitle,
   setGenerating,
   setPipeline,
+  resetChat,
 } from '../../entities/chat/model/store';
 
 import { $sessions, setSessions, addSession, removeSession } from '../../entities/session/model/store';
@@ -343,6 +344,14 @@ export function createChatPage(): ChatPage {
     }
   }
 
+  function showWelcomeScreen() {
+    resetChat();
+    chatWidget.clearMessages();
+    if (welcomeState) welcomeState.style.display = 'flex';
+    if (currentChatTitleEl) currentChatTitleEl.textContent = '';
+    sidebarWidget.render($sessions.get(), null);
+  }
+
   async function deleteChat(id: string) {
     try {
       await deleteSession(api, id);
@@ -354,7 +363,7 @@ export function createChatPage(): ChatPage {
         if (remaining.length > 0) {
           await switchChat(remaining[0]!.id);
         } else {
-          await createNewChat();
+          showWelcomeScreen();
         }
       } else {
         sidebarWidget.render($sessions.get(), $currentChatId.get());
@@ -372,8 +381,6 @@ export function createChatPage(): ChatPage {
       addSession(c);
       setChatId(c.id);
       setChatTitle(title);
-      chatWidget.clearMessages();
-      if (welcomeState) welcomeState.style.display = 'flex';
       if (currentChatTitleEl) currentChatTitleEl.textContent = title;
       sidebarWidget.render($sessions.get(), c.id);
       addLogEntry('Đã tạo mới.', 'success');
@@ -383,8 +390,6 @@ export function createChatPage(): ChatPage {
       addSession(fb);
       setChatId(fb.id);
       setChatTitle(title);
-      chatWidget.clearMessages();
-      if (welcomeState) welcomeState.style.display = 'flex';
       if (currentChatTitleEl) currentChatTitleEl.textContent = title;
       sidebarWidget.render($sessions.get(), fb.id);
       return fb;
@@ -451,8 +456,11 @@ export function createChatPage(): ChatPage {
 
     const displayAttachments = attachmentPayloads.map(payloadToDisplayAttachment);
 
+    if (!$currentChatId.get()) {
+      await createNewChat();
+    }
+
     if (textOverride === null) {
-      if (!$currentChatId.get()) await createNewChat();
       chatWidget.appendMessage(text, 'user', false, undefined, displayAttachments);
     }
 
@@ -1303,11 +1311,9 @@ export function createChatPage(): ChatPage {
       addLogEntry(`Đã chuyển sang ${b}`, 'info');
     });
 
-    // New chat
-    newChatBtn?.addEventListener('click', async () => {
-      await createNewChat();
-      chatWidget.clearMessages();
-      if (welcomeState) welcomeState.style.display = 'flex';
+    // New chat — clear selection; session is created on first message
+    newChatBtn?.addEventListener('click', () => {
+      showWelcomeScreen();
     });
 
     // Run test
@@ -1357,9 +1363,7 @@ export function createChatPage(): ChatPage {
     document.addEventListener('keydown', (e) => {
       if (e.ctrlKey && !e.shiftKey && e.key === 'n') {
         e.preventDefault();
-        createNewChat();
-        chatWidget.clearMessages();
-        if (welcomeState) welcomeState.style.display = 'flex';
+        showWelcomeScreen();
       }
       if (e.ctrlKey && e.shiftKey && e.key === 'S') {
         e.preventDefault();
@@ -1412,14 +1416,7 @@ export function createChatPage(): ChatPage {
     });
 
     await loadConversations();
-    const sessions = $sessions.get();
-    if (!sessions.length) {
-      await createNewChat('Cuộc trò chuyện đầu tiên');
-    } else {
-      setChatId(sessions[0]!.id);
-      if (currentChatTitleEl) currentChatTitleEl.textContent = sessions[0]!.title || 'Cuộc trò chuyện mới';
-      sidebarWidget.render(sessions, sessions[0]!.id);
-    }
+    showWelcomeScreen();
 
     // Subscribe to pipeline changes for widget updates
     $pipeline.subscribe((_state) => {
