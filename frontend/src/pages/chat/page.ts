@@ -864,6 +864,38 @@ export function createChatPage(): ChatPage {
       .join('');
   }
 
+  function setChartMultiSourceRef(
+    canvasId: string,
+    sources: { label: string; url?: string }[],
+    prefix = 'Nguồn tổng hợp',
+  ): void {
+    const canvas = $(canvasId);
+    const block = canvas?.closest('.media-and-chart-block');
+    if (!block) return;
+
+    let ref = block.querySelector('.chart-data-ref') as HTMLElement | null;
+    if (!ref) {
+      ref = document.createElement('p');
+      ref.className = 'chart-data-ref';
+      block.appendChild(ref);
+    }
+
+    const visible = sources.filter((s) => s.url);
+    if (visible.length === 0) {
+      ref.innerHTML = '';
+      return;
+    }
+
+    const links = visible
+      .map(
+        (s) =>
+          `<a href="${escHtml(s.url!)}" target="_blank" rel="noopener noreferrer" class="data-reference-link">${escHtml(s.label)}</a>`,
+      )
+      .join(' · ');
+
+    ref.innerHTML = `${prefix}: ${links}`;
+  }
+
   function setChartDataRef(
     canvasId: string,
     source?: string,
@@ -1060,7 +1092,6 @@ export function createChatPage(): ChatPage {
     }
 
     renderSectionSourceBadges('stock-section-sources', [
-      { label: 'Yahoo Finance', url: report.stocks.marketUrl },
       { label: 'CNBC', url: report.stocks.cnbcUrl },
       { label: 'WSJ', url: report.stocks.wsjUrl },
       { label: 'Reuters', url: report.stocks.reutersUrl },
@@ -1076,12 +1107,11 @@ export function createChatPage(): ChatPage {
       { label: 'Reuters', url: report.goldUsd.reutersUrl },
     ]);
 
-    setChartDataRef(
-      'stock-chart',
-      report.stocks.marketSource,
-      report.stocks.marketUrl,
-      report.stocks.marketSymbol,
-    );
+    setChartMultiSourceRef('stock-chart', [
+      { label: 'CNBC', url: report.stocks.cnbcUrl },
+      { label: 'WSJ', url: report.stocks.wsjUrl },
+      { label: 'Reuters', url: report.stocks.reutersUrl },
+    ]);
     setChartDataRef('oil-chart', report.oil.marketSource, report.oil.marketUrl, report.oil.marketSymbol);
     setChartDataRef(
       'gold-chart',

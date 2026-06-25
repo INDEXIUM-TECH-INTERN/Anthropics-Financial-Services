@@ -128,6 +128,7 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 	}
 
 	newsItems := s.fetchNewsForReport(calendarDay, live)
+	stockNewsItems := s.fetchStockNewsForReport(calendarDay, live)
 
 	var vtvItems, vnItems, breakingItems []rssItem
 	for _, it := range newsItems {
@@ -181,9 +182,9 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 				Change:     stockPct,
 				IsPositive: stockPos,
 				Sparkline:  sp500.ChartPoints,
-				Source:     marketDataSource,
-				URL:        yahooFinanceQuoteURL("%5EGSPC"),
-				Symbol:     yahooFinanceDisplaySymbol("%5EGSPC"),
+				Source:     "CNBC",
+				URL:        "https://www.cnbc.com/world/",
+				Symbol:     "S&P 500",
 			},
 			{
 				Label:      "Dầu Brent",
@@ -205,13 +206,10 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 			ChartPoints:   sp500.ChartPoints,
 			ChartLabels:   sp500.ChartLabels,
 			Thumbnail:     FaviconProxyPath("cnbc.com"),
-			Highlights:    buildStockHighlights(sp500, nasdaq, breakingItems, tradingLabel, live),
+			Highlights:    buildStockHighlights(sp500, nasdaq, stockNewsItems, tradingLabel, live),
 			CNBCUrl:       "https://www.cnbc.com/world/",
 			WSJUrl:        "https://www.wsj.com/finance/stocks?mod=nav_top_subsection",
 			ReutersUrl:    "https://www.reuters.com/markets/stocks/",
-			MarketSource:  marketDataSource,
-			MarketURL:     yahooFinanceQuoteURL("%5EGSPC"),
-			MarketSymbol:  yahooFinanceDisplaySymbol("%5EGSPC") + ", " + yahooFinanceDisplaySymbol("%5EIXIC"),
 		},
 		Oil: OilSection{
 			WTIPrice:         formatPrice(wti.Symbol, wti.Price),
@@ -364,12 +362,12 @@ func buildStockHighlights(sp, nd *quoteSnapshot, news []rssItem, tradingLabel st
 		out = append(out, fmt.Sprintf("Nasdaq Composite %s, chốt %s.", pct, formatPrice(nd.Symbol, nd.Price)))
 	}
 	for _, it := range news {
-		lower := strings.ToLower(it.Title)
-		if strings.Contains(lower, "stock") || strings.Contains(lower, "market") || strings.Contains(lower, "s&p") || strings.Contains(lower, "nasdaq") || it.Source == "CNBC" {
-			out = append(out, fmt.Sprintf("%s: %s", it.Source, it.Title))
-			if len(out) >= 4 {
-				break
-			}
+		if !isAllowedStockNewsSource(it) {
+			continue
+		}
+		out = append(out, fmt.Sprintf("%s: %s", it.Source, it.Title))
+		if len(out) >= 5 {
+			break
 		}
 	}
 	return out

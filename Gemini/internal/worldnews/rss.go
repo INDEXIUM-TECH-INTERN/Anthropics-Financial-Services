@@ -15,6 +15,21 @@ type feedSource struct {
 	Kind string // global, vietnam, breaking, vtv
 }
 
+// stockFeeds — nguồn duy nhất cho mục Chứng khoán Thế giới (CNBC, WSJ, Reuters).
+var stockFeeds = []feedSource{
+	{Name: "CNBC", URL: "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114", Kind: "stocks"},
+	{
+		Name: "Reuters",
+		URL:  "https://news.google.com/rss/search?q=site:reuters.com+markets+stocks+when:2d&hl=en-US&gl=US&ceid=US:en",
+		Kind: "stocks",
+	},
+	{
+		Name: "WSJ",
+		URL:  "https://news.google.com/rss/search?q=site:wsj.com+finance+stocks+when:2d&hl=en-US&gl=US&ceid=US:en",
+		Kind: "stocks",
+	},
+}
+
 var globalFeeds = []feedSource{
 	{Name: "CNBC", URL: "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114", Kind: "global"},
 	{Name: "Bloomberg", URL: "https://feeds.bloomberg.com/markets/news.rss", Kind: "breaking"},
@@ -84,6 +99,79 @@ func morningDigestWindow(calendarDay time.Time) (time.Time, time.Time) {
 	until := time.Date(calendarDay.Year(), calendarDay.Month(), calendarDay.Day(), 7, 0, 0, 0, vnTimezone)
 	since := until.Add(-24 * time.Hour)
 	return since, until
+}
+
+func isAllowedStockNewsSource(it rssItem) bool {
+	allowedHosts := map[string]struct{}{
+		"cnbc.com":   {},
+		"reuters.com": {},
+		"wsj.com":    {},
+	}
+	if _, ok := allowedHosts[it.PublisherHost]; ok {
+		return true
+	}
+	source := strings.ToLower(strings.TrimSpace(it.Source))
+	switch {
+	case source == "cnbc", source == "reuters", source == "wsj":
+		return true
+	case strings.Contains(source, "wall street journal"):
+		return true
+	default:
+		return false
+	}
+}
+
+func filterStockNewsSources(items []rssItem) []rssItem {
+	var out []rssItem
+	for _, it := range items {
+		if isAllowedStockNewsSource(it) {
+			out = append(out, it)
+		}
+	}
+	return out
+}
+
+func (s *Service) fetchStockNewsForReport(calendarDay time.Time, live bool) []rssItem {
+	var items []rssItem
+	for _, src := range stockFeeds {
+		feedItems, err := s.fetchFeed(src)
+		if err != nil {
+			continue
+		}
+		items = append(items, feedItems...)
+	}
+
+	if live {
+		items = filterNewsBetween(items, time.Now().Add(-24*time.Hour), time.Now())
+	} else {
+		since, until := morningDigestWindow(calendarDay)
+		items = filterNewsBetween(items, since, until)
+		if len(items) < 2 {
+			historical := s.fetchHistoricalStockGoogleNews(since, until)
+			items = dedupeNews(append(items, historical...))
+		}
+	}
+
+	return s.enrichItemMedia(filterStockNewsSources(dedupeNews(items)), 4)
+}
+
+func (s *Service) fetchHistoricalStockGoogleNews(since, until time.Time) []rssItem {
+	after := since.Format("2006-01-02")
+	before := until.Format("2006-01-02")
+	query := fmt.Sprintf(
+		"(site:cnbc.com/world OR site:wsj.com/finance/stocks OR site:reuters.com/markets/stocks) after:%s before:%s",
+		after, before,
+	)
+	src := feedSource{
+		Name: "Google News (Chứng khoán)",
+		URL:  fmt.Sprintf("https://news.google.com/rss/search?q=%s&hl=en-US&gl=US&ceid=US:en", url.QueryEscape(query)),
+		Kind: "stocks",
+	}
+	items, err := s.fetchFeed(src)
+	if err != nil {
+		return nil
+	}
+	return filterNewsBetween(items, since, until)
 }
 
 func (s *Service) fetchNewsForReport(calendarDay time.Time, live bool) []rssItem {
