@@ -41,3 +41,7 @@ func digestMarketQuoteDay(calendarDay time.Time) time.Time {
 	}
 	return normalizeTradingDay(calendarDay).In(loc)
 }
+
+func formatQuoteSessionLabel(quoteDay time.Time) string {
+	return quoteDay.In(usEastern).Format("02/01/2006") + " (Mỹ)"
+}

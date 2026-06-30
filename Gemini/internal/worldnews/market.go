@@ -49,6 +49,12 @@ type yahooChartResponse struct {
 	} `json:"chart"`
 }
 
+type quoteBar struct {
+	ts    int64
+	close float64
+	day   string
+}
+
 type quoteSnapshot struct {
 	Symbol       string
 	Label        string
@@ -65,13 +71,108 @@ type quoteSnapshot struct {
 func (s *Service) fetchQuote(symbol, label string, calendarDay time.Time) (*quoteSnapshot, error) {
 	day := calendarDay.In(vnTimezone)
 	_, cutoff := morningDigestWindow(day)
-	tradingDay := digestMarketQuoteDay(day)
-	return s.fetchDailyQuote(symbol, label, tradingDay, cutoff)
+	quoteDay := digestMarketQuoteDay(day)
+
+	priceSnap, err := s.fetchPriceAtCutoff(symbol, label, quoteDay, cutoff)
+	if err != nil {
+		return s.fetchDailyQuote(symbol, label, quoteDay, cutoff)
+	}
+
+	dailySnap, err := s.fetchDailyQuote(symbol, label, quoteDay, cutoff)
+	if err != nil {
+		return priceSnap, nil
+	}
+
+	priceSnap.ChartPoints = dailySnap.ChartPoints
+	priceSnap.ChartLabels = dailySnap.ChartLabels
+	return priceSnap, nil
 }
 
-func (s *Service) fetchIntradayQuote(symbol, label string, tradingDay time.Time, cutoff time.Time) (*quoteSnapshot, error) {
-	apiURL := fmt.Sprintf("%s/%s?interval=30m&range=1d", yahooChartURL, symbol)
-	return s.parseChartResponse(symbol, label, apiURL, tradingDay, cutoff, true)
+func (s *Service) fetchPriceAtCutoff(symbol, label string, quoteDay time.Time, cutoff time.Time) (*quoteSnapshot, error) {
+	loc := usEastern
+	periodStart := cutoff.Add(-12 * 24 * time.Hour).In(loc)
+	periodEnd := cutoff.In(loc)
+	apiURL := fmt.Sprintf(
+		"%s/%s?period1=%d&period2=%d&interval=30m",
+		yahooChartURL, symbol, periodStart.Unix(), periodEnd.Unix(),
+	)
+	body, err := s.httpGet(apiURL)
+	if err != nil {
+		return nil, err
+	}
+
+	var data yahooChartResponse
+	if err := json.Unmarshal(body, &data); err != nil {
+		return nil, err
+	}
+	if len(data.Chart.Result) == 0 {
+		return nil, fmt.Errorf("empty yahoo intraday result for %s", symbol)
+	}
+
+	result := data.Chart.Result[0]
+	timestamps := result.Timestamp
+	closes := result.Indicators.Quote[0].Close
+	if len(timestamps) == 0 || len(closes) == 0 {
+		return nil, fmt.Errorf("no intraday price data for %s", symbol)
+	}
+
+	cutoffUnix := cutoff.Unix()
+	type bar struct {
+		ts    int64
+		close float64
+	}
+	var bars []bar
+	for i, c := range closes {
+		if c == 0 || i >= len(timestamps) || timestamps[i] > cutoffUnix {
+			continue
+		}
+		bars = append(bars, bar{ts: timestamps[i], close: c})
+	}
+	if len(bars) == 0 {
+		return nil, fmt.Errorf("no intraday bars before cutoff for %s", symbol)
+	}
+
+	last := bars[len(bars)-1]
+	price := last.close
+	prev := last.close
+	if len(bars) > 1 {
+		prev = bars[len(bars)-2].close
+	}
+
+	meta := result.Meta
+	quoteKey := quoteDay.In(loc).Format("2006-01-02")
+	if meta.RegularMarketTime > 0 && meta.RegularMarketTime <= cutoffUnix && meta.RegularMarketPrice > 0 {
+		rm := time.Unix(meta.RegularMarketTime, 0).In(loc)
+		if rm.Format("2006-01-02") == quoteKey && isEquityLikeSymbol(symbol) {
+			price = meta.RegularMarketPrice
+			last.ts = meta.RegularMarketTime
+		}
+	}
+
+	change := price - prev
+	var pct float64
+	if prev != 0 {
+		pct = (change / prev) * 100
+	}
+
+	return &quoteSnapshot{
+		Symbol:     symbol,
+		Label:      label,
+		Price:      price,
+		PrevClose:  prev,
+		Change:     change,
+		ChangePct:  pct,
+		IsPositive: change >= 0,
+		PriceTime:  resolvePriceTime(meta.RegularMarketTime, quoteKey, last.ts, true, cutoff, loc),
+	}, nil
+}
+
+func isEquityLikeSymbol(symbol string) bool {
+	decoded, err := url.PathUnescape(symbol)
+	if err != nil || decoded == "" {
+		decoded = symbol
+	}
+	return strings.HasPrefix(decoded, "^") || (!strings.Contains(decoded, "=F") && !strings.Contains(decoded, "-"))
 }
 
 func (s *Service) fetchDailyQuote(symbol, label string, tradingDay time.Time, cutoff time.Time) (*quoteSnapshot, error) {
@@ -106,40 +207,36 @@ func (s *Service) parseChartResponse(symbol, label, apiURL string, tradingDay ti
 	loc := usEastern
 	targetKey := tradingDay.In(loc).Format("2006-01-02")
 
-	type bar struct {
-		ts    int64
-		close float64
-		day   string
-	}
-	var bars []bar
+	cutoffUnix := cutoff.Unix()
+	var bars []quoteBar
 	for i, c := range closes {
-		if c == 0 || i >= len(timestamps) {
+		if c == 0 || i >= len(timestamps) || timestamps[i] > cutoffUnix {
 			continue
 		}
 		dayKey := time.Unix(timestamps[i], 0).In(loc).Format("2006-01-02")
-		bars = append(bars, bar{ts: timestamps[i], close: c, day: dayKey})
+		bars = append(bars, quoteBar{ts: timestamps[i], close: c, day: dayKey})
 	}
 	if len(bars) == 0 {
 		return nil, fmt.Errorf("no valid bars for %s", symbol)
 	}
 
-	idx := -1
-	for i, b := range bars {
-		if b.day == targetKey {
-			idx = i
-			break
-		}
-	}
-	if idx < 0 {
-		idx = len(bars) - 1
-	}
+	idx := selectBarIndex(bars, targetKey, cutoff)
 
 	price := bars[idx].close
 	prev := bars[idx].close
+	meta := result.Meta
+	if meta.RegularMarketTime > 0 &&
+		meta.RegularMarketTime <= cutoff.Unix() &&
+		meta.RegularMarketPrice > 0 &&
+		isEquityLikeSymbol(symbol) {
+		rm := time.Unix(meta.RegularMarketTime, 0).In(loc)
+		if rm.Format("2006-01-02") == targetKey {
+			price = meta.RegularMarketPrice
+		}
+	}
 	if idx > 0 {
 		prev = bars[idx-1].close
 	} else {
-		meta := result.Meta
 		if meta.ChartPreviousClose > 0 {
 			prev = meta.ChartPreviousClose
 		} else if meta.PreviousClose > 0 {
@@ -186,6 +283,26 @@ func (s *Service) parseChartResponse(symbol, label, apiURL string, tradingDay ti
 		ChartLabels: labels,
 		PriceTime:   resolvePriceTime(result.Meta.RegularMarketTime, targetKey, bars[idx].ts, intraday, cutoff, loc),
 	}, nil
+}
+
+func selectBarIndex(bars []quoteBar, targetKey string, cutoff time.Time) int {
+	cutoffUnix := cutoff.Unix()
+	idx := -1
+	for i, b := range bars {
+		if b.ts > cutoffUnix || b.day != targetKey {
+			continue
+		}
+		idx = i
+	}
+	if idx >= 0 {
+		return idx
+	}
+	for i := len(bars) - 1; i >= 0; i-- {
+		if bars[i].ts <= cutoffUnix {
+			return i
+		}
+	}
+	return len(bars) - 1
 }
 
 func resolvePriceTime(regularMarketTime int64, targetKey string, barTS int64, intraday bool, cutoff time.Time, loc *time.Location) string {

@@ -98,8 +98,8 @@ func (s *Service) GetReport(dateStr string) (*WorldNewsReport, error) {
 
 func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 	calendarDay = calendarDay.In(vnTimezone)
-	tradingDay := normalizeTradingDay(calendarDay)
-	tradingLabel := formatVNDate(tradingDay)
+	quoteDay := digestMarketQuoteDay(calendarDay)
+	tradingLabel := formatQuoteSessionLabel(quoteDay)
 	since, until := morningDigestWindow(calendarDay)
 	digestWindow := formatDigestWindow(since, until)
 
@@ -161,7 +161,7 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 	brentChg, brentPct, brentPos := formatChange(brent.Change, brent.ChangePct)
 
 	dataSource := fmt.Sprintf(
-		"Yahoo Finance (phiên %s) + tin tức trước 07:00 sáng, khung %s (GMT+7)",
+		"Yahoo Finance (giá chốt trước 07:00 GMT+7, phiên %s) + tin tức trước 07:00 sáng, khung %s (GMT+7)",
 		tradingLabel,
 		digestWindow,
 	)
