@@ -135,6 +135,11 @@
 .key-metrics-row .metric-card-visual {
   height: 44px;
   margin-top: 6px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 2px 4px 0;
+  overflow: hidden;
 }
 
 .key-metrics-row .metric-card-link {
@@ -246,6 +251,13 @@
   position: relative;
   width: 100%;
   margin: 10px 0;
+}
+
+.media-and-chart-block .chart-container {
+  background: rgba(0, 0, 0, 0.24);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 8px 6px 4px;
 }
 
 .news-thumbnail {
@@ -552,10 +564,18 @@
 }
 
 .stock-instrument-card {
-  background: rgba(10, 22, 40, 0.55);
-  border: 1px solid rgba(59, 130, 246, 0.28);
-  border-radius: 12px;
-  padding: 10px 12px 8px;
+  background: linear-gradient(160deg, rgba(16, 30, 56, 0.92) 0%, rgba(8, 16, 32, 0.78) 100%);
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 14px;
+  padding: 12px 14px 10px;
+  box-shadow: 0 4px 18px rgba(2, 8, 24, 0.35);
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.stock-instrument-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(96, 165, 250, 0.42);
+  box-shadow: 0 8px 24px rgba(30, 64, 175, 0.18);
 }
 
 .stock-instrument-header {
@@ -596,18 +616,22 @@
 .stock-instrument-change {
   flex-shrink: 0;
   font-size: 10px;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.04);
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
 }
 
 .stock-instrument-change.positive {
-  color: var(--success);
+  color: #4ade80;
+  background: rgba(0, 230, 118, 0.12);
+  border: 1px solid rgba(0, 230, 118, 0.28);
 }
 
 .stock-instrument-change.negative {
-  color: var(--danger);
+  color: #f87171;
+  background: rgba(255, 82, 82, 0.12);
+  border: 1px solid rgba(255, 82, 82, 0.28);
 }
 
 .stock-instrument-value-area {
@@ -634,10 +658,16 @@
 
 .stock-instrument-chart-wrap {
   margin: 0;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 4px 2px 0;
+  overflow: hidden;
 }
 
 .stock-instrument-chart-canvas {
-  height: 96px;
+  display: block;
+  height: 104px;
 }
 
 .media-and-chart-block {
