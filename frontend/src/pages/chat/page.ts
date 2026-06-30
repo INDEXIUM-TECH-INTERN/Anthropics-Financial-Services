@@ -656,9 +656,7 @@ export function createChatPage(): ChatPage {
   function drawMetricSparkline(
     canvasId: string,
     points: number[],
-    labels: string[],
     color: string,
-    priceTime?: string,
   ): void {
     const canvas = $<HTMLCanvasElement>(canvasId);
     if (!canvas || points.length < 2) return;
@@ -676,12 +674,9 @@ export function createChatPage(): ChatPage {
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, width, height);
 
-    const paddingLeft = 26;
-    const paddingRight = 42;
-    const paddingTop = 4;
-    const paddingBottom = 18;
-    const chartWidth = width - paddingLeft - paddingRight;
-    const chartHeight = height - paddingTop - paddingBottom;
+    const padding = 4;
+    const chartWidth = width - padding * 2;
+    const chartHeight = height - padding * 2;
 
     const minVal = Math.min(...points);
     const maxVal = Math.max(...points);
@@ -691,24 +686,10 @@ export function createChatPage(): ChatPage {
     const yRange = yMax - yMin;
     const xStep = chartWidth / (points.length - 1);
 
-    const shouldShowLabel = (index: number, total: number): boolean => {
-      if (total <= 4) return true;
-      if (index === 0 || index === total - 1) return true;
-      if (total <= 8) return index % 2 === 0;
-      return index === Math.floor(total / 2);
-    };
-
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(paddingLeft, paddingTop + chartHeight);
-    ctx.lineTo(paddingLeft + chartWidth, paddingTop + chartHeight);
-    ctx.stroke();
-
     ctx.beginPath();
     points.forEach((val, i) => {
-      const x = paddingLeft + i * xStep;
-      const y = paddingTop + chartHeight - ((val - yMin) / yRange) * chartHeight;
+      const x = padding + i * xStep;
+      const y = padding + chartHeight - ((val - yMin) / yRange) * chartHeight;
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     });
@@ -721,40 +702,12 @@ export function createChatPage(): ChatPage {
     const lastIndex = points.length - 1;
     const lastPoint = points[lastIndex];
     if (lastPoint === undefined) return;
-    const lastX = paddingLeft + lastIndex * xStep;
-    const lastY = paddingTop + chartHeight - ((lastPoint - yMin) / yRange) * chartHeight;
+    const lastX = padding + lastIndex * xStep;
+    const lastY = padding + chartHeight - ((lastPoint - yMin) / yRange) * chartHeight;
     ctx.beginPath();
     ctx.arc(lastX, lastY, 2.5, 0, Math.PI * 2);
     ctx.fillStyle = color;
     ctx.fill();
-
-    const axisLabels = [...labels];
-    if (priceTime && axisLabels.length > 0) {
-      axisLabels[lastIndex] = priceTime.replace(/\s*ET$/i, '').trim();
-    }
-
-    ctx.textBaseline = 'top';
-    points.forEach((_, i) => {
-      if (!shouldShowLabel(i, points.length)) return;
-      const label = axisLabels[i] ?? '';
-      if (!label) return;
-
-      let labelX = paddingLeft + i * xStep;
-      if (i === 0) {
-        ctx.textAlign = 'left';
-        labelX = paddingLeft;
-      } else if (i === lastIndex) {
-        ctx.textAlign = 'right';
-        labelX = width - paddingRight;
-      } else {
-        ctx.textAlign = 'center';
-      }
-
-      const isLast = i === lastIndex;
-      ctx.fillStyle = isLast ? color : 'rgba(255, 255, 255, 0.45)';
-      ctx.font = isLast ? '8px var(--font-mono)' : '7px var(--font-mono)';
-      ctx.fillText(label, labelX, height - paddingBottom + 2);
-    });
   }
 
   function drawCanvasChart(
@@ -1304,7 +1257,7 @@ export function createChatPage(): ChatPage {
         .map((m, i) => {
           const colorClass = m.isPositive ? 'positive' : 'negative';
           const priceTimeMarkup = m.priceTime
-            ? `<span class="metric-card-time" title="Thời điểm giá hiển thị">${escHtml(m.priceTime)}</span>`
+            ? `<span class="metric-card-time" title="Thời gian chốt phiên">Chốt: ${escHtml(m.priceTime)}</span>`
             : '';
           return `
             <div class="metric-card">
@@ -1331,13 +1284,7 @@ export function createChatPage(): ChatPage {
         report.keyNumbers.forEach((m, i) => {
           if (!m.sparkline?.length) return;
           const strokeColor = m.isPositive ? '#00e676' : '#ff5252';
-          drawMetricSparkline(
-            `metric-sparkline-${i}`,
-            m.sparkline,
-            m.sparklineLabels ?? [],
-            strokeColor,
-            m.priceTime,
-          );
+          drawMetricSparkline(`metric-sparkline-${i}`, m.sparkline, strokeColor);
         });
       }, 150);
     }
