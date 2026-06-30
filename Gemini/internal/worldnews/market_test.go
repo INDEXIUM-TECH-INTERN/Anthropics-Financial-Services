@@ -63,6 +63,28 @@ func TestChartLabelForDailyBarBefore7AM(t *testing.T) {
 	}
 }
 
+func TestChartLabelForDailyBarMapsYahoo930ToSessionClose(t *testing.T) {
+	loc := time.FixedZone("ET", -4*3600)
+	cutoff := time.Date(2026, 6, 30, 7, 0, 0, 0, vnTimezone)
+	// Yahoo daily bar timestamp often displays as 09:30 GMT+7.
+	yahooBarTS := time.Date(2026, 6, 17, 9, 30, 0, 0, vnTimezone).Unix()
+	dayKey := time.Unix(yahooBarTS, 0).In(loc).Format("2006-01-02")
+	got := chartLabelForDailyBar(dayKey, yahooBarTS, cutoff, loc)
+	if got == "17/06 09:30" {
+		t.Fatalf("must not expose raw Yahoo bar time 09:30, got %q", got)
+	}
+	if got != "17/06 03:00" {
+		t.Fatalf("expected session close 17/06 03:00, got %q", got)
+	}
+}
+
+func TestFormatChartVNLabelClampsAfter7AM(t *testing.T) {
+	got := formatChartVNLabel(time.Date(2026, 6, 17, 9, 30, 0, 0, vnTimezone))
+	if got != "17/06 06:59" {
+		t.Fatalf("expected 17/06 06:59, got %q", got)
+	}
+}
+
 func TestResolvePriceTimeFallsBackToSessionCloseForHistoricalDay(t *testing.T) {
 	loc := time.FixedZone("ET", -4*3600)
 	cutoff := time.Date(2026, 6, 26, 7, 0, 0, 0, vnTimezone)

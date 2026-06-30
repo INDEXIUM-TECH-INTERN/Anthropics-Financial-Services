@@ -273,8 +273,8 @@ func (s *Service) parseChartResponse(symbol, label, apiURL string, tradingDay ti
 				meta.RegularMarketTime <= cutoffUnix &&
 				isEquityLikeSymbol(symbol) {
 				rm := time.Unix(meta.RegularMarketTime, 0).In(vnTimezone)
-				if !rm.After(cutoff) && rm.Hour() < MorningDigestHour {
-					label = rm.Format("02/01 15:04")
+				if !rm.After(cutoff) {
+					label = formatChartVNLabel(rm)
 				}
 			}
 			labels = append(labels, label)
@@ -343,27 +343,25 @@ func formatDigestPriceTimeLabel(t time.Time) string {
 	return t.In(vnTimezone).Format("02/01 15:04") + " GMT+7"
 }
 
-func formatChartTimeLabel(ts int64, intraday bool) string {
-	t := time.Unix(ts, 0).In(vnTimezone)
-	if intraday && !t.After(time.Now()) && t.Hour() >= MorningDigestHour {
-		// Intraday bars should already be filtered by cutoff; guard for display.
-		t = time.Date(t.Year(), t.Month(), t.Day(), MorningDigestHour-1, 59, 0, 0, vnTimezone)
-	}
-	return t.Format("02/01 15:04")
+func formatChartTimeLabel(ts int64, _ bool) string {
+	return formatChartVNLabel(time.Unix(ts, 0).In(vnTimezone))
 }
 
 // chartLabelForDailyBar formats the x-axis label for a daily bar in GMT+7 before 07:00.
+// Yahoo daily timestamps often land at 09:30 GMT+7; we always show session close instead.
 func chartLabelForDailyBar(dayKey string, barTS int64, cutoff time.Time, loc *time.Location) string {
-	barVN := time.Unix(barTS, 0).In(vnTimezone)
-	if !barVN.After(cutoff) && barVN.Hour() < MorningDigestHour {
-		return barVN.Format("02/01 15:04")
-	}
+	_ = barTS
+	_ = cutoff
 	day, err := time.ParseInLocation("2006-01-02", dayKey, loc)
 	if err != nil {
-		return barVN.Format("02/01 15:04")
+		barVN := time.Unix(barTS, 0).In(vnTimezone)
+		day = time.Date(barVN.Year(), barVN.Month(), barVN.Day(), 0, 0, 0, 0, loc)
 	}
 	closeTime := time.Date(day.Year(), day.Month(), day.Day(), 16, 0, 0, 0, loc)
-	vn := closeTime.In(vnTimezone)
+	return formatChartVNLabel(closeTime.In(vnTimezone))
+}
+
+func formatChartVNLabel(vn time.Time) string {
 	if vn.Hour() >= MorningDigestHour {
 		vn = time.Date(vn.Year(), vn.Month(), vn.Day(), MorningDigestHour-1, 59, 0, 0, vnTimezone)
 	}
