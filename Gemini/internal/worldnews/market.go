@@ -267,7 +267,17 @@ func (s *Service) parseChartResponse(symbol, label, apiURL string, tradingDay ti
 		}
 		for i := start; i <= idx; i++ {
 			points = append(points, bars[i].close)
-			labels = append(labels, formatChartTimeLabel(bars[i].ts, false))
+			label := chartLabelForDailyBar(bars[i].day, bars[i].ts, cutoff, loc)
+			if i == idx &&
+				meta.RegularMarketTime > 0 &&
+				meta.RegularMarketTime <= cutoffUnix &&
+				isEquityLikeSymbol(symbol) {
+				rm := time.Unix(meta.RegularMarketTime, 0).In(vnTimezone)
+				if !rm.After(cutoff) && rm.Hour() < MorningDigestHour {
+					label = rm.Format("02/01 15:04")
+				}
+			}
+			labels = append(labels, label)
 		}
 	}
 
@@ -335,10 +345,29 @@ func formatDigestPriceTimeLabel(t time.Time) string {
 
 func formatChartTimeLabel(ts int64, intraday bool) string {
 	t := time.Unix(ts, 0).In(vnTimezone)
-	if intraday {
-		return t.Format("02/01 15:04")
+	if intraday && !t.After(time.Now()) && t.Hour() >= MorningDigestHour {
+		// Intraday bars should already be filtered by cutoff; guard for display.
+		t = time.Date(t.Year(), t.Month(), t.Day(), MorningDigestHour-1, 59, 0, 0, vnTimezone)
 	}
-	return t.Format("02/01")
+	return t.Format("02/01 15:04")
+}
+
+// chartLabelForDailyBar formats the x-axis label for a daily bar in GMT+7 before 07:00.
+func chartLabelForDailyBar(dayKey string, barTS int64, cutoff time.Time, loc *time.Location) string {
+	barVN := time.Unix(barTS, 0).In(vnTimezone)
+	if !barVN.After(cutoff) && barVN.Hour() < MorningDigestHour {
+		return barVN.Format("02/01 15:04")
+	}
+	day, err := time.ParseInLocation("2006-01-02", dayKey, loc)
+	if err != nil {
+		return barVN.Format("02/01 15:04")
+	}
+	closeTime := time.Date(day.Year(), day.Month(), day.Day(), 16, 0, 0, 0, loc)
+	vn := closeTime.In(vnTimezone)
+	if vn.Hour() >= MorningDigestHour {
+		vn = time.Date(vn.Year(), vn.Month(), vn.Day(), MorningDigestHour-1, 59, 0, 0, vnTimezone)
+	}
+	return vn.Format("02/01 15:04")
 }
 
 func formatPrice(symbol string, price float64) string {

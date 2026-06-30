@@ -740,7 +740,7 @@ export function createChatPage(): ChatPage {
     const paddingLeft = 40;
     const paddingRight = 15;
     const paddingTop = 15;
-    const paddingBottom = 20;
+    const paddingBottom = 24;
     const chartWidth = width - paddingLeft - paddingRight;
     const chartHeight = height - paddingTop - paddingBottom;
 
@@ -780,11 +780,12 @@ export function createChatPage(): ChatPage {
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
+    ctx.font = '8px var(--font-mono)';
     const xStep = chartWidth / (points.length - 1);
     points.forEach((_, i) => {
       if (i % 2 === 0 || i === points.length - 1) {
         const x = paddingLeft + i * xStep;
-        ctx.fillText(labels[i] || '', x, height - paddingBottom + 5);
+        ctx.fillText(labels[i] || '', x, height - paddingBottom + 4);
       }
     });
 
