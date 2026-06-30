@@ -46,6 +46,22 @@ func TestSelectBarIndexUsesLastDailyBarBeforeCutoff(t *testing.T) {
 	}
 }
 
+func TestFormatChartTimeLabelUsesGMT7(t *testing.T) {
+	loc := time.FixedZone("ET", -4*3600)
+	// US session close 29/06 16:00 ET -> 30/06 03:00 GMT+7
+	sessionClose := time.Date(2026, 6, 29, 16, 0, 0, 0, loc).Unix()
+	gotDaily := formatChartTimeLabel(sessionClose, false)
+	if gotDaily != "30/06" {
+		t.Fatalf("expected daily label 30/06, got %q", gotDaily)
+	}
+
+	intradayTS := time.Date(2026, 6, 30, 6, 30, 0, 0, vnTimezone).Unix()
+	gotIntra := formatChartTimeLabel(intradayTS, true)
+	if gotIntra != "30/06 06:30" {
+		t.Fatalf("expected intraday label 30/06 06:30, got %q", gotIntra)
+	}
+}
+
 func TestResolvePriceTimeFallsBackToSessionCloseForHistoricalDay(t *testing.T) {
 	loc := time.FixedZone("ET", -4*3600)
 	cutoff := time.Date(2026, 6, 26, 7, 0, 0, 0, vnTimezone)

@@ -694,16 +694,17 @@ export function createChatPage(): ChatPage {
     width: number,
     height: number,
     padX: number,
-    padY: number,
+    padTop: number,
     yMin: number,
     yRange: number,
+    padBottom = padTop,
   ): { x: number; y: number }[] {
     const chartWidth = width - padX * 2;
-    const chartHeight = height - padY * 2;
+    const chartHeight = height - padTop - padBottom;
     const xStep = chartWidth / (points.length - 1);
     return points.map((val, i) => ({
       x: padX + i * xStep,
-      y: padY + chartHeight - ((val - yMin) / yRange) * chartHeight,
+      y: padTop + chartHeight - ((val - yMin) / yRange) * chartHeight,
     }));
   }
 
@@ -797,7 +798,31 @@ export function createChatPage(): ChatPage {
     if (last) drawLastPointMarker(ctx, last, color);
   }
 
-  function drawStockInstrumentChart(canvasId: string, points: number[], color: string): void {
+  function drawChartTimeAxis(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    padX: number,
+    labels: string[],
+  ): void {
+    if (labels.length < 1) return;
+    const first = labels[0] || '';
+    const last = labels[labels.length - 1] || first;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.36)';
+    ctx.font = '9px var(--font-mono)';
+    ctx.textBaseline = 'bottom';
+    ctx.textAlign = 'left';
+    ctx.fillText(first, padX, height - 2);
+    ctx.textAlign = 'right';
+    ctx.fillText(last === first ? `${last} GMT+7` : `${last} GMT+7`, width - padX, height - 2);
+  }
+
+  function drawStockInstrumentChart(
+    canvasId: string,
+    points: number[],
+    labels: string[],
+    color: string,
+  ): void {
     const canvas = $<HTMLCanvasElement>(canvasId);
     if (!canvas || points.length < 2) return;
     const ctx = setupCanvas(canvas);
@@ -806,15 +831,16 @@ export function createChatPage(): ChatPage {
     const rect = canvas.getBoundingClientRect();
     const { width, height } = rect;
     const padX = 8;
-    const padY = 10;
+    const padTop = 10;
+    const padBottom = 18;
     const { yMin, yRange } = chartValueRange(points, 0.12);
-    const coords = buildChartCoords(points, width, height, padX, padY, yMin, yRange);
-    const bottomY = height - padY;
+    const coords = buildChartCoords(points, width, height, padX, padTop, yMin, yRange, padBottom);
+    const bottomY = height - padBottom;
 
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
     for (let i = 1; i <= 2; i += 1) {
-      const y = padY + ((height - padY * 2) * i) / 3;
+      const y = padTop + ((height - padTop - padBottom) * i) / 3;
       ctx.beginPath();
       ctx.moveTo(padX, y);
       ctx.lineTo(width - padX, y);
@@ -825,6 +851,7 @@ export function createChatPage(): ChatPage {
     strokeGlowLine(ctx, coords, color, 2.2);
     const last = coords[coords.length - 1];
     if (last) drawLastPointMarker(ctx, last, color);
+    drawChartTimeAxis(ctx, width, height, padX, labels);
   }
 
   function drawCanvasChart(
@@ -889,6 +916,11 @@ export function createChatPage(): ChatPage {
         ctx.fillText(labels[i] || '', x, height - paddingBottom + 6);
       }
     });
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.font = '9px var(--font-mono)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.32)';
+    ctx.fillText('GMT+7 · trước 07:00', width - paddingRight, height - 3);
 
     const drawSeries = (dataPoints: number[], lineColor: string, withFill: boolean) => {
       const coords = toCoords(dataPoints);
@@ -1092,7 +1124,7 @@ export function createChatPage(): ChatPage {
     instruments.forEach((inst, i) => {
       if (!inst.chartPoints?.length) return;
       const color = inst.isPositive ? '#00e676' : '#ff5252';
-      drawStockInstrumentChart(`stock-chart-${idPrefix}-${i}`, inst.chartPoints, color);
+      drawStockInstrumentChart(`stock-chart-${idPrefix}-${i}`, inst.chartPoints, inst.chartLabels ?? [], color);
     });
   }
 

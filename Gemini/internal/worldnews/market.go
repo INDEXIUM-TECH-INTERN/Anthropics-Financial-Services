@@ -254,11 +254,11 @@ func (s *Service) parseChartResponse(symbol, label, apiURL string, tradingDay ti
 	var labels []string
 	if intraday {
 		for i, c := range closes {
-			if c == 0 || i >= len(timestamps) {
+			if c == 0 || i >= len(timestamps) || timestamps[i] > cutoffUnix {
 				continue
 			}
 			points = append(points, c)
-			labels = append(labels, formatChartTimeLabel(timestamps[i], loc, true))
+			labels = append(labels, formatChartTimeLabel(timestamps[i], true))
 		}
 	} else {
 		start := idx - 7
@@ -267,7 +267,7 @@ func (s *Service) parseChartResponse(symbol, label, apiURL string, tradingDay ti
 		}
 		for i := start; i <= idx; i++ {
 			points = append(points, bars[i].close)
-			labels = append(labels, formatChartTimeLabel(bars[i].ts, loc, false))
+			labels = append(labels, formatChartTimeLabel(bars[i].ts, false))
 		}
 	}
 
@@ -333,31 +333,12 @@ func formatDigestPriceTimeLabel(t time.Time) string {
 	return t.In(vnTimezone).Format("02/01 15:04") + " GMT+7"
 }
 
-func formatPriceTimeLabel(t time.Time) string {
-	return t.Format("02/01 15:04")
-}
-
-func formatChartTimeLabel(ts int64, loc *time.Location, intraday bool) string {
-	t := time.Unix(ts, 0).In(loc)
+func formatChartTimeLabel(ts int64, intraday bool) string {
+	t := time.Unix(ts, 0).In(vnTimezone)
 	if intraday {
-		return t.Format("15:04")
+		return t.Format("02/01 15:04")
 	}
-	return formatPriceTimeLabel(t)
-}
-
-func extractSeries(timestamps []int64, closes []float64) ([]float64, []string) {
-	var points []float64
-	var labels []string
-	loc := usEastern
-	for i, c := range closes {
-		if c == 0 || i >= len(timestamps) {
-			continue
-		}
-		points = append(points, c)
-		t := time.Unix(timestamps[i], 0).In(loc)
-		labels = append(labels, t.Format("15:04"))
-	}
-	return points, labels
+	return t.Format("02/01")
 }
 
 func formatPrice(symbol string, price float64) string {
