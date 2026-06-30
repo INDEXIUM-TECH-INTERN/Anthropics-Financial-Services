@@ -25,14 +25,16 @@ type QuickHighlight struct {
 }
 
 type KeyNumber struct {
-	Label      string    `json:"label"`
-	Value      string    `json:"value"`
-	Change     string    `json:"change"`
-	IsPositive bool      `json:"isPositive"`
-	Sparkline  []float64 `json:"sparkline"`
-	Source     string    `json:"source,omitempty"`
-	URL        string    `json:"url,omitempty"`
-	Symbol     string    `json:"symbol,omitempty"`
+	Label           string    `json:"label"`
+	Value           string    `json:"value"`
+	Change          string    `json:"change"`
+	IsPositive      bool      `json:"isPositive"`
+	Sparkline       []float64 `json:"sparkline"`
+	SparklineLabels []string  `json:"sparklineLabels,omitempty"`
+	PriceTime       string    `json:"priceTime,omitempty"`
+	Source          string    `json:"source,omitempty"`
+	URL             string    `json:"url,omitempty"`
+	Symbol          string    `json:"symbol,omitempty"`
 }
 
 type StockInstrument struct {

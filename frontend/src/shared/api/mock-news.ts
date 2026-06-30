@@ -80,6 +80,8 @@ export interface KeyNumberMetric {
   change: string;
   isPositive: boolean;
   sparkline: number[];
+  sparklineLabels?: string[];
+  priceTime?: string;
   source?: string;
   url?: string;
   symbol?: string;

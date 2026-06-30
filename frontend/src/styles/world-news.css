@@ -114,9 +114,32 @@
   line-height: 1.2;
 }
 
+.key-metrics-row .metric-card-value-area {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.key-metrics-row .metric-card-time {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  line-height: 1.2;
+}
+
 .key-metrics-row .metric-card-visual {
-  height: 26px;
-  margin-top: 2px;
+  height: 52px;
+  margin-top: 4px;
+}
+
+.key-metrics-row .metric-sparkline-canvas {
+  width: 100%;
+  height: 52px;
+  display: block;
+}
+
+.highlights-box .key-metrics-row {
+  margin-top: 12px;
 }
 
 .key-metrics-row .metric-card:hover {
@@ -767,7 +790,11 @@
   }
 
   .key-metrics-row .metric-card-visual {
-    height: 22px;
+    height: 46px;
+  }
+
+  .key-metrics-row .metric-sparkline-canvas {
+    height: 46px;
   }
 
   .chart-canvas {

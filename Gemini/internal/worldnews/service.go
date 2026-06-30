@@ -172,26 +172,8 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 		Date:            calendarDay.Format("2006-01-02"),
 		QuickHighlights: buildQuickHighlights(sp500, nasdaq, wti, brent, gold, dxy, breakingItems, tradingLabel),
 		KeyNumbers: []KeyNumber{
-			{
-				Label:      "S&P 500",
-				Value:      formatPrice(sp500.Symbol, sp500.Price),
-				Change:     stockPct,
-				IsPositive: stockPos,
-				Sparkline:  sp500.ChartPoints,
-				Source:     "CNBC",
-				URL:        "https://www.cnbc.com/world/",
-				Symbol:     "S&P 500",
-			},
-			{
-				Label:      "Dầu Brent",
-				Value:      formatPrice(brent.Symbol, brent.Price),
-				Change:     brentPct,
-				IsPositive: brentPos,
-				Sparkline:  brent.ChartPoints,
-				Source:     marketDataSource,
-				URL:        yahooFinanceQuoteURL("BZ%3DF"),
-				Symbol:     yahooFinanceDisplaySymbol("BZ%3DF"),
-			},
+			keyNumberFromQuote(sp500, "S&P 500", "CNBC", "https://www.cnbc.com/world/", "S&P 500"),
+			keyNumberFromQuote(brent, "Dầu Brent", marketDataSource, yahooFinanceQuoteURL("BZ%3DF"), yahooFinanceDisplaySymbol("BZ%3DF")),
 		},
 		Stocks: StockSection{
 			IndexName:     "Chỉ số & cổ phiếu theo dõi",
@@ -242,17 +224,13 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 	}
 
 	if gold != nil {
-		_, goldPct, goldPos := formatChange(gold.Change, gold.ChangePct)
-		report.KeyNumbers = append(report.KeyNumbers, KeyNumber{
-			Label:      "Vàng thế giới",
-			Value:      formatPrice(gold.Symbol, gold.Price),
-			Change:     goldPct,
-			IsPositive: goldPos,
-			Sparkline:  gold.ChartPoints,
-			Source:     marketDataSource,
-			URL:        yahooFinanceQuoteURL("GC%3DF"),
-			Symbol:     yahooFinanceDisplaySymbol("GC%3DF"),
-		})
+		report.KeyNumbers = append(report.KeyNumbers, keyNumberFromQuote(
+			gold,
+			"Vàng thế giới",
+			marketDataSource,
+			yahooFinanceQuoteURL("GC%3DF"),
+			yahooFinanceDisplaySymbol("GC%3DF"),
+		))
 	}
 
 	return report, nil

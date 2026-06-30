@@ -58,6 +58,7 @@ type quoteSnapshot struct {
 	IsPositive   bool
 	ChartPoints  []float64
 	ChartLabels  []string
+	PriceTime    string
 }
 
 func (s *Service) fetchQuote(symbol, label string, calendarDay time.Time) (*quoteSnapshot, error) {
@@ -157,7 +158,7 @@ func (s *Service) parseChartResponse(symbol, label, apiURL string, tradingDay ti
 				continue
 			}
 			points = append(points, c)
-			labels = append(labels, time.Unix(timestamps[i], 0).In(loc).Format("15:04"))
+			labels = append(labels, formatChartTimeLabel(timestamps[i], loc, true))
 		}
 	} else {
 		start := idx - 7
@@ -166,7 +167,7 @@ func (s *Service) parseChartResponse(symbol, label, apiURL string, tradingDay ti
 		}
 		for i := start; i <= idx; i++ {
 			points = append(points, bars[i].close)
-			labels = append(labels, formatVNDateLabel(bars[i].day))
+			labels = append(labels, formatChartTimeLabel(bars[i].ts, loc, false))
 		}
 	}
 
@@ -180,7 +181,16 @@ func (s *Service) parseChartResponse(symbol, label, apiURL string, tradingDay ti
 		IsPositive:  change >= 0,
 		ChartPoints: points,
 		ChartLabels: labels,
+		PriceTime:   formatChartTimeLabel(bars[idx].ts, loc, false) + " ET",
 	}, nil
+}
+
+func formatChartTimeLabel(ts int64, loc *time.Location, intraday bool) string {
+	t := time.Unix(ts, 0).In(loc)
+	if intraday {
+		return t.Format("15:04")
+	}
+	return t.Format("02/01 15:04")
 }
 
 func extractSeries(timestamps []int64, closes []float64) ([]float64, []string) {
