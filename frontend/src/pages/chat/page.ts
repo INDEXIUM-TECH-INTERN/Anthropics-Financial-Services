@@ -655,203 +655,61 @@ export function createChatPage(): ChatPage {
   }
 
   // ═══ SPARKLINE & CHART DRAWING ═══
-  function parseChartColor(color: string): [number, number, number] {
-    if (color === '#00e676') return [0, 230, 118];
-    if (color === '#ff5252') return [255, 82, 82];
-    if (color === '#ffab00') return [255, 171, 0];
-    if (color === '#ffe082') return [255, 224, 130];
-    if (color === '#b0bec5') return [176, 190, 197];
-    return [0, 242, 254];
-  }
-
-  function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D | null {
+  function drawMetricSparkline(
+    canvasId: string,
+    points: number[],
+    color: string,
+  ): void {
+    const canvas = $<HTMLCanvasElement>(canvasId);
+    if (!canvas || points.length < 2) return;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
+    if (!ctx) return;
+
     const rect = canvas.getBoundingClientRect();
     const width = rect.width;
     const height = rect.height;
-    if (width === 0 || height === 0) return null;
+    if (width === 0 || height === 0) return;
+
     const dpr = window.devicePixelRatio || 1;
     canvas.width = width * dpr;
     canvas.height = height * dpr;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, width, height);
-    return ctx;
-  }
 
-  function chartValueRange(values: number[], paddingRatio = 0.1): { yMin: number; yMax: number; yRange: number } {
-    const minVal = Math.min(...values);
-    const maxVal = Math.max(...values);
+    const padding = 4;
+    const chartWidth = width - padding * 2;
+    const chartHeight = height - padding * 2;
+
+    const minVal = Math.min(...points);
+    const maxVal = Math.max(...points);
     const valRange = maxVal - minVal || 1;
-    const yMin = minVal - valRange * paddingRatio;
-    const yMax = maxVal + valRange * paddingRatio;
-    return { yMin, yMax, yRange: yMax - yMin };
-  }
-
-  function buildChartCoords(
-    points: number[],
-    width: number,
-    height: number,
-    padX: number,
-    padTop: number,
-    yMin: number,
-    yRange: number,
-    padBottom = padTop,
-  ): { x: number; y: number }[] {
-    const chartWidth = width - padX * 2;
-    const chartHeight = height - padTop - padBottom;
+    const yMin = minVal - valRange * 0.08;
+    const yMax = maxVal + valRange * 0.08;
+    const yRange = yMax - yMin;
     const xStep = chartWidth / (points.length - 1);
-    return points.map((val, i) => ({
-      x: padX + i * xStep,
-      y: padTop + chartHeight - ((val - yMin) / yRange) * chartHeight,
-    }));
-  }
 
-  function traceSmoothLine(ctx: CanvasRenderingContext2D, coords: { x: number; y: number }[]): void {
-    if (coords.length < 2) return;
-    const first = coords[0];
-    if (!first) return;
     ctx.beginPath();
-    ctx.moveTo(first.x, first.y);
-    for (let i = 1; i < coords.length; i++) {
-      const prev = coords[i - 1];
-      const curr = coords[i];
-      if (!prev || !curr) continue;
-      const midX = (prev.x + curr.x) / 2;
-      const midY = (prev.y + curr.y) / 2;
-      ctx.quadraticCurveTo(prev.x, prev.y, midX, midY);
-    }
-    const last = coords[coords.length - 1];
-    const beforeLast = coords[coords.length - 2];
-    if (last && beforeLast) {
-      ctx.quadraticCurveTo(beforeLast.x, beforeLast.y, last.x, last.y);
-    }
-  }
-
-  function fillLineGradient(
-    ctx: CanvasRenderingContext2D,
-    coords: { x: number; y: number }[],
-    bottomY: number,
-    color: string,
-    topAlpha = 0.22,
-  ): void {
-    if (coords.length < 2) return;
-    const first = coords[0];
-    const last = coords[coords.length - 1];
-    if (!first || !last) return;
-    const [r, g, b] = parseChartColor(color);
-    const grad = ctx.createLinearGradient(0, first.y, 0, bottomY);
-    grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${topAlpha})`);
-    grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
-    traceSmoothLine(ctx, coords);
-    ctx.lineTo(last.x, bottomY);
-    ctx.lineTo(first.x, bottomY);
-    ctx.closePath();
-    ctx.fillStyle = grad;
-    ctx.fill();
-  }
-
-  function strokeGlowLine(ctx: CanvasRenderingContext2D, coords: { x: number; y: number }[], color: string, width = 2): void {
-    traceSmoothLine(ctx, coords);
+    points.forEach((val, i) => {
+      const x = padding + i * xStep;
+      const y = padding + chartHeight - ((val - yMin) / yRange) * chartHeight;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
     ctx.strokeStyle = color;
-    ctx.lineWidth = width;
+    ctx.lineWidth = 1.8;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.shadowBlur = 8;
-    ctx.shadowColor = color;
     ctx.stroke();
-    ctx.shadowBlur = 0;
-  }
 
-  function drawLastPointMarker(ctx: CanvasRenderingContext2D, coord: { x: number; y: number }, color: string): void {
-    const [r, g, b] = parseChartColor(color);
+    const lastIndex = points.length - 1;
+    const lastPoint = points[lastIndex];
+    if (lastPoint === undefined) return;
+    const lastX = padding + lastIndex * xStep;
+    const lastY = padding + chartHeight - ((lastPoint - yMin) / yRange) * chartHeight;
     ctx.beginPath();
-    ctx.arc(coord.x, coord.y, 5, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.18)`;
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(coord.x, coord.y, 3, 0, Math.PI * 2);
+    ctx.arc(lastX, lastY, 2.5, 0, Math.PI * 2);
     ctx.fillStyle = color;
     ctx.fill();
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.stroke();
-  }
-
-  function drawMetricSparkline(canvasId: string, points: number[], color: string): void {
-    const canvas = $<HTMLCanvasElement>(canvasId);
-    if (!canvas || points.length < 2) return;
-    const ctx = setupCanvas(canvas);
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const { width, height } = rect;
-    const pad = 5;
-    const { yMin, yRange } = chartValueRange(points, 0.1);
-    const coords = buildChartCoords(points, width, height, pad, pad, yMin, yRange);
-    const bottomY = height - pad;
-
-    fillLineGradient(ctx, coords, bottomY, color, 0.18);
-    strokeGlowLine(ctx, coords, color, 1.8);
-    const last = coords[coords.length - 1];
-    if (last) drawLastPointMarker(ctx, last, color);
-  }
-
-  function drawChartTimeAxis(
-    ctx: CanvasRenderingContext2D,
-    width: number,
-    height: number,
-    padX: number,
-    labels: string[],
-  ): void {
-    if (labels.length < 1) return;
-    const first = labels[0] || '';
-    const last = labels[labels.length - 1] || first;
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.36)';
-    ctx.font = '9px var(--font-mono)';
-    ctx.textBaseline = 'bottom';
-    ctx.textAlign = 'left';
-    ctx.fillText(first, padX, height - 2);
-    ctx.textAlign = 'right';
-    ctx.fillText(last === first ? `${last} GMT+7` : `${last} GMT+7`, width - padX, height - 2);
-  }
-
-  function drawStockInstrumentChart(
-    canvasId: string,
-    points: number[],
-    labels: string[],
-    color: string,
-  ): void {
-    const canvas = $<HTMLCanvasElement>(canvasId);
-    if (!canvas || points.length < 2) return;
-    const ctx = setupCanvas(canvas);
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const { width, height } = rect;
-    const padX = 8;
-    const padTop = 10;
-    const padBottom = 18;
-    const { yMin, yRange } = chartValueRange(points, 0.12);
-    const coords = buildChartCoords(points, width, height, padX, padTop, yMin, yRange, padBottom);
-    const bottomY = height - padBottom;
-
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 1;
-    for (let i = 1; i <= 2; i += 1) {
-      const y = padTop + ((height - padTop - padBottom) * i) / 3;
-      ctx.beginPath();
-      ctx.moveTo(padX, y);
-      ctx.lineTo(width - padX, y);
-      ctx.stroke();
-    }
-
-    fillLineGradient(ctx, coords, bottomY, color, 0.24);
-    strokeGlowLine(ctx, coords, color, 2.2);
-    const last = coords[coords.length - 1];
-    if (last) drawLastPointMarker(ctx, last, color);
-    drawChartTimeAxis(ctx, width, height, padX, labels);
   }
 
   function drawCanvasChart(
@@ -863,45 +721,58 @@ export function createChatPage(): ChatPage {
     secondaryColor = '#ffab00',
   ): void {
     const canvas = $<HTMLCanvasElement>(canvasId);
-    if (!canvas || points.length < 2) return;
-    const ctx = setupCanvas(canvas);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    const { width, height } = rect;
-    const paddingLeft = 42;
-    const paddingRight = 14;
-    const paddingTop = 14;
-    const paddingBottom = 22;
+    const width = rect.width;
+    const height = rect.height;
+    if (width === 0 || height === 0) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.scale(dpr, dpr);
+
+    ctx.clearRect(0, 0, width, height);
+
+    const paddingLeft = 40;
+    const paddingRight = 15;
+    const paddingTop = 15;
+    const paddingBottom = 20;
     const chartWidth = width - paddingLeft - paddingRight;
     const chartHeight = height - paddingTop - paddingBottom;
 
-    const allPoints = secondaryPoints ? [...points, ...secondaryPoints] : points;
-    const { yMin, yRange } = chartValueRange(allPoints, 0.1);
-    const xStep = chartWidth / (points.length - 1);
-    const bottomY = height - paddingBottom;
+    let allPoints = [...points];
+    if (secondaryPoints) {
+      allPoints = [...allPoints, ...secondaryPoints];
+    }
+    const minVal = Math.min(...allPoints);
+    const maxVal = Math.max(...allPoints);
+    const valRange = maxVal - minVal || 1;
 
-    const toCoords = (dataPoints: number[]) =>
-      dataPoints.map((val, i) => ({
-        x: paddingLeft + i * xStep,
-        y: paddingTop + chartHeight - ((val - yMin) / yRange) * chartHeight,
-      }));
+    const yMin = minVal - valRange * 0.1;
+    const yMax = maxVal + valRange * 0.1;
+    const yRange = yMax - yMin;
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.42)';
-    ctx.font = '10px var(--font-mono)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.font = '9px var(--font-mono)';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
 
     const steps = 3;
-    for (let i = 0; i <= steps; i += 1) {
+    for (let i = 0; i <= steps; i++) {
       const val = yMin + (yRange * i) / steps;
       const y = paddingTop + chartHeight - (chartHeight * i) / steps;
+
       ctx.beginPath();
       ctx.moveTo(paddingLeft, y);
       ctx.lineTo(width - paddingRight, y);
       ctx.stroke();
+
       let lbl = val.toFixed(1);
       if (val >= 1000) lbl = Math.round(val).toLocaleString();
       ctx.fillText(lbl, paddingLeft - 8, y);
@@ -909,29 +780,82 @@ export function createChatPage(): ChatPage {
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.38)';
+    const xStep = chartWidth / (points.length - 1);
     points.forEach((_, i) => {
       if (i % 2 === 0 || i === points.length - 1) {
         const x = paddingLeft + i * xStep;
-        ctx.fillText(labels[i] || '', x, height - paddingBottom + 6);
+        ctx.fillText(labels[i] || '', x, height - paddingBottom + 5);
       }
     });
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'bottom';
-    ctx.font = '9px var(--font-mono)';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.32)';
-    ctx.fillText('GMT+7 · trước 07:00', width - paddingRight, height - 3);
 
-    const drawSeries = (dataPoints: number[], lineColor: string, withFill: boolean) => {
-      const coords = toCoords(dataPoints);
-      if (withFill) fillLineGradient(ctx, coords, bottomY, lineColor, 0.16);
-      strokeGlowLine(ctx, coords, lineColor, 2.2);
-      const last = coords[coords.length - 1];
-      if (last) drawLastPointMarker(ctx, last, lineColor);
+    const drawLine = (dataPoints: number[], lineColor: string, fillGrad: boolean) => {
+      ctx.beginPath();
+      dataPoints.forEach((val, i) => {
+        const x = paddingLeft + i * xStep;
+        const y = paddingTop + chartHeight - ((val - yMin) / yRange) * chartHeight;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 4;
+      ctx.shadowColor = lineColor;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      if (fillGrad) {
+        let r = 0;
+        let g = 242;
+        let b = 254;
+        if (lineColor === '#ff5252') {
+          r = 255;
+          g = 82;
+          b = 82;
+        } else if (lineColor === '#ffab00') {
+          r = 255;
+          g = 171;
+          b = 0;
+        } else if (lineColor === '#00e676') {
+          r = 0;
+          g = 230;
+          b = 118;
+        }
+
+        const grad = ctx.createLinearGradient(0, paddingTop, 0, height - paddingBottom);
+        grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.15)`);
+        grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+
+        ctx.beginPath();
+        ctx.moveTo(paddingLeft, height - paddingBottom);
+        dataPoints.forEach((val, i) => {
+          const x = paddingLeft + i * xStep;
+          const y = paddingTop + chartHeight - ((val - yMin) / yRange) * chartHeight;
+          ctx.lineTo(x, y);
+        });
+        ctx.lineTo(paddingLeft + (dataPoints.length - 1) * xStep, height - paddingBottom);
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+      }
+
+      dataPoints.forEach((val, i) => {
+        const x = paddingLeft + i * xStep;
+        const y = paddingTop + chartHeight - ((val - yMin) / yRange) * chartHeight;
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, 2 * Math.PI);
+        ctx.fillStyle = lineColor;
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.stroke();
+      });
     };
 
-    drawSeries(points, color, !secondaryPoints);
-    if (secondaryPoints) drawSeries(secondaryPoints, secondaryColor, false);
+    drawLine(points, color, !secondaryPoints);
+    if (secondaryPoints) {
+      drawLine(secondaryPoints, secondaryColor, false);
+    }
   }
 
   function getVietnamTodayISO(): string {
@@ -1124,7 +1048,12 @@ export function createChatPage(): ChatPage {
     instruments.forEach((inst, i) => {
       if (!inst.chartPoints?.length) return;
       const color = inst.isPositive ? '#00e676' : '#ff5252';
-      drawStockInstrumentChart(`stock-chart-${idPrefix}-${i}`, inst.chartPoints, inst.chartLabels ?? [], color);
+      drawCanvasChart(
+        `stock-chart-${idPrefix}-${i}`,
+        inst.chartPoints,
+        inst.chartLabels ?? [],
+        color,
+      );
     });
   }
 

@@ -135,11 +135,6 @@
 .key-metrics-row .metric-card-visual {
   height: 44px;
   margin-top: 6px;
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  padding: 2px 4px 0;
-  overflow: hidden;
 }
 
 .key-metrics-row .metric-card-link {
@@ -251,13 +246,6 @@
   position: relative;
   width: 100%;
   margin: 10px 0;
-}
-
-.media-and-chart-block .chart-container {
-  background: rgba(0, 0, 0, 0.24);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  padding: 8px 6px 4px;
 }
 
 .news-thumbnail {
@@ -658,16 +646,10 @@
 
 .stock-instrument-chart-wrap {
   margin: 0;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
-  padding: 4px 2px 0;
-  overflow: hidden;
 }
 
 .stock-instrument-chart-canvas {
-  display: block;
-  height: 104px;
+  height: 96px;
 }
 
 .media-and-chart-block {
