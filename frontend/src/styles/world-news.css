@@ -444,17 +444,35 @@
 }
 
 .stock-charts-tabs {
+  display: flex;
+  flex-direction: column;
   margin: 8px 0 4px;
 }
 
+.stock-charts-panels {
+  order: 1;
+}
+
 .stock-charts-tab-bar {
+  order: 2;
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
+.stock-charts-yahoo-cta {
+  order: 3;
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
 }
 
 .stock-charts-tab {
-  flex: 1;
+  flex: 1 1 calc(25% - 6px);
+  min-width: 120px;
   border: 1px solid rgba(59, 130, 246, 0.28);
   background: rgba(10, 22, 40, 0.45);
   color: var(--text-secondary);
@@ -788,6 +806,11 @@
 
   .chart-canvas {
     height: 100px;
+  }
+
+  .stock-charts-tab {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
   }
 
   .stock-charts-grid {

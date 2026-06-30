@@ -192,16 +192,9 @@
                         </div>
                         <div class="section-body">
                             <div class="stock-charts-tabs" id="stock-charts-tabs">
-                                <div class="stock-charts-tab-bar" role="tablist" aria-label="Biểu đồ chứng khoán">
-                                    <button type="button" class="stock-charts-tab active" data-stock-tab="primary" role="tab" aria-selected="true" aria-controls="stock-charts-panel-primary" id="stock-tab-primary">Tab 1 · Tiêu điểm</button>
-                                    <button type="button" class="stock-charts-tab" data-stock-tab="more" role="tab" aria-selected="false" aria-controls="stock-charts-panel-more" id="stock-tab-more">Tab 2 · Thêm mã</button>
-                                </div>
-                                <div class="stock-charts-panel active" id="stock-charts-panel-primary" role="tabpanel" aria-labelledby="stock-tab-primary">
-                                    <div class="stock-charts-grid" id="stock-charts-grid-primary"></div>
-                                </div>
-                                <div class="stock-charts-panel" id="stock-charts-panel-more" role="tabpanel" aria-labelledby="stock-tab-more">
-                                    <div class="stock-charts-grid" id="stock-charts-grid-more"></div>
-                                </div>
+                                <div class="stock-charts-panels" id="stock-charts-panels" aria-live="polite"></div>
+                                <div class="stock-charts-tab-bar" id="stock-charts-tab-bar" role="tablist" aria-label="Biểu đồ chứng khoán"></div>
+                                <p class="stock-charts-yahoo-cta" id="stock-charts-yahoo-cta"></p>
                             </div>
                             <p class="chart-data-ref" id="stock-section-chart-ref"></p>
                             <ul class="summary-list" id="stock-summary-list">

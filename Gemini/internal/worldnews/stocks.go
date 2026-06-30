@@ -10,20 +10,50 @@ type stockSymbolDef struct {
 	Label   string
 }
 
-// PrimaryStockDisplayCount — số mã hiển thị ở tab 1; phần còn lại sang tab 2.
-const PrimaryStockDisplayCount = 4
+type stockTabDef struct {
+	ID      string
+	Label   string
+	Symbols []stockSymbolDef
+}
 
-// WorldStockSymbols — các mã hiển thị biểu đồ trong mục Chứng khoán Thế giới.
-var WorldStockSymbols = []stockSymbolDef{
-	{Encoded: "%5EGSPC", Label: "S&P 500"},
-	{Encoded: "%5EIXIC", Label: "Nasdaq Composite"},
-	{Encoded: "%5EDJI", Label: "Dow Jones"},
-	{Encoded: "AAPL", Label: "Apple"},
-	{Encoded: "MSFT", Label: "Microsoft"},
-	{Encoded: "NVDA", Label: "NVIDIA"},
-	{Encoded: "GOOGL", Label: "Alphabet"},
-	{Encoded: "AMZN", Label: "Amazon"},
-	{Encoded: "META", Label: "Meta"},
+// StockTabCount — số tab biểu đồ trong mục Chứng khoán Thế giới.
+const StockTabCount = 4
+
+// WorldStockTabDefs — 4 nhóm mã; muốn xem thêm → Yahoo Finance.
+var WorldStockTabDefs = []stockTabDef{
+	{
+		ID:    "indices",
+		Label: "Chỉ số Mỹ",
+		Symbols: []stockSymbolDef{
+			{Encoded: "%5EGSPC", Label: "S&P 500"},
+			{Encoded: "%5EIXIC", Label: "Nasdaq Composite"},
+			{Encoded: "%5EDJI", Label: "Dow Jones"},
+		},
+	},
+	{
+		ID:    "tech-1",
+		Label: "Apple · Microsoft",
+		Symbols: []stockSymbolDef{
+			{Encoded: "AAPL", Label: "Apple"},
+			{Encoded: "MSFT", Label: "Microsoft"},
+		},
+	},
+	{
+		ID:    "tech-2",
+		Label: "NVIDIA · Alphabet",
+		Symbols: []stockSymbolDef{
+			{Encoded: "NVDA", Label: "NVIDIA"},
+			{Encoded: "GOOGL", Label: "Alphabet"},
+		},
+	},
+	{
+		ID:    "tech-3",
+		Label: "Amazon · Meta",
+		Symbols: []stockSymbolDef{
+			{Encoded: "AMZN", Label: "Amazon"},
+			{Encoded: "META", Label: "Meta"},
+		},
+	},
 }
 
 func quoteToStockInstrument(q *quoteSnapshot) StockInstrument {
@@ -42,55 +72,80 @@ func quoteToStockInstrument(q *quoteSnapshot) StockInstrument {
 	}
 }
 
-func (s *Service) fetchWorldStockQuotes(calendarDay time.Time) (map[string]*quoteSnapshot, []StockInstrument) {
+func (s *Service) fetchWorldStockQuotes(calendarDay time.Time) (map[string]*quoteSnapshot, []StockInstrument, []StockTab) {
+	type job struct {
+		tabIdx  int
+		symIdx  int
+		encoded string
+		label   string
+	}
+	var jobs []job
+	for ti, tab := range WorldStockTabDefs {
+		for si, sym := range tab.Symbols {
+			jobs = append(jobs, job{tabIdx: ti, symIdx: si, encoded: sym.Encoded, label: sym.Label})
+		}
+	}
+
 	type result struct {
-		key   string
+		job   job
 		quote *quoteSnapshot
-		order int
 		ok    bool
 	}
 
-	ch := make(chan result, len(WorldStockSymbols))
+	ch := make(chan result, len(jobs))
 	var wg sync.WaitGroup
 
-	for i, def := range WorldStockSymbols {
+	for _, j := range jobs {
 		wg.Add(1)
-		go func(order int, def stockSymbolDef) {
+		go func(j job) {
 			defer wg.Done()
-			q, err := s.fetchQuote(def.Encoded, def.Label, calendarDay)
+			q, err := s.fetchQuote(j.encoded, j.label, calendarDay)
 			if err != nil {
-				ch <- result{key: def.Encoded, order: order, ok: false}
+				ch <- result{job: j, ok: false}
 				return
 			}
-			ch <- result{key: def.Encoded, quote: q, order: order, ok: true}
-		}(i, def)
+			ch <- result{job: j, quote: q, ok: true}
+		}(j)
 	}
 
 	wg.Wait()
 	close(ch)
 
-	quotes := make(map[string]*quoteSnapshot, len(WorldStockSymbols))
-	bucket := make(map[int]StockInstrument, len(WorldStockSymbols))
+	quotes := make(map[string]*quoteSnapshot)
+	tabBuckets := make([]map[int]StockInstrument, len(WorldStockTabDefs))
+	for i := range tabBuckets {
+		tabBuckets[i] = make(map[int]StockInstrument)
+	}
+
 	for r := range ch {
 		if !r.ok {
 			continue
 		}
-		quotes[r.key] = r.quote
-		bucket[r.order] = quoteToStockInstrument(r.quote)
+		quotes[r.job.encoded] = r.quote
+		tabBuckets[r.job.tabIdx][r.job.symIdx] = quoteToStockInstrument(r.quote)
 	}
 
-	instruments := make([]StockInstrument, 0, len(WorldStockSymbols))
-	for i := 0; i < len(WorldStockSymbols); i++ {
-		if inst, ok := bucket[i]; ok {
-			instruments = append(instruments, inst)
+	tabs := make([]StockTab, 0, len(WorldStockTabDefs))
+	var flat []StockInstrument
+	for ti, tabDef := range WorldStockTabDefs {
+		tab := StockTab{ID: tabDef.ID, Label: tabDef.Label}
+		for si := range tabDef.Symbols {
+			if inst, ok := tabBuckets[ti][si]; ok {
+				tab.Instruments = append(tab.Instruments, inst)
+				flat = append(flat, inst)
+			}
+		}
+		if len(tab.Instruments) > 0 {
+			tabs = append(tabs, tab)
 		}
 	}
-	return quotes, instruments
+	return quotes, flat, tabs
 }
 
-func splitStockInstruments(all []StockInstrument) (primary, more []StockInstrument) {
-	if len(all) <= PrimaryStockDisplayCount {
-		return all, nil
+func flattenStockTabInstruments(tabs []StockTab) []StockInstrument {
+	var out []StockInstrument
+	for _, tab := range tabs {
+		out = append(out, tab.Instruments...)
 	}
-	return all[:PrimaryStockDisplayCount], all[PrimaryStockDisplayCount:]
+	return out
 }

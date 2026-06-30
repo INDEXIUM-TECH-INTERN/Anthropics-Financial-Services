@@ -12,7 +12,7 @@ import (
 const ReportHistoryDays = 90
 
 // reportCacheVersion — tăng khi đổi schema báo cáo để tránh trả cache cũ.
-const reportCacheVersion = 4
+const reportCacheVersion = 5
 
 var (
 	vnTimezone = time.FixedZone("ICT", 7*3600)
@@ -114,7 +114,7 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 	since, until := morningDigestWindow(calendarDay)
 	digestWindow := formatDigestWindow(since, until)
 
-	stockQuotes, stockInstruments := s.fetchWorldStockQuotes(calendarDay)
+	stockQuotes, stockInstruments, stockTabs := s.fetchWorldStockQuotes(calendarDay)
 	sp500 := stockQuotes["%5EGSPC"]
 	if sp500 == nil {
 		return nil, fmt.Errorf("S&P 500: no quote data")
@@ -177,8 +177,6 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 		digestWindow,
 	)
 
-	primaryStockInstruments, moreStockInstruments := splitStockInstruments(stockInstruments)
-
 	report := &WorldNewsReport{
 		Date:            calendarDay.Format("2006-01-02"),
 		HighlightSummary: s.resolveHighlightSummary(sp500, nasdaq, wti, brent, gold, dxy, breakingItems, quoteLabel, digestWindow),
@@ -194,13 +192,16 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 			IsPositive:    stockPos,
 			ChartPoints:   sp500.ChartPoints,
 			ChartLabels:   sp500.ChartLabels,
-			Instruments:     primaryStockInstruments,
-			MoreInstruments: moreStockInstruments,
+			Tabs:          stockTabs,
+			Instruments:   stockInstruments,
 			Thumbnail:     FaviconProxyPath("cnbc.com"),
 			Highlights:    buildStockHighlights(sp500, nasdaq, stockNewsItems, quoteLabel),
 			CNBCUrl:       "https://www.cnbc.com/world/",
 			WSJUrl:        "https://www.wsj.com/finance/stocks?mod=nav_top_subsection",
 			ReutersUrl:    "https://www.reuters.com/markets/stocks/",
+			MarketSource:  marketDataSource,
+			MarketURL:     yahooFinanceURL + "/world/",
+			MarketSymbol:  "S&P 500, Nasdaq, Dow Jones & cổ phiếu lớn",
 		},
 		Oil: OilSection{
 			WTIPrice:         formatPrice(wti.Symbol, wti.Price),

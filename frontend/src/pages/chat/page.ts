@@ -16,7 +16,7 @@ import type { ChatSession, AttachmentPayload, TokenMetrics } from '../../shared/
 import { createChatViewWidget } from '../../widgets/chat-view/compose';
 import { createSidebarWidget } from '../../widgets/sidebar/compose';
 import { createPipelineWidget } from '../../widgets/pipeline/compose';
-import type { WorldNewsReport } from '../../shared/api/mock-news';
+import type { StockTab, WorldNewsReport } from '../../shared/api/mock-news';
 import { getApiBaseUrl } from '../../shared/lib/api-base';
 
 
@@ -124,7 +124,7 @@ export function createChatPage(): ChatPage {
   const newsReportTitleEl = $('news-report-title');
   let currentTab = 'chat';
   let worldNewsLoading = false;
-  let lastStockMoreInstruments: NonNullable<WorldNewsReport['stocks']['moreInstruments']> = [];
+  let lastStockTabs: StockTab[] = [];
   let stockChartsTabListenersBound = false;
   let worldNewsDatesLoaded = false;
 
@@ -1035,48 +1035,18 @@ export function createChatPage(): ChatPage {
     });
   }
 
-  function switchStockChartsTab(tab: 'primary' | 'more'): void {
-    const tabBar = $('stock-charts-tabs');
-    if (!tabBar) return;
-
-    tabBar.querySelectorAll<HTMLButtonElement>('.stock-charts-tab').forEach((btn) => {
-      const isActive = btn.dataset.stockTab === tab;
-      btn.classList.toggle('active', isActive);
-      btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
-    });
-
-    $('stock-charts-panel-primary')?.classList.toggle('active', tab === 'primary');
-    $('stock-charts-panel-more')?.classList.toggle('active', tab === 'more');
-
-    if (tab === 'more' && lastStockMoreInstruments.length > 0) {
-      setTimeout(() => drawStockInstrumentCharts(lastStockMoreInstruments, 'more'), 80);
+  function resolveStockTabs(stocks: WorldNewsReport['stocks']): StockTab[] {
+    if (stocks.tabs?.length) {
+      return stocks.tabs.filter((tab) => tab.instruments?.length > 0);
     }
-  }
 
-  function setupStockChartsTabListeners(): void {
-    if (stockChartsTabListenersBound) return;
-    const tabBar = $('stock-charts-tabs')?.querySelector('.stock-charts-tab-bar');
-    if (!tabBar) return;
-
-    tabBar.addEventListener('click', (event) => {
-      const target = (event.target as HTMLElement).closest<HTMLButtonElement>('.stock-charts-tab');
-      if (!target?.dataset.stockTab) return;
-      const tab = target.dataset.stockTab === 'more' ? 'more' : 'primary';
-      switchStockChartsTab(tab);
-    });
-    stockChartsTabListenersBound = true;
-  }
-
-  function renderStockInstrumentCharts(stocks: WorldNewsReport['stocks']): void {
-    const primaryGrid = $('stock-charts-grid-primary');
-    const moreGrid = $('stock-charts-grid-more');
-    const tabMoreBtn = $<HTMLButtonElement>('stock-tab-more');
-    if (!primaryGrid || !moreGrid) return;
-
-    const primary =
-      stocks.instruments?.length > 0
-        ? stocks.instruments
-        : [
+    const merged = [...(stocks.instruments ?? []), ...(stocks.moreInstruments ?? [])];
+    if (merged.length === 0) {
+      return [
+        {
+          id: 'default',
+          label: 'Tiêu điểm',
+          instruments: [
             {
               symbol: '^GSPC',
               label: 'S&P 500',
@@ -1087,28 +1057,100 @@ export function createChatPage(): ChatPage {
               chartPoints: stocks.chartPoints,
               chartLabels: stocks.chartLabels,
             },
-          ];
-    const more = stocks.moreInstruments ?? [];
-    lastStockMoreInstruments = more;
-
-    primaryGrid.innerHTML = renderInstrumentCards(primary, 'primary');
-    moreGrid.innerHTML = more.length > 0
-      ? renderInstrumentCards(more, 'more')
-      : '<p class="stock-charts-empty">Không có thêm mã để hiển thị.</p>';
-
-    if (tabMoreBtn) {
-      const moreCount = more.length;
-      tabMoreBtn.textContent = moreCount > 0 ? `Tab 2 · Thêm mã (${moreCount})` : 'Tab 2 · Thêm mã';
-      tabMoreBtn.classList.toggle('hidden', moreCount === 0);
-      tabMoreBtn.disabled = moreCount === 0;
+          ],
+        },
+      ];
     }
 
-    setupStockChartsTabListeners();
-    switchStockChartsTab('primary');
+    const labels = ['Chỉ số Mỹ', 'Nhóm 2', 'Nhóm 3', 'Nhóm 4'];
+    const chunkSize = Math.ceil(merged.length / 4);
+    const tabs: StockTab[] = [];
+    for (let i = 0; i < 4 && i * chunkSize < merged.length; i += 1) {
+      tabs.push({
+        id: `tab-${i + 1}`,
+        label: labels[i] ?? `Tab ${i + 1}`,
+        instruments: merged.slice(i * chunkSize, (i + 1) * chunkSize),
+      });
+    }
+    return tabs;
+  }
 
-    setTimeout(() => {
-      drawStockInstrumentCharts(primary, 'primary');
-    }, 150);
+  function switchStockChartsTab(tabId: string): void {
+    const root = $('stock-charts-tabs');
+    if (!root) return;
+
+    root.querySelectorAll<HTMLButtonElement>('.stock-charts-tab').forEach((btn) => {
+      const isActive = btn.dataset.stockTab === tabId;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+
+    root.querySelectorAll<HTMLElement>('.stock-charts-panel').forEach((panel) => {
+      panel.classList.toggle('active', panel.dataset.stockTab === tabId);
+    });
+
+    const tab = lastStockTabs.find((item) => item.id === tabId);
+    if (tab) {
+      setTimeout(() => drawStockInstrumentCharts(tab.instruments, tabId), 80);
+    }
+  }
+
+  function setupStockChartsTabListeners(): void {
+    if (stockChartsTabListenersBound) return;
+    const tabBar = $('stock-charts-tab-bar');
+    if (!tabBar) return;
+
+    tabBar.addEventListener('click', (event) => {
+      const target = (event.target as HTMLElement).closest<HTMLButtonElement>('.stock-charts-tab');
+      if (!target?.dataset.stockTab) return;
+      switchStockChartsTab(target.dataset.stockTab);
+    });
+    stockChartsTabListenersBound = true;
+  }
+
+  function renderStockYahooCta(stocks: WorldNewsReport['stocks']): void {
+    const el = $('stock-charts-yahoo-cta');
+    if (!el) return;
+    const url = stocks.marketUrl || 'https://finance.yahoo.com/world/';
+    const source = stocks.marketSource || 'Yahoo Finance';
+    el.innerHTML = `Muốn xem thêm mã? Mở <a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer" class="data-reference-link">${escHtml(source)}</a> ↗`;
+  }
+
+  function renderStockInstrumentCharts(stocks: WorldNewsReport['stocks']): void {
+    const panelsEl = $('stock-charts-panels');
+    const tabBarEl = $('stock-charts-tab-bar');
+    if (!panelsEl || !tabBarEl) return;
+
+    const tabs = resolveStockTabs(stocks);
+    lastStockTabs = tabs;
+
+    panelsEl.innerHTML = tabs
+      .map(
+        (tab, i) => `
+        <div class="stock-charts-panel${i === 0 ? ' active' : ''}" id="stock-charts-panel-${escHtml(tab.id)}" role="tabpanel" data-stock-tab="${escHtml(tab.id)}" aria-labelledby="stock-tab-${escHtml(tab.id)}">
+          <div class="stock-charts-grid" id="stock-charts-grid-${escHtml(tab.id)}">
+            ${renderInstrumentCards(tab.instruments, tab.id)}
+          </div>
+        </div>
+      `,
+      )
+      .join('');
+
+    tabBarEl.innerHTML = tabs
+      .map(
+        (tab, i) => `
+        <button type="button" class="stock-charts-tab${i === 0 ? ' active' : ''}" data-stock-tab="${escHtml(tab.id)}" role="tab" aria-selected="${i === 0 ? 'true' : 'false'}" aria-controls="stock-charts-panel-${escHtml(tab.id)}" id="stock-tab-${escHtml(tab.id)}">${escHtml(tab.label)}</button>
+      `,
+      )
+      .join('');
+
+    renderStockYahooCta(stocks);
+    setupStockChartsTabListeners();
+
+    const firstTab = tabs[0];
+    if (!firstTab) return;
+    switchStockChartsTab(firstTab.id);
+    setTimeout(() => drawStockInstrumentCharts(firstTab.instruments, firstTab.id), 150);
   }
 
   function renderNewsCard(n: { title: string; summary: string; source: string; time: string; url?: string; thumbnail?: string; logo?: string }): string {
@@ -1301,6 +1343,7 @@ export function createChatPage(): ChatPage {
       { label: 'CNBC', url: report.stocks.cnbcUrl },
       { label: 'WSJ', url: report.stocks.wsjUrl },
       { label: 'Reuters', url: report.stocks.reutersUrl },
+      { label: report.stocks.marketSource || 'Yahoo Finance', url: report.stocks.marketUrl },
     ]);
     renderSectionSourceBadges('oil-section-sources', [
       { label: 'Yahoo Finance', url: report.oil.marketUrl },
@@ -1318,7 +1361,8 @@ export function createChatPage(): ChatPage {
       { label: 'CNBC', url: report.stocks.cnbcUrl },
       { label: 'WSJ', url: report.stocks.wsjUrl },
       { label: 'Reuters', url: report.stocks.reutersUrl },
-    ]);
+      { label: report.stocks.marketSource || 'Yahoo Finance', url: report.stocks.marketUrl },
+    ], 'Dữ liệu biểu đồ');
     setChartDataRef('oil-chart', report.oil.marketSource, report.oil.marketUrl, report.oil.marketSymbol);
     setChartDataRef(
       'gold-chart',

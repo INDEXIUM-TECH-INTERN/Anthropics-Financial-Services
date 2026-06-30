@@ -40,6 +40,12 @@ type KeyNumber struct {
 	Symbol          string    `json:"symbol,omitempty"`
 }
 
+type StockTab struct {
+	ID           string            `json:"id"`
+	Label        string            `json:"label"`
+	Instruments  []StockInstrument `json:"instruments"`
+}
+
 type StockInstrument struct {
 	Symbol        string    `json:"symbol"`
 	Label         string    `json:"label"`
@@ -60,6 +66,7 @@ type StockSection struct {
 	IsPositive    bool              `json:"isPositive"`
 	ChartPoints   []float64         `json:"chartPoints"`
 	ChartLabels   []string          `json:"chartLabels"`
+	Tabs            []StockTab        `json:"tabs"`
 	Instruments     []StockInstrument `json:"instruments"`
 	MoreInstruments []StockInstrument `json:"moreInstruments,omitempty"`
 	Thumbnail       string            `json:"thumbnail"`

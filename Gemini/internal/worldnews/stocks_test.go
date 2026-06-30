@@ -1,7 +1,6 @@
 package worldnews
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -49,17 +48,30 @@ func TestQuoteToStockInstrument(t *testing.T) {
 	}
 }
 
-func TestSplitStockInstruments(t *testing.T) {
-	all := make([]StockInstrument, 9)
-	for i := range all {
-		all[i] = StockInstrument{Symbol: fmt.Sprintf("SYM%d", i)}
+func TestWorldStockTabDefs(t *testing.T) {
+	if len(WorldStockTabDefs) != StockTabCount {
+		t.Fatalf("expected %d tabs, got %d", StockTabCount, len(WorldStockTabDefs))
 	}
-	primary, more := splitStockInstruments(all)
-	if len(primary) != PrimaryStockDisplayCount {
-		t.Fatalf("expected %d primary, got %d", PrimaryStockDisplayCount, len(primary))
+	total := 0
+	for _, tab := range WorldStockTabDefs {
+		if tab.ID == "" || tab.Label == "" {
+			t.Fatal("tab id/label required")
+		}
+		total += len(tab.Symbols)
 	}
-	if len(more) != 5 {
-		t.Fatalf("expected 5 more, got %d", len(more))
+	if total != 9 {
+		t.Fatalf("expected 9 symbols across tabs, got %d", total)
+	}
+}
+
+func TestFlattenStockTabInstruments(t *testing.T) {
+	tabs := []StockTab{
+		{ID: "a", Label: "A", Instruments: []StockInstrument{{Symbol: "A1"}, {Symbol: "A2"}}},
+		{ID: "b", Label: "B", Instruments: []StockInstrument{{Symbol: "B1"}}},
+	}
+	flat := flattenStockTabInstruments(tabs)
+	if len(flat) != 3 {
+		t.Fatalf("expected 3 instruments, got %d", len(flat))
 	}
 }
 
