@@ -388,14 +388,21 @@
 .section-sources {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 8px;
+  margin-top: 8px;
 }
 
-.source-badge.source-link-chip:hover {
-  background: rgba(59, 130, 246, 0.22);
-  border-color: var(--color-primary-light);
-  color: #fff;
+.source-badge {
+  font-size: 12px;
+  color: var(--color-primary-light);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 4px 6px;
+  transition: color var(--transition-fast);
+}
+
+.source-badge:hover {
+  color: #60a5fa;
 }
 
 .market-content {
