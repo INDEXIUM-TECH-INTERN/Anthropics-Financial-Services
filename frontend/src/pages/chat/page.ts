@@ -952,7 +952,7 @@ export function createChatPage(): ChatPage {
     const fallback = `<span class="highlights-item-logo-fallback" aria-hidden="true">${initial}</span>`;
     if (!logo) return fallback;
     const alt = escHtml(source || 'Nguồn tin');
-    return `<img class="highlights-item-logo" src="${escHtml(logo)}" alt="${alt}" width="24" height="24" loading="lazy" decoding="async" onerror="this.remove()">${fallback}`;
+    return `<img class="highlights-item-logo" src="${escHtml(logo)}" alt="${alt}" loading="lazy" decoding="async" onerror="this.remove()">${fallback}`;
   }
 
   function renderQuickHighlightItem(h: {
@@ -1288,6 +1288,10 @@ export function createChatPage(): ChatPage {
           const priceTimeMarkup = m.priceTime
             ? `<span class="metric-card-time" title="Thời gian chốt phiên">Chốt: ${escHtml(m.priceTime)}</span>`
             : '';
+          const chartLinkOpen = m.url
+            ? `<a href="${escHtml(m.url)}" target="_blank" rel="noopener noreferrer" class="metric-card-chart-link" aria-label="Xem biểu đồ ${escHtml(m.label)} trên ${escHtml(m.source || 'nguồn')}">`
+            : '';
+          const chartLinkClose = m.url ? '</a>' : '';
           return `
             <div class="metric-card">
               <div class="metric-card-header">
@@ -1301,7 +1305,9 @@ export function createChatPage(): ChatPage {
                 ${priceTimeMarkup}
               </div>
               <div class="metric-card-visual">
+                ${chartLinkOpen}
                 <canvas id="metric-sparkline-${i}" class="metric-sparkline-canvas" aria-label="Biểu đồ ${escHtml(m.label)} theo thời gian"></canvas>
+                ${chartLinkClose}
               </div>
               ${renderMetricRef(m.source, m.url, m.symbol)}
             </div>
