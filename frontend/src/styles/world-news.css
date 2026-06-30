@@ -151,46 +151,104 @@
   transform: translateY(-1px);
 }
 
-.key-metrics-row .metric-card-ref {
-  display: block;
-  margin-top: 6px;
-  font-size: 10px;
-  color: var(--text-tertiary);
+/* ─── Source links: large tap targets ─── */
+.source-link-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--color-primary-light);
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.28);
+  border-radius: 8px;
   text-decoration: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
 }
 
-.key-metrics-row .metric-card-ref:hover {
-  color: var(--color-primary-light);
-  text-decoration: underline;
+.source-link-chip:hover {
+  background: rgba(59, 130, 246, 0.22);
+  border-color: var(--color-primary-light);
+  color: #fff;
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+.source-link-chip:active {
+  transform: translateY(0);
+}
+
+.source-link-chip-icon {
+  flex-shrink: 0;
+  font-size: 11px;
+  opacity: 0.9;
+}
+
+.source-link-chip--compact {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.chart-data-ref:has(.section-source-chips-list) {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.key-metrics-row .metric-card-ref {
+  width: 100%;
+  margin-top: 8px;
+  justify-content: space-between;
+}
+
+.key-metrics-row .metric-card-ref-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
 }
 
 .chart-data-ref {
-  margin: 4px 0 0;
-  font-size: 11px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-size: 12px;
   color: var(--text-tertiary);
   line-height: 1.4;
 }
 
-.data-reference-link {
-  color: var(--color-primary-light);
-  text-decoration: none;
+.chart-data-ref-label {
+  flex-shrink: 0;
 }
 
-.data-reference-link:hover {
-  text-decoration: underline;
+.section-source-chips-label {
+  display: block;
+  width: 100%;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 
-.news-data-source .data-reference-link {
-  color: inherit;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.section-source-chips-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.news-data-source .data-reference-link:hover {
-  color: var(--color-primary-light);
+.news-data-source .source-link-chip {
+  margin-top: 4px;
+  vertical-align: middle;
 }
 
 .highlights-list {
@@ -215,13 +273,15 @@
 .highlights-item-anchor {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
   color: inherit;
   text-decoration: none;
-  border-radius: 8px;
-  padding: 6px 8px;
-  margin: -6px -8px;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: -4px -4px;
+  min-height: 44px;
+  touch-action: manipulation;
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 
@@ -551,17 +611,7 @@
 }
 
 .stock-instrument-symbol {
-  display: inline-block;
-  margin-top: 2px;
-  font-size: 10px;
-  color: var(--text-tertiary);
   font-family: var(--font-mono);
-  text-decoration: none;
-}
-
-.stock-instrument-symbol:hover {
-  color: var(--color-primary-light);
-  text-decoration: underline;
 }
 
 .stock-instrument-change {

@@ -892,7 +892,7 @@ export function createChatPage(): ChatPage {
   ): string {
     const linked = escHtml(dataSource).replace(
       /Yahoo Finance/g,
-      '<a href="https://finance.yahoo.com" target="_blank" rel="noopener noreferrer" class="data-reference-link">Yahoo Finance</a>',
+      '<a href="https://finance.yahoo.com" target="_blank" rel="noopener noreferrer" class="source-link-chip">Yahoo Finance<span class="source-link-chip-icon" aria-hidden="true">↗</span></a>',
     );
     const digestNote = digestUntil
       ? ` | Chốt tổng hợp trước: ${escHtml(digestUntil)}`
@@ -916,7 +916,7 @@ export function createChatPage(): ChatPage {
     el.innerHTML = visible
       .map(
         (b) =>
-          `<a href="${escHtml(b.url!)}" target="_blank" rel="noopener noreferrer" class="source-badge">${escHtml(b.label)}</a>`,
+          `<a href="${escHtml(b.url!)}" target="_blank" rel="noopener noreferrer" class="source-badge source-link-chip">${escHtml(b.label)}<span class="source-link-chip-icon" aria-hidden="true">↗</span></a>`,
       )
       .join('');
   }
@@ -944,7 +944,7 @@ export function createChatPage(): ChatPage {
     }
 
     const symbolPart = symbol ? ` · ${escHtml(symbol)}` : '';
-    ref.innerHTML = `Dữ liệu biểu đồ: <a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer" class="data-reference-link">${escHtml(source)}${symbolPart}</a>`;
+    ref.innerHTML = `<span class="chart-data-ref-label">Dữ liệu biểu đồ:</span> <a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer" class="source-link-chip">${escHtml(source)}${symbolPart}<span class="source-link-chip-icon" aria-hidden="true">↗</span></a>`;
   }
 
   function renderQuickHighlightItem(h: { text: string; url?: string; source?: string }): string {
@@ -970,7 +970,7 @@ export function createChatPage(): ChatPage {
     if (!url) return '';
     const label = source || 'Nguồn';
     const symbolPart = symbol ? ` · ${escHtml(symbol)}` : '';
-    return `<a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer" class="metric-card-ref">${escHtml(label)}${symbolPart}</a>`;
+    return `<a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer" class="metric-card-ref source-link-chip" title="Mở nguồn ${escHtml(label)}"><span class="metric-card-ref-text">${escHtml(label)}${symbolPart}</span><span class="source-link-chip-icon" aria-hidden="true">↗</span></a>`;
   }
 
   function setSectionSourceRef(
@@ -988,10 +988,10 @@ export function createChatPage(): ChatPage {
     const links = visible
       .map(
         (s) =>
-          `<a href="${escHtml(s.url!)}" target="_blank" rel="noopener noreferrer" class="data-reference-link">${escHtml(s.label)}</a>`,
+          `<a href="${escHtml(s.url!)}" target="_blank" rel="noopener noreferrer" class="source-link-chip">${escHtml(s.label)}<span class="source-link-chip-icon" aria-hidden="true">↗</span></a>`,
       )
-      .join(' · ');
-    el.innerHTML = `${prefix}: ${links}`;
+      .join('');
+    el.innerHTML = `<span class="section-source-chips-label">${escHtml(prefix)}:</span><span class="section-source-chips-list">${links}</span>`;
   }
 
   function renderInstrumentCards(
@@ -1002,7 +1002,7 @@ export function createChatPage(): ChatPage {
       .map((inst, i) => {
         const changeClass = inst.isPositive ? 'positive' : 'negative';
         const symbolMarkup = inst.quoteUrl
-          ? `<a href="${escHtml(inst.quoteUrl)}" target="_blank" rel="noopener noreferrer" class="stock-instrument-symbol">${escHtml(inst.symbol)}</a>`
+          ? `<a href="${escHtml(inst.quoteUrl)}" target="_blank" rel="noopener noreferrer" class="stock-instrument-symbol source-link-chip source-link-chip--compact">${escHtml(inst.symbol)}<span class="source-link-chip-icon" aria-hidden="true">↗</span></a>`
           : `<span class="stock-instrument-symbol">${escHtml(inst.symbol)}</span>`;
         return `
           <article class="stock-instrument-card">
