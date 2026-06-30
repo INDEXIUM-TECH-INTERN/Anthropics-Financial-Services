@@ -59,6 +59,9 @@ func TestGenerateHighlightSummaryAIUsesMock(t *testing.T) {
 	if n > HighlightSummaryTargetRunes {
 		t.Fatalf("summary too long: %d runes", n)
 	}
+	if strings.Contains(summary, "...") {
+		t.Fatalf("AI summary must not end with ellipsis: %q", summary)
+	}
 }
 
 func TestResolveHighlightSummaryFallsBackWithoutGenerator(t *testing.T) {

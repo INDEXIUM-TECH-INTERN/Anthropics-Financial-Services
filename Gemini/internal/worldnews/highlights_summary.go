@@ -112,6 +112,89 @@ func fitSummaryLength(text string, target int) string {
 	return trimRunes(text, target)
 }
 
+// normalizeAISummaryLength trims AI prose without "..." or synthetic padding.
+func normalizeAISummaryLength(text string, max int) string {
+	text = strings.Join(strings.Fields(text), " ")
+	text = stripTrailingEllipsis(text)
+	if text == "" {
+		return ""
+	}
+	if utf8.RuneCountInString(text) <= max {
+		return ensureSentenceEnding(text, max)
+	}
+	if trimmed := trimAtLastSentence(text, max); trimmed != "" {
+		return trimmed
+	}
+	return ensureSentenceEnding(trimAtWordBoundary(text, max), max)
+}
+
+func stripTrailingEllipsis(text string) string {
+	text = strings.TrimSpace(text)
+	for {
+		changed := false
+		if strings.HasSuffix(text, "…") {
+			text = strings.TrimSpace(strings.TrimSuffix(text, "…"))
+			changed = true
+		}
+		if strings.HasSuffix(text, "...") {
+			text = strings.TrimSpace(strings.TrimSuffix(text, "..."))
+			changed = true
+		}
+		if strings.HasSuffix(text, "..") {
+			text = strings.TrimSpace(strings.TrimSuffix(text, ".."))
+			changed = true
+		}
+		if !changed {
+			break
+		}
+	}
+	return strings.TrimRight(text, ".")
+}
+
+func ensureSentenceEnding(text string, max int) string {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return ""
+	}
+	if strings.HasSuffix(text, ".") || strings.HasSuffix(text, "!") || strings.HasSuffix(text, "?") {
+		return text
+	}
+	if utf8.RuneCountInString(text)+1 <= max {
+		return text + "."
+	}
+	return text
+}
+
+func trimAtLastSentence(text string, max int) string {
+	runes := []rune(text)
+	if len(runes) <= max {
+		return ensureSentenceEnding(text, max)
+	}
+	chunk := string(runes[:max])
+	best := -1
+	for _, sep := range []string{". ", "! ", "? ", ".\n", "!\n", "?\n"} {
+		if idx := strings.LastIndex(chunk, sep); idx > best {
+			best = idx
+		}
+	}
+	if best > 0 {
+		return strings.TrimSpace(chunk[:best+1])
+	}
+	return ""
+}
+
+func trimAtWordBoundary(text string, max int) string {
+	runes := []rune(text)
+	if len(runes) <= max {
+		return text
+	}
+	chunk := string(runes[:max])
+	if idx := strings.LastIndex(chunk, " "); idx > 0 {
+		return strings.TrimSpace(chunk[:idx])
+	}
+	return strings.TrimSpace(chunk)
+}
+
 func padSummary(text string, target int) string {
 	padding := " Diễn biến trên phản ánh sự phân hóa giữa kỳ vọng tăng trưởng, rủi ro địa chính trị và chu kỳ chính sách tiền tệ, đòi hỏi nhà đầu tư duy trì kỷ luật quản trị rủi ro."
 	for utf8.RuneCountInString(text) < target {

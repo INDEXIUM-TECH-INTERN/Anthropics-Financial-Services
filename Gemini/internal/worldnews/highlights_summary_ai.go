@@ -72,7 +72,7 @@ func generateHighlightSummaryAI(
 	if cleaned == "" {
 		return "", fmt.Errorf("empty AI response")
 	}
-	return fitSummaryLength(cleaned, HighlightSummaryTargetRunes), nil
+	return normalizeAISummaryLength(cleaned, HighlightSummaryTargetRunes), nil
 }
 
 func buildHighlightSummaryMarketData(
@@ -156,5 +156,6 @@ func sanitizeAISummary(text string) string {
 	text = strings.ReplaceAll(text, "**", "")
 	text = strings.ReplaceAll(text, "__", "")
 	text = strings.ReplaceAll(text, "\n", " ")
-	return strings.Join(strings.Fields(text), " ")
+	text = strings.Join(strings.Fields(text), " ")
+	return stripTrailingEllipsis(text)
 }
