@@ -14,7 +14,9 @@ import (
 	"time"
 
 	"gemini-cli/internal/models/messaging"
+	"gemini-cli/internal/providers"
 	"gemini-cli/internal/redis"
+	"gemini-cli/internal/worldnews"
 	"golang.org/x/time/rate"
 )
 
@@ -110,7 +112,16 @@ func getSystemMetrics() (string, string) {
 	return cachedRAM, cachedCPU
 }
 
+type providerAgent interface {
+	GetProvider() providers.Provider
+}
+
 func StartServer(agent AgentInterface) {
+	if pa, ok := agent.(providerAgent); ok {
+		worldnews.DefaultService.SetTextGenerator(pa.GetProvider())
+		fmt.Println("✨ [WorldNews] AI highlight summary enabled (Gemini)")
+	}
+
 	if err := redis.Init(); err != nil {
 		fmt.Printf("⚠️ [Redis] %v — falling back to in-memory only\n", err)
 	} else {

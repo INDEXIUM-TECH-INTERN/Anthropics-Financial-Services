@@ -12,7 +12,7 @@ import (
 const ReportHistoryDays = 90
 
 // reportCacheVersion — tăng khi đổi schema báo cáo để tránh trả cache cũ.
-const reportCacheVersion = 2
+const reportCacheVersion = 3
 
 var (
 	vnTimezone = time.FixedZone("ICT", 7*3600)
@@ -30,9 +30,10 @@ func init() {
 
 // Service aggregates live market data and RSS headlines.
 type Service struct {
-	client *http.Client
-	mu     sync.RWMutex
-	cache  map[string]cacheEntry
+	client  *http.Client
+	mu      sync.RWMutex
+	cache   map[string]cacheEntry
+	textGen TextGenerator
 }
 
 type cacheEntry struct {
@@ -48,6 +49,13 @@ func NewService() *Service {
 		client: &http.Client{Timeout: 25 * time.Second},
 		cache:  make(map[string]cacheEntry),
 	}
+}
+
+// SetTextGenerator wires Gemini (or any LLM) for AI-written highlight summaries.
+func (s *Service) SetTextGenerator(gen TextGenerator) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.textGen = gen
 }
 
 func (s *Service) GetAvailableDates() DatesResponse {
@@ -173,7 +181,7 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 
 	report := &WorldNewsReport{
 		Date:            calendarDay.Format("2006-01-02"),
-		HighlightSummary: buildHighlightSummary(sp500, nasdaq, wti, brent, gold, dxy, breakingItems, quoteLabel, digestWindow),
+		HighlightSummary: s.resolveHighlightSummary(sp500, nasdaq, wti, brent, gold, dxy, breakingItems, quoteLabel, digestWindow),
 		KeyNumbers: []KeyNumber{
 			keyNumberFromQuote(sp500, "S&P 500", "CNBC", "https://www.cnbc.com/world/", "S&P 500"),
 			keyNumberFromQuote(brent, "Dầu Brent", marketDataSource, yahooFinanceQuoteURL("BZ%3DF"), yahooFinanceDisplaySymbol("BZ%3DF")),

@@ -30,6 +30,7 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /app
 
 COPY --from=go-builder /gemini-cli .
+COPY --from=go-builder /app/internal/prompt ./internal/prompt
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 RUN adduser -D -g '' appuser

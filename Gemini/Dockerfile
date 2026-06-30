@@ -20,8 +20,9 @@ RUN apk --no-cache add ca-certificates
 
 WORKDIR /app
 
-# Copy binary from builder
+# Copy binary and prompt templates from builder
 COPY --from=builder /gemini-cli .
+COPY --from=builder /app/internal/prompt ./internal/prompt
 
 # Create non-root user
 RUN adduser -D -g '' appuser

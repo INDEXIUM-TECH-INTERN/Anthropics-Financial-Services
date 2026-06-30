@@ -1,0 +1,18 @@
+Viết một đoạn văn tóm tắt bản tin tài chính sáng bằng tiếng Việt cho nhà đầu tư Việt Nam.
+
+KHUNG THỜI GIAN: {{DIGEST_WINDOW}}
+NHÃN PHIÊN CHỐT: {{QUOTE_LABEL}}
+
+DỮ LIỆU THỊ TRƯỜNG (chỉ dùng số liệu dưới đây, không bịa thêm):
+{{MARKET_DATA}}
+
+TIN TỨC NỔI BẬT (chỉ dùng các dòng dưới đây):
+{{NEWS_ITEMS}}
+
+YÊU CẦU:
+- Viết thành MỘT đoạn văn liền mạch, không bullet, không markdown, không tiêu đề.
+- Độ dài khoảng 650–700 ký tự (Unicode), tối đa 700 ký tự.
+- Mở đầu nêu đây là bản tin sáng tổng hợp trước 07:00 (GMT+7).
+- Lồng ghép diễn biến chứng khoán Mỹ, hàng hóa (dầu, vàng), USD và các tin nổi bật.
+- Giọng văn chuyên nghiệp, khách quan, dễ đọc; kết thúc bằng góc nhìn ngắn cho nhà đầu tư.
+- Chỉ trả về nội dung đoạn văn, không giải thích thêm.
