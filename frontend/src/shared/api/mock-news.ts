@@ -118,6 +118,8 @@ export interface QuickHighlight {
   text: string;
   url?: string;
   source?: string;
+  logo?: string;
+  time?: string;
 }
 
 export interface WorldNewsReport {

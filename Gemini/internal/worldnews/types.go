@@ -22,6 +22,8 @@ type QuickHighlight struct {
 	Text   string `json:"text"`
 	URL    string `json:"url,omitempty"`
 	Source string `json:"source,omitempty"`
+	Logo   string `json:"logo,omitempty"`
+	Time   string `json:"time,omitempty"`
 }
 
 type KeyNumber struct {

@@ -285,6 +285,24 @@ func buildGoldSection(gold, dxy *quoteSnapshot, news []rssItem, tradingLabel str
 	return sec
 }
 
+func quickHighlightLogo(source, publisherHost string) string {
+	if publisherHost != "" {
+		return mediaField(publisherHost, false)
+	}
+	switch strings.ToLower(source) {
+	case "cnbc":
+		return FaviconProxyPath("cnbc.com")
+	case "reuters":
+		return FaviconProxyPath("reuters.com")
+	case "wsj", "wall street journal":
+		return FaviconProxyPath("wsj.com")
+	case "yahoo finance":
+		return FaviconProxyPath("finance.yahoo.com")
+	default:
+		return ""
+	}
+}
+
 func buildQuickHighlights(sp, nd, wti, brent, gold, dxy *quoteSnapshot, news []rssItem, tradingLabel string) []QuickHighlight {
 	var out []QuickHighlight
 	if sp != nil {
@@ -297,6 +315,7 @@ func buildQuickHighlights(sp, nd, wti, brent, gold, dxy *quoteSnapshot, news []r
 			Text:   fmt.Sprintf("S&P 500 %s %s, đóng cửa phiên %s ở %s.", dir, pct, tradingLabel, formatPrice(sp.Symbol, sp.Price)),
 			Source: "CNBC",
 			URL:    "https://www.cnbc.com/world/",
+			Logo:   quickHighlightLogo("CNBC", ""),
 		})
 	}
 	if wti != nil && brent != nil {
@@ -306,6 +325,7 @@ func buildQuickHighlights(sp, nd, wti, brent, gold, dxy *quoteSnapshot, news []r
 			Text:   fmt.Sprintf("Dầu WTI %s, Brent %s — WTI %s, Brent %s.", wPct, bPct, formatPrice(wti.Symbol, wti.Price), formatPrice(brent.Symbol, brent.Price)),
 			Source: marketDataSource,
 			URL:    yahooFinanceQuoteURL("CL%3DF"),
+			Logo:   quickHighlightLogo(marketDataSource, ""),
 		})
 	}
 	if gold != nil {
@@ -314,6 +334,7 @@ func buildQuickHighlights(sp, nd, wti, brent, gold, dxy *quoteSnapshot, news []r
 			Text:   fmt.Sprintf("Vàng thế giới %s (%s).", formatPrice(gold.Symbol, gold.Price), gPct),
 			Source: marketDataSource,
 			URL:    yahooFinanceQuoteURL("GC%3DF"),
+			Logo:   quickHighlightLogo(marketDataSource, ""),
 		})
 	}
 	if dxy != nil {
@@ -322,6 +343,7 @@ func buildQuickHighlights(sp, nd, wti, brent, gold, dxy *quoteSnapshot, news []r
 			Text:   fmt.Sprintf("USD Index (DXY) %s.", dPct),
 			Source: marketDataSource,
 			URL:    yahooFinanceQuoteURL("DX-Y.NYB"),
+			Logo:   quickHighlightLogo(marketDataSource, ""),
 		})
 	}
 	for _, it := range news {
@@ -332,6 +354,8 @@ func buildQuickHighlights(sp, nd, wti, brent, gold, dxy *quoteSnapshot, news []r
 			Text:   it.Title,
 			Source: it.Source,
 			URL:    it.Link,
+			Logo:   quickHighlightLogo(it.Source, it.PublisherHost),
+			Time:   it.PubDate.In(vnTimezone).Format("02/01/2006 15:04"),
 		})
 	}
 	return out
