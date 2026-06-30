@@ -207,112 +207,13 @@
   color: var(--color-primary-light);
 }
 
-.highlights-list {
-  list-style: none;
+.highlight-summary {
   margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.highlights-item {
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.75;
   color: var(--text-secondary);
-}
-
-.highlights-item-link {
-  padding: 0;
-}
-
-.highlights-item-anchor,
-.highlights-item-static {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: inherit;
-  text-decoration: none;
-  border-radius: 10px;
-  padding: 10px 12px;
-  margin: -6px -8px;
-}
-
-.highlights-item-anchor {
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.highlights-item-anchor:hover {
-  background: rgba(59, 130, 246, 0.1);
-  color: var(--text-primary);
-}
-
-.highlights-item-logo-wrap {
-  flex-shrink: 0;
-  width: 38px;
-  height: 38px;
-  border-radius: 11px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 7px;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04));
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
-
-.highlights-item-logo-wrap:has(.highlights-item-logo) .highlights-item-logo-fallback {
-  display: none;
-}
-
-.highlights-item-logo {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  border-radius: 5px;
-}
-
-.highlights-item-logo-fallback {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--color-primary-light);
-  background: rgba(59, 130, 246, 0.18);
-  border: 1px solid rgba(59, 130, 246, 0.28);
-}
-
-.highlights-item-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.highlights-item-anchor:hover .highlights-item-text {
-  color: var(--color-primary-light);
-  text-decoration: underline;
-}
-
-.highlights-item-text {
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.highlights-item-time {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  font-family: var(--font-mono);
-  line-height: 1.3;
+  text-align: justify;
+  letter-spacing: 0.01em;
 }
 
 /* ─── Canvas Chart Drawing Styles ─── */

@@ -947,54 +947,6 @@ export function createChatPage(): ChatPage {
     ref.innerHTML = `Dữ liệu biểu đồ: <a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer" class="data-reference-link">${escHtml(source)}${symbolPart}</a>`;
   }
 
-  function renderHighlightLogo(logo?: string, source?: string): string {
-    const initial = escHtml((source || '?').trim().charAt(0).toUpperCase() || '?');
-    const fallback = `<span class="highlights-item-logo-fallback" aria-hidden="true">${initial}</span>`;
-    if (!logo) return fallback;
-    const alt = escHtml(source || 'Nguồn tin');
-    return `<img class="highlights-item-logo" src="${escHtml(logo)}" alt="${alt}" loading="lazy" decoding="async" onerror="this.remove()">${fallback}`;
-  }
-
-  function renderQuickHighlightItem(h: {
-    text: string;
-    url?: string;
-    source?: string;
-    logo?: string;
-    time?: string;
-  }): string {
-    const text = escHtml(h.text);
-    const logoMarkup = `<span class="highlights-item-logo-wrap">${renderHighlightLogo(h.logo, h.source)}</span>`;
-    const timeMarkup = h.time
-      ? `<time class="highlights-item-time" datetime="${escHtml(h.time)}">${escHtml(h.time)}</time>`
-      : '';
-
-    if (h.url) {
-      return `
-        <li class="highlights-item highlights-item-link">
-          <a href="${escHtml(h.url)}" target="_blank" rel="noopener noreferrer" class="highlights-item-anchor">
-            ${logoMarkup}
-            <span class="highlights-item-body">
-              <span class="highlights-item-text">${text}</span>
-              ${timeMarkup}
-            </span>
-          </a>
-        </li>
-      `;
-    }
-
-    return `
-      <li class="highlights-item">
-        <div class="highlights-item-static">
-          ${logoMarkup}
-          <span class="highlights-item-body">
-            <span class="highlights-item-text">${text}</span>
-            ${timeMarkup}
-          </span>
-        </div>
-      </li>
-    `;
-  }
-
   function renderMetricRef(source?: string, url?: string, symbol?: string): string {
     if (!url) return '';
     const label = source || 'Nguồn';
@@ -1174,7 +1126,7 @@ export function createChatPage(): ChatPage {
 
   function clearWorldNewsDashboard() {
     const ids = [
-      'quick-highlights-list',
+      'highlight-summary',
       'key-metrics-row',
       'stock-charts-grid-primary',
       'stock-charts-grid-more',
@@ -1271,12 +1223,10 @@ export function createChatPage(): ChatPage {
     void worldNewsContainer?.offsetWidth; // Trigger layout reflow
     worldNewsContainer?.classList.add('news-fade-in');
 
-    // 1. Quick Highlights
-    const quickHighlightsList = $('quick-highlights-list');
-    if (quickHighlightsList) {
-      quickHighlightsList.innerHTML = report.quickHighlights
-        .map((h) => renderQuickHighlightItem(h))
-        .join('');
+    // 1. Tóm tắt tiêu điểm (~700 chữ)
+    const highlightSummaryEl = $('highlight-summary');
+    if (highlightSummaryEl) {
+      highlightSummaryEl.textContent = report.highlightSummary || '';
     }
 
     // 2. Key Metrics Row

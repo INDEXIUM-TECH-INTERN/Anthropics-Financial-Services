@@ -99,7 +99,7 @@ func (s *Service) GetReport(dateStr string) (*WorldNewsReport, error) {
 func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 	calendarDay = calendarDay.In(vnTimezone)
 	quoteDay := digestMarketQuoteDay(calendarDay)
-	tradingLabel := formatQuoteSessionLabel(quoteDay)
+	quoteLabel := formatQuoteSessionLabel(quoteDay)
 	since, until := morningDigestWindow(calendarDay)
 	digestWindow := formatDigestWindow(since, until)
 
@@ -162,7 +162,7 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 
 	dataSource := fmt.Sprintf(
 		"Yahoo Finance (giá chốt trước 07:00 GMT+7, phiên %s) + tin tức trước 07:00 sáng, khung %s (GMT+7)",
-		tradingLabel,
+		quoteLabel,
 		digestWindow,
 	)
 
@@ -170,7 +170,7 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 
 	report := &WorldNewsReport{
 		Date:            calendarDay.Format("2006-01-02"),
-		QuickHighlights: buildQuickHighlights(sp500, nasdaq, wti, brent, gold, dxy, breakingItems, tradingLabel),
+		HighlightSummary: buildHighlightSummary(sp500, nasdaq, wti, brent, gold, dxy, breakingItems, quoteLabel, digestWindow),
 		KeyNumbers: []KeyNumber{
 			keyNumberFromQuote(sp500, "S&P 500", "CNBC", "https://www.cnbc.com/world/", "S&P 500"),
 			keyNumberFromQuote(brent, "Dầu Brent", marketDataSource, yahooFinanceQuoteURL("BZ%3DF"), yahooFinanceDisplaySymbol("BZ%3DF")),
@@ -186,7 +186,7 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 			Instruments:     primaryStockInstruments,
 			MoreInstruments: moreStockInstruments,
 			Thumbnail:     FaviconProxyPath("cnbc.com"),
-			Highlights:    buildStockHighlights(sp500, nasdaq, stockNewsItems, tradingLabel),
+			Highlights:    buildStockHighlights(sp500, nasdaq, stockNewsItems, quoteLabel),
 			CNBCUrl:       "https://www.cnbc.com/world/",
 			WSJUrl:        "https://www.wsj.com/finance/stocks?mod=nav_top_subsection",
 			ReutersUrl:    "https://www.reuters.com/markets/stocks/",
@@ -204,7 +204,7 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 			ChartPointsBrent: brent.ChartPoints,
 			ChartLabels:      coalesceLabels(wti.ChartLabels, brent.ChartLabels),
 			Thumbnail:        FaviconProxyPath("reuters.com"),
-			Highlights:       buildOilHighlights(wti, brent, breakingItems, tradingLabel),
+			Highlights:       buildOilHighlights(wti, brent, breakingItems, quoteLabel),
 			ReutersUrl:       "https://www.reuters.com/markets/",
 			NYTimesUrl:       "https://www.nytimes.com/section/business/energy-environment?page=2",
 			WSJUrl:           "https://www.wsj.com/business/energy-oil?mod=nav_top_subsection",
@@ -212,7 +212,7 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 			MarketURL:        yahooFinanceQuoteURL("CL%3DF"),
 			MarketSymbol:     yahooFinanceDisplaySymbol("CL%3DF") + ", " + yahooFinanceDisplaySymbol("BZ%3DF"),
 		},
-		GoldUsd:            buildGoldSection(gold, dxy, breakingItems, tradingLabel),
+		GoldUsd:            buildGoldSection(gold, dxy, breakingItems, quoteLabel),
 		VTVIndexNews:       toNewsArticles(vtvItems),
 		VietnamFinanceNews: toNewsArticles(vnItems),
 		BreakingNews:       toBreakingNews(takeItems(breakingItems, 5)),
