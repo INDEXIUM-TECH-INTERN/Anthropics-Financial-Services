@@ -35,6 +35,7 @@ func TestQuoteToStockInstrument(t *testing.T) {
 		IsPositive:  true,
 		ChartPoints: []float64{5380, 5390, 5400.5},
 		ChartLabels: []string{"01/06", "02/06", "03/06"},
+		PriceTime:   "29/06 03:00 GMT+7",
 	}
 	inst := quoteToStockInstrument(q)
 	if inst.Symbol != "^GSPC" {
@@ -45,6 +46,9 @@ func TestQuoteToStockInstrument(t *testing.T) {
 	}
 	if inst.QuoteURL == "" {
 		t.Fatal("expected quote url")
+	}
+	if inst.PriceTime != "29/06 03:00 GMT+7" {
+		t.Fatalf("expected price time, got %q", inst.PriceTime)
 	}
 }
 

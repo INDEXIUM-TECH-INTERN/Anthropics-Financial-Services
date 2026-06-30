@@ -55,6 +55,7 @@ type StockInstrument struct {
 	IsPositive    bool      `json:"isPositive"`
 	ChartPoints   []float64 `json:"chartPoints"`
 	ChartLabels   []string  `json:"chartLabels"`
+	PriceTime     string    `json:"priceTime,omitempty"`
 	QuoteURL      string    `json:"quoteUrl,omitempty"`
 }
 

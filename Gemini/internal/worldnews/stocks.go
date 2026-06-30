@@ -78,6 +78,7 @@ func quoteToStockInstrument(q *quoteSnapshot) StockInstrument {
 		IsPositive:    pos,
 		ChartPoints:   q.ChartPoints,
 		ChartLabels:   q.ChartLabels,
+		PriceTime:     q.PriceTime,
 		QuoteURL:      yahooFinanceQuoteURL(q.Symbol),
 	}
 }

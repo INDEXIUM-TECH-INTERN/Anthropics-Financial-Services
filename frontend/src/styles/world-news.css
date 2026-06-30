@@ -610,12 +610,25 @@
   color: var(--danger);
 }
 
+.stock-instrument-value-area {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
 .stock-instrument-value {
   font-size: 16px;
   font-weight: 700;
   font-family: var(--font-mono);
   color: var(--text-primary);
-  margin-bottom: 6px;
+  line-height: 1.2;
+}
+
+.stock-instrument-time {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
   line-height: 1.2;
 }
 

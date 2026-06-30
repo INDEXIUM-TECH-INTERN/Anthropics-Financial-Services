@@ -1002,6 +1002,9 @@ export function createChatPage(): ChatPage {
     return instruments
       .map((inst, i) => {
         const changeClass = inst.isPositive ? 'positive' : 'negative';
+        const priceTimeMarkup = inst.priceTime
+          ? `<span class="stock-instrument-time" title="Thời gian chốt phiên">Chốt: ${escHtml(inst.priceTime)}</span>`
+          : '';
         const symbolMarkup = inst.quoteUrl
           ? `<a href="${escHtml(inst.quoteUrl)}" target="_blank" rel="noopener noreferrer" class="stock-instrument-symbol">${escHtml(inst.symbol)}</a>`
           : `<span class="stock-instrument-symbol">${escHtml(inst.symbol)}</span>`;
@@ -1016,7 +1019,10 @@ export function createChatPage(): ChatPage {
                 ${inst.isPositive ? '▲' : '▼'} ${escHtml(inst.changePercent)}
               </span>
             </div>
-            <div class="stock-instrument-value">${escHtml(inst.value)}</div>
+            <div class="stock-instrument-value-area">
+              <div class="stock-instrument-value">${escHtml(inst.value)}</div>
+              ${priceTimeMarkup}
+            </div>
             <div class="chart-container stock-instrument-chart-wrap">
               <canvas id="stock-chart-${idPrefix}-${i}" class="chart-canvas stock-instrument-chart-canvas" aria-label="Biểu đồ ${escHtml(inst.symbol)}"></canvas>
             </div>

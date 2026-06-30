@@ -16,6 +16,7 @@ export interface StockInstrument {
   isPositive: boolean;
   chartPoints: number[];
   chartLabels: string[];
+  priceTime?: string;
   quoteUrl?: string;
 }
 
