@@ -658,6 +658,7 @@ export function createChatPage(): ChatPage {
     points: number[],
     labels: string[],
     color: string,
+    priceTime?: string,
   ): void {
     const canvas = $<HTMLCanvasElement>(canvasId);
     if (!canvas || points.length < 2) return;
@@ -675,10 +676,10 @@ export function createChatPage(): ChatPage {
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, width, height);
 
-    const paddingLeft = 2;
-    const paddingRight = 2;
+    const paddingLeft = 26;
+    const paddingRight = 42;
     const paddingTop = 4;
-    const paddingBottom = 16;
+    const paddingBottom = 18;
     const chartWidth = width - paddingLeft - paddingRight;
     const chartHeight = height - paddingTop - paddingBottom;
 
@@ -727,18 +728,32 @@ export function createChatPage(): ChatPage {
     ctx.fillStyle = color;
     ctx.fill();
 
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-    ctx.font = '8px var(--font-mono)';
+    const axisLabels = [...labels];
+    if (priceTime && axisLabels.length > 0) {
+      axisLabels[lastIndex] = priceTime.replace(/\s*ET$/i, '').trim();
+    }
+
     ctx.textBaseline = 'top';
-    ctx.textAlign = 'center';
     points.forEach((_, i) => {
       if (!shouldShowLabel(i, points.length)) return;
-      const x = paddingLeft + i * xStep;
-      const label = labels[i] ?? '';
+      const label = axisLabels[i] ?? '';
       if (!label) return;
-      ctx.fillStyle = i === lastIndex ? color : 'rgba(255, 255, 255, 0.45)';
-      ctx.font = i === lastIndex ? '8px var(--font-mono)' : '7px var(--font-mono)';
-      ctx.fillText(label, x, height - paddingBottom + 2);
+
+      let labelX = paddingLeft + i * xStep;
+      if (i === 0) {
+        ctx.textAlign = 'left';
+        labelX = paddingLeft;
+      } else if (i === lastIndex) {
+        ctx.textAlign = 'right';
+        labelX = width - paddingRight;
+      } else {
+        ctx.textAlign = 'center';
+      }
+
+      const isLast = i === lastIndex;
+      ctx.fillStyle = isLast ? color : 'rgba(255, 255, 255, 0.45)';
+      ctx.font = isLast ? '8px var(--font-mono)' : '7px var(--font-mono)';
+      ctx.fillText(label, labelX, height - paddingBottom + 2);
     });
   }
 
@@ -1321,6 +1336,7 @@ export function createChatPage(): ChatPage {
             m.sparkline,
             m.sparklineLabels ?? [],
             strokeColor,
+            m.priceTime,
           );
         });
       }, 150);
