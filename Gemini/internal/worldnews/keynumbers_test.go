@@ -10,10 +10,10 @@ func TestKeyNumberFromQuoteIncludesTimeLabels(t *testing.T) {
 		ChangePct:   0.22,
 		ChartPoints: []float64{5380, 5390, 5400},
 		ChartLabels: []string{"23/06 16:00", "24/06 16:00", "25/06 16:00"},
-		PriceTime:   "25/06 16:00 ET",
+		PriceTime:   "26/06 03:00 GMT+7",
 	}
 	kn := keyNumberFromQuote(q, "S&P 500", "CNBC", "https://www.cnbc.com/world/", "S&P 500")
-	if kn.PriceTime != "25/06 16:00 ET" {
+	if kn.PriceTime != "26/06 03:00 GMT+7" {
 		t.Fatalf("expected price time, got %q", kn.PriceTime)
 	}
 	if len(kn.SparklineLabels) != 3 {

@@ -63,24 +63,26 @@ type quoteSnapshot struct {
 }
 
 func (s *Service) fetchQuote(symbol, label string, calendarDay time.Time) (*quoteSnapshot, error) {
-	tradingDay := normalizeTradingDay(calendarDay)
-	return s.fetchDailyQuote(symbol, label, tradingDay)
+	day := calendarDay.In(vnTimezone)
+	_, cutoff := morningDigestWindow(day)
+	tradingDay := digestMarketQuoteDay(day)
+	return s.fetchDailyQuote(symbol, label, tradingDay, cutoff)
 }
 
-func (s *Service) fetchIntradayQuote(symbol, label string, tradingDay time.Time) (*quoteSnapshot, error) {
+func (s *Service) fetchIntradayQuote(symbol, label string, tradingDay time.Time, cutoff time.Time) (*quoteSnapshot, error) {
 	apiURL := fmt.Sprintf("%s/%s?interval=30m&range=1d", yahooChartURL, symbol)
-	return s.parseChartResponse(symbol, label, apiURL, tradingDay, true)
+	return s.parseChartResponse(symbol, label, apiURL, tradingDay, cutoff, true)
 }
 
-func (s *Service) fetchDailyQuote(symbol, label string, tradingDay time.Time) (*quoteSnapshot, error) {
+func (s *Service) fetchDailyQuote(symbol, label string, tradingDay time.Time, cutoff time.Time) (*quoteSnapshot, error) {
 	loc := usEastern
 	periodStart := time.Date(tradingDay.Year(), tradingDay.Month(), tradingDay.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -45)
-	periodEnd := time.Date(tradingDay.Year(), tradingDay.Month(), tradingDay.Day(), 23, 59, 59, 0, loc).AddDate(0, 0, 2)
+	periodEnd := cutoff.In(loc)
 	apiURL := fmt.Sprintf("%s/%s?period1=%d&period2=%d&interval=1d", yahooChartURL, symbol, periodStart.Unix(), periodEnd.Unix())
-	return s.parseChartResponse(symbol, label, apiURL, tradingDay, false)
+	return s.parseChartResponse(symbol, label, apiURL, tradingDay, cutoff, false)
 }
 
-func (s *Service) parseChartResponse(symbol, label, apiURL string, tradingDay time.Time, intraday bool) (*quoteSnapshot, error) {
+func (s *Service) parseChartResponse(symbol, label, apiURL string, tradingDay time.Time, cutoff time.Time, intraday bool) (*quoteSnapshot, error) {
 	body, err := s.httpGet(apiURL)
 	if err != nil {
 		return nil, err
@@ -182,26 +184,36 @@ func (s *Service) parseChartResponse(symbol, label, apiURL string, tradingDay ti
 		IsPositive:  change >= 0,
 		ChartPoints: points,
 		ChartLabels: labels,
-		PriceTime:   resolvePriceTime(result.Meta.RegularMarketTime, targetKey, bars[idx].ts, intraday, loc),
+		PriceTime:   resolvePriceTime(result.Meta.RegularMarketTime, targetKey, bars[idx].ts, intraday, cutoff, loc),
 	}, nil
 }
 
-func resolvePriceTime(regularMarketTime int64, targetKey string, barTS int64, intraday bool, loc *time.Location) string {
+func resolvePriceTime(regularMarketTime int64, targetKey string, barTS int64, intraday bool, cutoff time.Time, loc *time.Location) string {
 	if regularMarketTime > 0 {
-		rm := time.Unix(regularMarketTime, 0).In(loc)
-		if rm.Format("2006-01-02") == targetKey {
-			return formatPriceTimeLabel(rm) + " ET"
+		rm := time.Unix(regularMarketTime, 0)
+		if !rm.After(cutoff) {
+			rmET := rm.In(loc)
+			if rmET.Format("2006-01-02") == targetKey {
+				return formatDigestPriceTimeLabel(rm)
+			}
 		}
 	}
 	if intraday {
-		return formatPriceTimeLabel(time.Unix(barTS, 0).In(loc)) + " ET"
+		barTime := time.Unix(barTS, 0)
+		if !barTime.After(cutoff) {
+			return formatDigestPriceTimeLabel(barTime)
+		}
 	}
 	day, err := time.ParseInLocation("2006-01-02", targetKey, loc)
 	if err != nil {
-		return formatPriceTimeLabel(time.Unix(barTS, 0).In(loc)) + " ET"
+		return formatDigestPriceTimeLabel(time.Unix(barTS, 0))
 	}
 	closeTime := time.Date(day.Year(), day.Month(), day.Day(), 16, 0, 0, 0, loc)
-	return formatPriceTimeLabel(closeTime) + " ET"
+	return formatDigestPriceTimeLabel(closeTime)
+}
+
+func formatDigestPriceTimeLabel(t time.Time) string {
+	return t.In(vnTimezone).Format("02/01 15:04") + " GMT+7"
 }
 
 func formatPriceTimeLabel(t time.Time) string {

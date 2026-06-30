@@ -19,6 +19,27 @@ func TestMorningDigestWindow(t *testing.T) {
 	}
 }
 
+func TestDigestMarketQuoteDayBeforeMorningCutoff(t *testing.T) {
+	// 30/06/2026 07:00 GMT+7 = 29/06 20:00 ET → phiên Mỹ gần nhất là 29/06 đóng cửa.
+	day := time.Date(2026, 6, 30, 0, 0, 0, 0, vnTimezone)
+	quoteDay := digestMarketQuoteDay(day)
+	if quoteDay.Format("2006-01-02") != "2026-06-29" {
+		t.Fatalf("expected 2026-06-29, got %s", quoteDay.Format("2006-01-02"))
+	}
+}
+
+func TestDigestMarketQuoteDaySkipsWeekend(t *testing.T) {
+	// Thứ Hai 29/06/2026 07:00 GMT+7 → phiên cuối là thứ Sáu 26/06.
+	monday := time.Date(2026, 6, 29, 0, 0, 0, 0, vnTimezone)
+	if monday.Weekday() != time.Monday {
+		t.Fatalf("test fixture should be Monday, got %v", monday.Weekday())
+	}
+	quoteDay := digestMarketQuoteDay(monday)
+	if quoteDay.Format("2006-01-02") != "2026-06-26" {
+		t.Fatalf("expected 2026-06-26, got %s", quoteDay.Format("2006-01-02"))
+	}
+}
+
 func TestFilterNewsBeforeDigestCutoff(t *testing.T) {
 	day := time.Date(2026, 6, 25, 0, 0, 0, 0, vnTimezone)
 	since, until := morningDigestWindow(day)
