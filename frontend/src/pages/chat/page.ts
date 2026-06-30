@@ -125,7 +125,9 @@ export function createChatPage(): ChatPage {
   let currentTab = 'chat';
   let worldNewsLoading = false;
   let lastStockTabs: StockTab[] = [];
+  let lastStockMarketUrl = 'https://finance.yahoo.com/world/';
   let stockChartsTabListenersBound = false;
+  let stockChartsNextListenerBound = false;
   let worldNewsDatesLoaded = false;
 
   function syncSidebarUI() {
@@ -1062,17 +1064,33 @@ export function createChatPage(): ChatPage {
       ];
     }
 
-    const labels = ['Chỉ số Mỹ', 'Nhóm 2', 'Nhóm 3', 'Nhóm 4'];
-    const chunkSize = Math.ceil(merged.length / 4);
+    const labels = ['Chỉ số Mỹ', 'Big Tech I', 'Big Tech II', 'Blue chip'];
+    const chunkSize = 4;
     const tabs: StockTab[] = [];
     for (let i = 0; i < 4 && i * chunkSize < merged.length; i += 1) {
       tabs.push({
         id: `tab-${i + 1}`,
-        label: labels[i] ?? `Tab ${i + 1}`,
+        label: labels[i] ?? `Trang ${i + 1}`,
         instruments: merged.slice(i * chunkSize, (i + 1) * chunkSize),
       });
     }
     return tabs;
+  }
+
+  function getActiveStockTabIndex(): number {
+    const activeBtn = $('stock-charts-tab-bar')?.querySelector<HTMLButtonElement>('.stock-charts-tab.active');
+    if (!activeBtn?.dataset.stockTab) return 0;
+    const idx = lastStockTabs.findIndex((tab) => tab.id === activeBtn.dataset.stockTab);
+    return idx >= 0 ? idx : 0;
+  }
+
+  function updateStockChartsNextButton(): void {
+    const nextBtn = $<HTMLButtonElement>('stock-charts-tab-next');
+    if (!nextBtn) return;
+    const idx = getActiveStockTabIndex();
+    const isLast = idx >= lastStockTabs.length - 1;
+    nextBtn.textContent = isLast ? 'Yahoo Finance' : 'Tiếp';
+    nextBtn.setAttribute('aria-label', isLast ? 'Xem thêm mã trên Yahoo Finance' : 'Trang biểu đồ tiếp theo');
   }
 
   function switchStockChartsTab(tabId: string): void {
@@ -1093,6 +1111,7 @@ export function createChatPage(): ChatPage {
     if (tab) {
       setTimeout(() => drawStockInstrumentCharts(tab.instruments, tabId), 80);
     }
+    updateStockChartsNextButton();
   }
 
   function setupStockChartsTabListeners(): void {
@@ -1106,6 +1125,23 @@ export function createChatPage(): ChatPage {
       switchStockChartsTab(target.dataset.stockTab);
     });
     stockChartsTabListenersBound = true;
+  }
+
+  function setupStockChartsNextListener(): void {
+    if (stockChartsNextListenerBound) return;
+    const nextBtn = $('stock-charts-tab-next');
+    if (!nextBtn) return;
+
+    nextBtn.addEventListener('click', () => {
+      const idx = getActiveStockTabIndex();
+      const nextTab = lastStockTabs[idx + 1];
+      if (nextTab) {
+        switchStockChartsTab(nextTab.id);
+        return;
+      }
+      window.open(lastStockMarketUrl, '_blank', 'noopener,noreferrer');
+    });
+    stockChartsNextListenerBound = true;
   }
 
   function renderStockYahooCta(stocks: WorldNewsReport['stocks']): void {
@@ -1139,13 +1175,16 @@ export function createChatPage(): ChatPage {
     tabBarEl.innerHTML = tabs
       .map(
         (tab, i) => `
-        <button type="button" class="stock-charts-tab${i === 0 ? ' active' : ''}" data-stock-tab="${escHtml(tab.id)}" role="tab" aria-selected="${i === 0 ? 'true' : 'false'}" aria-controls="stock-charts-panel-${escHtml(tab.id)}" id="stock-tab-${escHtml(tab.id)}">${escHtml(tab.label)}</button>
+        <button type="button" class="stock-charts-tab${i === 0 ? ' active' : ''}" data-stock-tab="${escHtml(tab.id)}" role="tab" aria-selected="${i === 0 ? 'true' : 'false'}" aria-controls="stock-charts-panel-${escHtml(tab.id)}" id="stock-tab-${escHtml(tab.id)}" aria-label="${escHtml(tab.label)}"><span class="stock-charts-tab-num">${i + 1}</span></button>
       `,
       )
       .join('');
 
+    lastStockMarketUrl = stocks.marketUrl || 'https://finance.yahoo.com/world/';
     renderStockYahooCta(stocks);
     setupStockChartsTabListeners();
+    setupStockChartsNextListener();
+    updateStockChartsNextButton();
 
     const firstTab = tabs[0];
     if (!firstTab) return;

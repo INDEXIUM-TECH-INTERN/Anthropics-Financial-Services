@@ -12,7 +12,7 @@ import (
 const ReportHistoryDays = 90
 
 // reportCacheVersion — tăng khi đổi schema báo cáo để tránh trả cache cũ.
-const reportCacheVersion = 5
+const reportCacheVersion = 6
 
 var (
 	vnTimezone = time.FixedZone("ICT", 7*3600)
@@ -201,7 +201,7 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 			ReutersUrl:    "https://www.reuters.com/markets/stocks/",
 			MarketSource:  marketDataSource,
 			MarketURL:     yahooFinanceURL + "/world/",
-			MarketSymbol:  "S&P 500, Nasdaq, Dow Jones & cổ phiếu lớn",
+			MarketSymbol:  "16 mã chỉ số & cổ phiếu lớn (4 tab × 4 biểu đồ)",
 		},
 		Oil: OilSection{
 			WTIPrice:         formatPrice(wti.Symbol, wti.Price),

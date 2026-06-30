@@ -59,8 +59,13 @@ func TestWorldStockTabDefs(t *testing.T) {
 		}
 		total += len(tab.Symbols)
 	}
-	if total != 9 {
-		t.Fatalf("expected 9 symbols across tabs, got %d", total)
+	if total != StockTabCount*StockChartsPerTab {
+		t.Fatalf("expected %d symbols across tabs, got %d", StockTabCount*StockChartsPerTab, total)
+	}
+	for _, tab := range WorldStockTabDefs {
+		if len(tab.Symbols) != StockChartsPerTab {
+			t.Fatalf("tab %q: expected %d symbols, got %d", tab.ID, StockChartsPerTab, len(tab.Symbols))
+		}
 	}
 }
 

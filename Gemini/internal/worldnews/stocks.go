@@ -19,39 +19,49 @@ type stockTabDef struct {
 // StockTabCount — số tab biểu đồ trong mục Chứng khoán Thế giới.
 const StockTabCount = 4
 
-// WorldStockTabDefs — 4 nhóm mã; muốn xem thêm → Yahoo Finance.
+// StockChartsPerTab — mỗi tab hiển thị đúng 4 biểu đồ (lưới 2×2).
+const StockChartsPerTab = 4
+
+// WorldStockTabDefs — 4 tab × 4 mã; muốn xem thêm → Yahoo Finance.
 var WorldStockTabDefs = []stockTabDef{
 	{
-		ID:    "indices",
+		ID:    "tab-1",
 		Label: "Chỉ số Mỹ",
 		Symbols: []stockSymbolDef{
 			{Encoded: "%5EGSPC", Label: "S&P 500"},
 			{Encoded: "%5EIXIC", Label: "Nasdaq Composite"},
 			{Encoded: "%5EDJI", Label: "Dow Jones"},
+			{Encoded: "%5ERUT", Label: "Russell 2000"},
 		},
 	},
 	{
-		ID:    "tech-1",
-		Label: "Apple · Microsoft",
+		ID:    "tab-2",
+		Label: "Big Tech I",
 		Symbols: []stockSymbolDef{
 			{Encoded: "AAPL", Label: "Apple"},
 			{Encoded: "MSFT", Label: "Microsoft"},
-		},
-	},
-	{
-		ID:    "tech-2",
-		Label: "NVIDIA · Alphabet",
-		Symbols: []stockSymbolDef{
 			{Encoded: "NVDA", Label: "NVIDIA"},
 			{Encoded: "GOOGL", Label: "Alphabet"},
 		},
 	},
 	{
-		ID:    "tech-3",
-		Label: "Amazon · Meta",
+		ID:    "tab-3",
+		Label: "Big Tech II",
 		Symbols: []stockSymbolDef{
 			{Encoded: "AMZN", Label: "Amazon"},
 			{Encoded: "META", Label: "Meta"},
+			{Encoded: "TSLA", Label: "Tesla"},
+			{Encoded: "NFLX", Label: "Netflix"},
+		},
+	},
+	{
+		ID:    "tab-4",
+		Label: "Blue chip",
+		Symbols: []stockSymbolDef{
+			{Encoded: "JPM", Label: "JPMorgan"},
+			{Encoded: "V", Label: "Visa"},
+			{Encoded: "BRK-B", Label: "Berkshire Hathaway"},
+			{Encoded: "ORCL", Label: "Oracle"},
 		},
 	},
 }

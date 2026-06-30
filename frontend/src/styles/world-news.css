@@ -453,13 +453,20 @@
   order: 1;
 }
 
-.stock-charts-tab-bar {
+.stock-charts-pagination {
   order: 2;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-  margin-bottom: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 14px;
+}
+
+.stock-charts-tab-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
 }
 
 .stock-charts-yahoo-cta {
@@ -468,31 +475,55 @@
   font-size: 12px;
   color: var(--text-tertiary);
   line-height: 1.5;
+  text-align: center;
 }
 
 .stock-charts-tab {
-  flex: 1 1 calc(25% - 6px);
-  min-width: 120px;
-  border: 1px solid rgba(59, 130, 246, 0.28);
-  background: rgba(10, 22, 40, 0.45);
-  color: var(--text-secondary);
-  border-radius: 10px;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 600;
+  flex: 0 0 auto;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: #8ab4f8;
+  border-radius: 0;
+  padding: 2px 4px;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.stock-charts-tab-num {
+  display: inline-block;
+  min-width: 12px;
+  text-align: center;
 }
 
 .stock-charts-tab:hover {
-  color: var(--text-primary);
-  border-color: rgba(59, 130, 246, 0.5);
+  color: #aecbfb;
 }
 
 .stock-charts-tab.active {
-  color: var(--text-primary);
-  background: rgba(59, 130, 246, 0.18);
-  border-color: rgba(59, 130, 246, 0.65);
+  color: #ffffff;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.stock-charts-tab-next {
+  border: none;
+  background: transparent;
+  color: #8ab4f8;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 2px 0;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--transition-fast);
+}
+
+.stock-charts-tab-next:hover {
+  color: #aecbfb;
 }
 
 .stock-charts-tab.hidden {
@@ -517,7 +548,7 @@
 .stock-charts-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .stock-instrument-card {
@@ -808,9 +839,13 @@
     height: 100px;
   }
 
-  .stock-charts-tab {
-    flex: 1 1 calc(50% - 4px);
-    min-width: 0;
+  .stock-charts-pagination {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .stock-charts-tab-bar {
+    gap: 10px;
   }
 
   .stock-charts-grid {
