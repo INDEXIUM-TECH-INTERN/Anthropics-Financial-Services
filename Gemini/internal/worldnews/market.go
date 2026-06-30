@@ -34,6 +34,7 @@ type yahooChartResponse struct {
 			Meta struct {
 				Symbol             string  `json:"symbol"`
 				RegularMarketPrice float64 `json:"regularMarketPrice"`
+				RegularMarketTime  int64   `json:"regularMarketTime"`
 				ChartPreviousClose float64 `json:"chartPreviousClose"`
 				PreviousClose      float64 `json:"previousClose"`
 				Currency           string  `json:"currency"`
@@ -181,8 +182,30 @@ func (s *Service) parseChartResponse(symbol, label, apiURL string, tradingDay ti
 		IsPositive:  change >= 0,
 		ChartPoints: points,
 		ChartLabels: labels,
-		PriceTime:   formatChartTimeLabel(bars[idx].ts, loc, false) + " ET",
+		PriceTime:   resolvePriceTime(result.Meta.RegularMarketTime, targetKey, bars[idx].ts, intraday, loc),
 	}, nil
+}
+
+func resolvePriceTime(regularMarketTime int64, targetKey string, barTS int64, intraday bool, loc *time.Location) string {
+	if regularMarketTime > 0 {
+		rm := time.Unix(regularMarketTime, 0).In(loc)
+		if rm.Format("2006-01-02") == targetKey {
+			return formatPriceTimeLabel(rm) + " ET"
+		}
+	}
+	if intraday {
+		return formatPriceTimeLabel(time.Unix(barTS, 0).In(loc)) + " ET"
+	}
+	day, err := time.ParseInLocation("2006-01-02", targetKey, loc)
+	if err != nil {
+		return formatPriceTimeLabel(time.Unix(barTS, 0).In(loc)) + " ET"
+	}
+	closeTime := time.Date(day.Year(), day.Month(), day.Day(), 16, 0, 0, 0, loc)
+	return formatPriceTimeLabel(closeTime) + " ET"
+}
+
+func formatPriceTimeLabel(t time.Time) string {
+	return t.Format("02/01 15:04")
 }
 
 func formatChartTimeLabel(ts int64, loc *time.Location, intraday bool) string {
@@ -190,7 +213,7 @@ func formatChartTimeLabel(ts int64, loc *time.Location, intraday bool) string {
 	if intraday {
 		return t.Format("15:04")
 	}
-	return t.Format("02/01 15:04")
+	return formatPriceTimeLabel(t)
 }
 
 func extractSeries(timestamps []int64, closes []float64) ([]float64, []string) {
