@@ -11,6 +11,9 @@ import (
 // ReportHistoryDays — số ngày lịch có thể chọn trong dropdown bản tin.
 const ReportHistoryDays = 90
 
+// reportCacheVersion — tăng khi đổi schema báo cáo để tránh trả cache cũ.
+const reportCacheVersion = 2
+
 var (
 	vnTimezone = time.FixedZone("ICT", 7*3600)
 	usEastern  *time.Location
@@ -74,7 +77,7 @@ func (s *Service) GetReport(dateStr string) (*WorldNewsReport, error) {
 	if err != nil {
 		return nil, err
 	}
-	key := calendarDay.Format("2006-01-02")
+	key := fmt.Sprintf("%s:v%d", calendarDay.Format("2006-01-02"), reportCacheVersion)
 
 	s.mu.RLock()
 	if entry, ok := s.cache[key]; ok && time.Now().Before(entry.expiresAt) {

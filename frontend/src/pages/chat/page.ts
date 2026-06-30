@@ -947,11 +947,29 @@ export function createChatPage(): ChatPage {
     ref.innerHTML = `Dữ liệu biểu đồ: <a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer" class="data-reference-link">${escHtml(source)}${symbolPart}</a>`;
   }
 
-  function renderMetricRef(source?: string, url?: string, symbol?: string): string {
-    if (!url) return '';
-    const label = source || 'Nguồn';
-    const symbolPart = symbol ? ` · ${escHtml(symbol)}` : '';
-    return `<a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer" class="metric-card-ref">${escHtml(label)}${symbolPart}</a>`;
+  function buildHighlightSummaryFallback(report: WorldNewsReport): string {
+    const parts: string[] = [];
+    if (report.digestWindow) {
+      parts.push(
+        `Bản tin sáng tổng hợp diễn biến tài chính toàn cầu trước 07:00 (GMT+7), khung ${report.digestWindow}.`,
+      );
+    }
+    for (const m of report.keyNumbers ?? []) {
+      parts.push(`${m.label} chốt ${m.value} (${m.change})${m.priceTime ? `, thời điểm ${m.priceTime}` : ''}.`);
+    }
+    for (const item of report.breakingNews ?? []) {
+      if (parts.length > 6) break;
+      const when = item.time ? ` (${item.time})` : '';
+      parts.push(`${item.source}${when}: ${item.content}.`);
+    }
+    parts.push(
+      'Nhà đầu tư nên theo dõi sát diễn biến lãi suất, chính sách tiền tệ và các sự kiện vĩ mô trong phiên giao dịch sắp tới.',
+    );
+    let text = parts.join(' ');
+    if (text.length > 700) {
+      text = `${text.slice(0, 697)}...`;
+    }
+    return text;
   }
 
   function setSectionSourceRef(
@@ -1141,7 +1159,12 @@ export function createChatPage(): ChatPage {
     ];
     for (const id of ids) {
       const el = $(id);
-      if (el) el.innerHTML = '';
+      if (!el) continue;
+      if (id === 'highlight-summary') {
+        el.textContent = '';
+      } else {
+        el.innerHTML = '';
+      }
     }
     if (newsDataSourceEl) newsDataSourceEl.textContent = '';
     if (newsReportTitleEl) newsReportTitleEl.textContent = 'Bản tin Tài chính Thế giới sáng';
@@ -1226,7 +1249,9 @@ export function createChatPage(): ChatPage {
     // 1. Tóm tắt tiêu điểm (~700 chữ)
     const highlightSummaryEl = $('highlight-summary');
     if (highlightSummaryEl) {
-      highlightSummaryEl.textContent = report.highlightSummary || '';
+      const summary =
+        report.highlightSummary?.trim() || buildHighlightSummaryFallback(report);
+      highlightSummaryEl.textContent = summary;
     }
 
     // 2. Key Metrics Row
@@ -1238,12 +1263,12 @@ export function createChatPage(): ChatPage {
           const priceTimeMarkup = m.priceTime
             ? `<span class="metric-card-time" title="Thời gian chốt phiên">Chốt: ${escHtml(m.priceTime)}</span>`
             : '';
-          const chartLinkOpen = m.url
-            ? `<a href="${escHtml(m.url)}" target="_blank" rel="noopener noreferrer" class="metric-card-chart-link" aria-label="Xem biểu đồ ${escHtml(m.label)} trên ${escHtml(m.source || 'nguồn')}">`
-            : '';
-          const chartLinkClose = m.url ? '</a>' : '';
+          const cardOpen = m.url
+            ? `<a href="${escHtml(m.url)}" target="_blank" rel="noopener noreferrer" class="metric-card metric-card-link" aria-label="Xem ${escHtml(m.label)} trên ${escHtml(m.source || 'nguồn')}">`
+            : '<div class="metric-card">';
+          const cardClose = m.url ? '</a>' : '</div>';
           return `
-            <div class="metric-card">
+            ${cardOpen}
               <div class="metric-card-header">
                 <span class="metric-card-label">${escHtml(m.label)}</span>
                 <span class="metric-card-change ${colorClass}">
@@ -1255,12 +1280,10 @@ export function createChatPage(): ChatPage {
                 ${priceTimeMarkup}
               </div>
               <div class="metric-card-visual">
-                ${chartLinkOpen}
                 <canvas id="metric-sparkline-${i}" class="metric-sparkline-canvas" aria-label="Biểu đồ ${escHtml(m.label)} theo thời gian"></canvas>
-                ${chartLinkClose}
               </div>
-              ${renderMetricRef(m.source, m.url, m.symbol)}
-            </div>
+              ${m.url && m.source ? `<span class="metric-card-link-hint">${escHtml(m.source)}${m.symbol ? ` · ${escHtml(m.symbol)}` : ''} ↗</span>` : ''}
+            ${cardClose}
           `;
         })
         .join('');

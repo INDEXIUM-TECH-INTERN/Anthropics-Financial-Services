@@ -137,22 +137,34 @@
   margin-top: 6px;
 }
 
-.key-metrics-row .metric-card-chart-link {
+.key-metrics-row .metric-card-link {
   display: block;
-  height: 100%;
-  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
   cursor: pointer;
-  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
 }
 
-.key-metrics-row .metric-card-chart-link:hover {
-  background: rgba(59, 130, 246, 0.1);
-  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.28);
+.key-metrics-row .metric-card-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.45);
 }
 
-.key-metrics-row .metric-card-chart-link:focus-visible {
+.key-metrics-row .metric-card-link:focus-visible {
   outline: 2px solid var(--color-primary-light);
   outline-offset: 2px;
+}
+
+.key-metrics-row .metric-card-link-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.key-metrics-row .metric-card-link:hover .metric-card-link-hint {
+  color: var(--color-primary-light);
 }
 
 .key-metrics-row .metric-sparkline-canvas {
@@ -208,12 +220,19 @@
 }
 
 .highlight-summary {
-  margin: 0;
+  margin: 0 0 14px;
+  padding: 0 2px;
   font-size: 14px;
   line-height: 1.75;
   color: var(--text-secondary);
   text-align: justify;
   letter-spacing: 0.01em;
+}
+
+.highlight-summary:empty::before {
+  content: 'Đang tải tóm tắt...';
+  color: var(--text-tertiary);
+  font-style: italic;
 }
 
 /* ─── Canvas Chart Drawing Styles ─── */
