@@ -12,7 +12,7 @@ import (
 const ReportHistoryDays = 90
 
 // reportCacheVersion — tăng khi đổi schema báo cáo để tránh trả cache cũ.
-const reportCacheVersion = 11
+const reportCacheVersion = 12
 
 var (
 	vnTimezone = time.FixedZone("ICT", 7*3600)
@@ -230,6 +230,7 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 		BreakingNews:       toBreakingNews(takeItems(breakingItems, 5)),
 		Watchlist:          buildWatchlist(breakingItems, calendarDay),
 		GeneratedAt:        time.Now().In(vnTimezone).Format(time.RFC3339),
+		ReportVersion:      reportCacheVersion,
 		DataSource:         dataSource,
 		DigestWindow:       digestWindow,
 		DigestUntil:        formatDigestUntil(until),

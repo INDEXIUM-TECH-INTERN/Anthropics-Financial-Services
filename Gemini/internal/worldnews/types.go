@@ -14,6 +14,7 @@ type WorldNewsReport struct {
 	BreakingNews        []BreakingNews `json:"breakingNews"`
 	Watchlist           []WatchlistItem `json:"watchlist"`
 	GeneratedAt         string       `json:"generatedAt,omitempty"`
+	ReportVersion       int          `json:"reportVersion,omitempty"`
 	DataSource          string       `json:"dataSource,omitempty"`
 	DigestWindow        string       `json:"digestWindow,omitempty"`
 	DigestUntil         string       `json:"digestUntil,omitempty"`
