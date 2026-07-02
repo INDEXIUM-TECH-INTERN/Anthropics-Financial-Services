@@ -887,15 +887,41 @@ export function createChatPage(): ChatPage {
     `;
   }
 
-  function renderBreakingNewsCard(b: WorldNewsReport['breakingNews'][number]): string {
+  function resolveBreakingArticleDate(
+    item: WorldNewsReport['breakingNews'][number],
+    reportDate?: string,
+  ): string {
+    if (item.date?.trim()) {
+      return item.date.trim();
+    }
+    const urlMatch = item.url?.match(/\/(\d{4})\/(\d{2})\/(\d{2})\//);
+    if (urlMatch) {
+      const [, year, month, day] = urlMatch;
+      return `${day}/${month}/${year}`;
+    }
+    if (reportDate) {
+      const [year, month, day] = reportDate.split('-');
+      if (year && month && day) {
+        return `${day}/${month}/${year}`;
+      }
+    }
+    return '';
+  }
+
+  function renderBreakingNewsCard(
+    b: WorldNewsReport['breakingNews'][number],
+    reportDate?: string,
+  ): string {
     const urgentClass = b.isUrgent ? ' breaking-card--urgent' : '';
     const thumb = b.thumbnail
       ? `<div class="breaking-card__media">${renderArticleThumbnail(b.thumbnail, b.content)}</div>`
       : '';
     const logo = renderPublisherLogo(b.logo, b.source);
-    const dateTimeMarkup = b.date
-      ? `<time class="breaking-card__datetime">
-          <span class="breaking-card__date">${escHtml(b.date)}</span>
+    const articleDate = resolveBreakingArticleDate(b, reportDate);
+    const dateTimeMarkup = articleDate
+      ? `<time class="breaking-card__datetime" datetime="${escHtml(articleDate)} ${escHtml(b.time)}">
+          <span class="breaking-card__date">${escHtml(articleDate)}</span>
+          <span class="breaking-card__datetime-sep" aria-hidden="true">·</span>
           <span class="breaking-card__time">${escHtml(b.time)}</span>
         </time>`
       : `<span class="breaking-card__time breaking-card__time--solo">${escHtml(b.time)}</span>`;
@@ -1496,7 +1522,7 @@ export function createChatPage(): ChatPage {
     const breakingNewsListEl = $('breaking-news-list');
     if (breakingNewsListEl) {
       breakingNewsListEl.innerHTML = report.breakingNews.length
-        ? report.breakingNews.map(b => renderBreakingNewsCard(b)).join('')
+        ? report.breakingNews.map(b => renderBreakingNewsCard(b, report.date)).join('')
         : '<p class="breaking-news-empty">Không có tin nóng trước 07:00 (GMT+7).</p>';
     }
 
