@@ -12,7 +12,7 @@ import (
 const ReportHistoryDays = 90
 
 // reportCacheVersion — tăng khi đổi schema báo cáo để tránh trả cache cũ.
-const reportCacheVersion = 13
+const reportCacheVersion = 14
 
 var (
 	vnTimezone = time.FixedZone("ICT", 7*3600)
@@ -179,6 +179,7 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 
 	oilKeyNumber, err := s.fetchCNBCKeyNumber(cnbcBrentSymbol, "Dầu Brent", "ICE Brent", calendarDay)
 	if err != nil {
+		fmt.Printf("⚠️ [WorldNews] CNBC oil quote failed (%s), fallback Yahoo: %v\n", cnbcBrentSymbol, err)
 		oilKeyNumber = keyNumberFromQuote(brent, "Dầu Brent", marketDataSource, yahooFinanceQuoteURL("BZ%3DF"), yahooFinanceDisplaySymbol("BZ%3DF"))
 	}
 
@@ -246,6 +247,7 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 	if gold != nil {
 		goldKeyNumber, err := s.fetchCNBCKeyNumber(cnbcGoldSymbol, "Vàng thế giới", "Gold COMEX", calendarDay)
 		if err != nil {
+			fmt.Printf("⚠️ [WorldNews] CNBC gold quote failed (%s), fallback Yahoo: %v\n", cnbcGoldSymbol, err)
 			goldKeyNumber = keyNumberFromQuote(
 				gold,
 				"Vàng thế giới",

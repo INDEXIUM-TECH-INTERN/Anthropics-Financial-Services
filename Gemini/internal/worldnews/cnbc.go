@@ -10,16 +10,23 @@ import (
 )
 
 const (
-	cnbcQuoteAPI   = "https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol"
-	cnbcDataSource = "CNBC"
-	cnbcBrentSymbol = "@LCO.1" // ICE Brent Crude
-	cnbcGoldSymbol  = "@GC.1"  // COMEX Gold
+	cnbcRestQuoteAPI = "https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol"
+	cnbcQuoteHTMLAPI = "https://quote.cnbc.com/quote-html-webservice/quote.htm"
+	cnbcDataSource   = "CNBC"
+	cnbcBrentSymbol  = "@LCO.1" // ICE Brent Crude — khớp giá trên cnbc.com/quotes/@LCO.1
+	cnbcGoldSymbol   = "@GC.1"  // COMEX Gold
 )
 
 type cnbcFormattedResponse struct {
 	FormattedQuoteResult struct {
 		FormattedQuote []cnbcFormattedQuote `json:"FormattedQuote"`
 	} `json:"FormattedQuoteResult"`
+}
+
+type cnbcQuickQuoteResponse struct {
+	QuickQuoteResult struct {
+		QuickQuote []cnbcFormattedQuote `json:"QuickQuote"`
+	} `json:"QuickQuoteResult"`
 }
 
 type cnbcFormattedQuote struct {
@@ -40,28 +47,55 @@ func cnbcQuotePageURL(symbol string) string {
 	return "https://www.cnbc.com/quotes/" + url.PathEscape(symbol)
 }
 
-func (s *Service) fetchCNBCFormattedQuote(symbol string) (*cnbcFormattedQuote, error) {
-	apiURL := fmt.Sprintf(
+func cnbcQuoteAPIURL(base, symbol string) string {
+	return fmt.Sprintf(
 		"%s?symbols=%s&requestMethod=quick&exthrs=1&noform=1&partnerId=2&fund=1&output=json",
-		cnbcQuoteAPI,
+		base,
 		url.QueryEscape(symbol),
 	)
-	body, err := s.httpGet(apiURL)
-	if err != nil {
-		return nil, err
+}
+
+func (s *Service) fetchCNBCFormattedQuote(symbol string) (*cnbcFormattedQuote, error) {
+	endpoints := []string{
+		cnbcQuoteAPIURL(cnbcRestQuoteAPI, symbol),
+		cnbcQuoteAPIURL(cnbcQuoteHTMLAPI, symbol),
 	}
-	var data cnbcFormattedResponse
-	if err := json.Unmarshal(body, &data); err != nil {
-		return nil, err
+	var lastErr error
+	for _, apiURL := range endpoints {
+		body, err := s.httpGet(apiURL)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		q, err := parseCNBCQuoteBody(body, symbol)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		return q, nil
 	}
-	if len(data.FormattedQuoteResult.FormattedQuote) == 0 {
-		return nil, fmt.Errorf("empty CNBC quote for %s", symbol)
+	if lastErr == nil {
+		lastErr = fmt.Errorf("CNBC quote unavailable for %s", symbol)
 	}
-	q := data.FormattedQuoteResult.FormattedQuote[0]
-	if strings.TrimSpace(q.Last) == "" {
-		return nil, fmt.Errorf("CNBC quote missing last price for %s", symbol)
+	return nil, lastErr
+}
+
+func parseCNBCQuoteBody(body []byte, symbol string) (*cnbcFormattedQuote, error) {
+	var formatted cnbcFormattedResponse
+	if err := json.Unmarshal(body, &formatted); err == nil && len(formatted.FormattedQuoteResult.FormattedQuote) > 0 {
+		q := formatted.FormattedQuoteResult.FormattedQuote[0]
+		if strings.TrimSpace(q.Last) != "" {
+			return &q, nil
+		}
 	}
-	return &q, nil
+	var quick cnbcQuickQuoteResponse
+	if err := json.Unmarshal(body, &quick); err == nil && len(quick.QuickQuoteResult.QuickQuote) > 0 {
+		q := quick.QuickQuoteResult.QuickQuote[0]
+		if strings.TrimSpace(q.Last) != "" {
+			return &q, nil
+		}
+	}
+	return nil, fmt.Errorf("empty CNBC quote for %s", symbol)
 }
 
 func (s *Service) fetchCNBCKeyNumber(symbol, label, displaySymbol string, calendarDay time.Time) (KeyNumber, error) {
@@ -74,21 +108,21 @@ func (s *Service) fetchCNBCKeyNumber(symbol, label, displaySymbol string, calend
 	if err != nil {
 		return KeyNumber{}, err
 	}
-	change, err := parseCNBCPrice(q.Change)
-	if err != nil {
-		return KeyNumber{}, err
+	prev, _ := parseCNBCPriceOptional(q.PreviousDayClosing)
+	open, _ := parseCNBCPriceOptional(q.Open)
+	low, _ := parseCNBCPriceOptional(q.Low)
+	high, _ := parseCNBCPriceOptional(q.High)
+
+	change, _ := parseCNBCPriceOptional(q.Change)
+	if change == 0 && prev != 0 {
+		change = last - prev
 	}
-	changePct, err := parseCNBCPercent(q.ChangePct)
-	if err != nil {
-		return KeyNumber{}, err
+	changePct, _ := parseCNBCPercentOptional(q.ChangePct)
+	if changePct == 0 && prev != 0 {
+		changePct = (change / prev) * 100
 	}
 
 	_, cutoff := morningDigestWindow(calendarDay.In(vnTimezone))
-	prev, _ := parseCNBCPrice(q.PreviousDayClosing)
-	open, _ := parseCNBCPrice(q.Open)
-	low, _ := parseCNBCPrice(q.Low)
-	high, _ := parseCNBCPrice(q.High)
-
 	_, pctStr, positive := formatChange(change, changePct)
 	return KeyNumber{
 		Label:           label,
@@ -145,8 +179,19 @@ func parseCNBCPrice(raw string) (float64, error) {
 	return strconv.ParseFloat(raw, 64)
 }
 
-func parseCNBCPercent(raw string) (float64, error) {
+func parseCNBCPriceOptional(raw string) (float64, error) {
+	raw = strings.TrimSpace(strings.ReplaceAll(raw, ",", ""))
+	if raw == "" || raw == "-" {
+		return 0, fmt.Errorf("empty CNBC price")
+	}
+	return strconv.ParseFloat(raw, 64)
+}
+
+func parseCNBCPercentOptional(raw string) (float64, error) {
 	raw = strings.TrimSpace(strings.TrimSuffix(raw, "%"))
+	if raw == "" || raw == "-" {
+		return 0, fmt.Errorf("empty CNBC percent")
+	}
 	return strconv.ParseFloat(raw, 64)
 }
 
