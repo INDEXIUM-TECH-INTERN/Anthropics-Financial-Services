@@ -12,7 +12,7 @@ import (
 const ReportHistoryDays = 90
 
 // reportCacheVersion — tăng khi đổi schema báo cáo để tránh trả cache cũ.
-const reportCacheVersion = 12
+const reportCacheVersion = 13
 
 var (
 	vnTimezone = time.FixedZone("ICT", 7*3600)
@@ -177,13 +177,20 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 		digestWindow,
 	)
 
+	oilKeyNumber, err := s.fetchCNBCKeyNumber(cnbcBrentSymbol, "Dầu Brent", "ICE Brent", calendarDay)
+	if err != nil {
+		oilKeyNumber = keyNumberFromQuote(brent, "Dầu Brent", marketDataSource, yahooFinanceQuoteURL("BZ%3DF"), yahooFinanceDisplaySymbol("BZ%3DF"))
+	}
+
+	keyNumbers := []KeyNumber{
+		keyNumberFromQuote(sp500, "S&P 500", "CNBC", "https://www.cnbc.com/world/", "S&P 500"),
+		oilKeyNumber,
+	}
+
 	report := &WorldNewsReport{
 		Date:            calendarDay.Format("2006-01-02"),
 		HighlightSummary: s.resolveHighlightSummary(sp500, nasdaq, wti, brent, gold, dxy, breakingItems, quoteLabel, digestWindow),
-		KeyNumbers: []KeyNumber{
-			keyNumberFromQuote(sp500, "S&P 500", "CNBC", "https://www.cnbc.com/world/", "S&P 500"),
-			keyNumberFromQuote(brent, "Dầu Brent", marketDataSource, yahooFinanceQuoteURL("BZ%3DF"), yahooFinanceDisplaySymbol("BZ%3DF")),
-		},
+		KeyNumbers:      keyNumbers,
 		Stocks: StockSection{
 			IndexName:     "Chỉ số & cổ phiếu theo dõi",
 			Value:         joinValues(formatPrice(sp500.Symbol, sp500.Price), nasdaqVal),
@@ -237,13 +244,17 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 	}
 
 	if gold != nil {
-		report.KeyNumbers = append(report.KeyNumbers, keyNumberFromQuote(
-			gold,
-			"Vàng thế giới",
-			marketDataSource,
-			yahooFinanceQuoteURL("GC%3DF"),
-			yahooFinanceDisplaySymbol("GC%3DF"),
-		))
+		goldKeyNumber, err := s.fetchCNBCKeyNumber(cnbcGoldSymbol, "Vàng thế giới", "Gold COMEX", calendarDay)
+		if err != nil {
+			goldKeyNumber = keyNumberFromQuote(
+				gold,
+				"Vàng thế giới",
+				marketDataSource,
+				yahooFinanceQuoteURL("GC%3DF"),
+				yahooFinanceDisplaySymbol("GC%3DF"),
+			)
+		}
+		report.KeyNumbers = append(report.KeyNumbers, goldKeyNumber)
 	}
 
 	return report, nil
