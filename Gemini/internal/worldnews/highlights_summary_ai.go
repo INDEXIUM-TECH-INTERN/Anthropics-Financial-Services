@@ -9,7 +9,8 @@ import (
 )
 
 const highlightSummarySystemPrompt = `Bạn là biên tập viên tài chính chuyên nghiệp của INDEXIUM.
-Nhiệm vụ: viết đoạn tóm tắt bản tin sáng ngắn gọn, chính xác, bằng tiếng Việt.
+Nhiệm vụ: viết đoạn tóm tắt bản tin sáng chi tiết, chính xác, bằng tiếng Việt.
+Độ dài: 800–1000 từ, một đoạn văn liền mạch.
 Chỉ dùng dữ liệu được cung cấp — không bịa số liệu hay sự kiện.
 Không dùng bullet, markdown, hoặc lời dẫn ngoài đoạn văn.`
 
@@ -72,7 +73,7 @@ func generateHighlightSummaryAI(
 	if cleaned == "" {
 		return "", fmt.Errorf("empty AI response")
 	}
-	return normalizeAISummaryLength(cleaned, HighlightSummaryTargetRunes), nil
+	return normalizeAISummaryWords(cleaned, HighlightSummaryMinWords, HighlightSummaryMaxWords), nil
 }
 
 func buildHighlightSummaryMarketData(

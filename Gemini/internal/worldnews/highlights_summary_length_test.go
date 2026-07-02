@@ -3,12 +3,11 @@ package worldnews
 import (
 	"strings"
 	"testing"
-	"unicode/utf8"
 )
 
-func TestNormalizeAISummaryLengthNoEllipsis(t *testing.T) {
-	long := strings.Repeat("Thị trường tài chính ghi nhận biến động. ", 25) + "Nhà đầu tư nên theo dõi chính sách pháp lý và"
-	got := normalizeAISummaryLength(long, 700)
+func TestNormalizeAISummaryWordsNoEllipsis(t *testing.T) {
+	long := strings.Repeat("Thị trường tài chính ghi nhận biến động đáng chú ý. ", 80) + "Nhà đầu tư nên theo dõi chính sách pháp lý và"
+	got := normalizeAISummaryWords(long, HighlightSummaryMinWords, HighlightSummaryMaxWords)
 
 	if strings.Contains(got, "...") || strings.Contains(got, "…") {
 		t.Fatalf("summary must not contain ellipsis: %q", got)
@@ -16,8 +15,8 @@ func TestNormalizeAISummaryLengthNoEllipsis(t *testing.T) {
 	if !strings.HasSuffix(got, ".") {
 		t.Fatalf("summary should end with a period: %q", got)
 	}
-	if utf8.RuneCountInString(got) > 700 {
-		t.Fatalf("summary too long: %d runes", utf8.RuneCountInString(got))
+	if wordCount(got) > HighlightSummaryMaxWords {
+		t.Fatalf("summary too long: %d words", wordCount(got))
 	}
 }
 
@@ -31,9 +30,9 @@ func TestStripTrailingEllipsis(t *testing.T) {
 	}
 }
 
-func TestNormalizeAISummaryLengthKeepsShortText(t *testing.T) {
+func TestNormalizeAISummaryWordsKeepsShortText(t *testing.T) {
 	short := "Bản tin sáng ngắn gọn kết thúc đầy đủ."
-	got := normalizeAISummaryLength(short, 700)
+	got := normalizeAISummaryWords(short, HighlightSummaryMinWords, HighlightSummaryMaxWords)
 	if got != short {
 		t.Fatalf("expected unchanged short text, got %q", got)
 	}

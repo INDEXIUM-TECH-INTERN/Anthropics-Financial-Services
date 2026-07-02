@@ -11,9 +11,9 @@ TIN TỨC NỔI BẬT (chỉ dùng các dòng dưới đây):
 
 YÊU CẦU:
 - Viết thành MỘT đoạn văn liền mạch, không bullet, không markdown, không tiêu đề.
-- Độ dài khoảng 650–700 ký tự (Unicode), tối đa 700 ký tự — KHÔNG vượt quá.
+- Độ dài 800–1000 từ (tiếng Việt), không ngắn hơn 800 từ và không vượt quá 1000 từ.
 - Mở đầu nêu đây là bản tin sáng tổng hợp trước 07:00 (GMT+7).
-- Lồng ghép diễn biến chứng khoán Mỹ, hàng hóa (dầu, vàng), USD và các tin nổi bật.
+- Phân tích sâu diễn biến chứng khoán Mỹ, hàng hóa (dầu, vàng), USD và các tin nổi bật; nêu bối cảnh, tác động và góc nhìn cho nhà đầu tư.
 - Giọng văn chuyên nghiệp, khách quan, dễ đọc; kết thúc bằng MỘT câu hoàn chỉnh có dấu chấm.
 - TUYỆT ĐỐI không dùng dấu "..." hay "…"; không bỏ dở giữa chừng.
 - Chỉ trả về nội dung đoạn văn, không giải thích thêm.

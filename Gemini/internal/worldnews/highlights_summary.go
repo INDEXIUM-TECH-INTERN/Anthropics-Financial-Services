@@ -6,7 +6,10 @@ import (
 	"unicode/utf8"
 )
 
-const HighlightSummaryTargetRunes = 700
+const (
+	HighlightSummaryMinWords = 800
+	HighlightSummaryMaxWords = 1000
+)
 
 func buildHighlightSummary(
 	sp, nd, wti, brent, gold, dxy *quoteSnapshot,
@@ -65,7 +68,7 @@ func buildHighlightSummary(
 	if len(news) > 0 {
 		sentences = append(sentences, "Trên mặt trận tin tức, các dòng sự kiện đáng chú ý gồm:")
 		for i, it := range news {
-			if i >= 5 {
+			if i >= 10 {
 				break
 			}
 			when := it.PubDate.In(vnTimezone).Format("02/01/2006 15:04")
@@ -83,7 +86,11 @@ func buildHighlightSummary(
 	sentences = append(sentences, "Nhà đầu tư nên theo dõi sát diễn biến lãi suất, chính sách tiền tệ và các báo cáo kinh tế vĩ mô trong phiên giao dịch sắp tới để điều chỉnh danh mục phù hợp.")
 
 	text := strings.Join(sentences, " ")
-	return fitSummaryLength(text, HighlightSummaryTargetRunes)
+	return fitSummaryWordLength(text, HighlightSummaryMinWords, HighlightSummaryMaxWords)
+}
+
+func wordCount(text string) int {
+	return len(strings.Fields(strings.TrimSpace(text)))
 }
 
 func summarizeNewsAngle(title string) string {
@@ -104,28 +111,68 @@ func summarizeNewsAngle(title string) string {
 	}
 }
 
-func fitSummaryLength(text string, target int) string {
+func fitSummaryWordLength(text string, minWords, maxWords int) string {
 	text = strings.Join(strings.Fields(text), " ")
-	if utf8.RuneCountInString(text) <= target {
-		return padSummary(text, target)
+	if wordCount(text) > maxWords {
+		return trimToMaxWords(text, maxWords)
 	}
-	return trimRunes(text, target)
+	if wordCount(text) < minWords {
+		return padSummaryWords(text, minWords, maxWords)
+	}
+	return ensureSentenceEnding(text, maxWords*12)
 }
 
-// normalizeAISummaryLength trims AI prose without "..." or synthetic padding.
-func normalizeAISummaryLength(text string, max int) string {
+// normalizeAISummaryWords trims AI prose to the word budget without "..." padding.
+func normalizeAISummaryWords(text string, minWords, maxWords int) string {
 	text = strings.Join(strings.Fields(text), " ")
 	text = stripTrailingEllipsis(text)
 	if text == "" {
 		return ""
 	}
-	if utf8.RuneCountInString(text) <= max {
-		return ensureSentenceEnding(text, max)
+	if wordCount(text) > maxWords {
+		if trimmed := trimToMaxWordsAtSentence(text, maxWords); trimmed != "" {
+			return trimmed
+		}
+		return trimToMaxWords(text, maxWords)
 	}
-	if trimmed := trimAtLastSentence(text, max); trimmed != "" {
-		return trimmed
+	return ensureSentenceEnding(text, maxWords*12)
+}
+
+func trimToMaxWords(text string, maxWords int) string {
+	words := strings.Fields(text)
+	if len(words) <= maxWords {
+		return text
 	}
-	return ensureSentenceEnding(trimAtWordBoundary(text, max), max)
+	return strings.Join(words[:maxWords], " ")
+}
+
+func trimToMaxWordsAtSentence(text string, maxWords int) string {
+	words := strings.Fields(text)
+	if len(words) <= maxWords {
+		return ensureSentenceEnding(text, maxWords*12)
+	}
+	chunk := strings.Join(words[:maxWords], " ")
+	best := -1
+	for _, sep := range []string{". ", "! ", "? "} {
+		if idx := strings.LastIndex(chunk, sep); idx > best {
+			best = idx
+		}
+	}
+	if best > 0 {
+		return strings.TrimSpace(chunk[:best+1])
+	}
+	return trimToMaxWords(text, maxWords)
+}
+
+func padSummaryWords(text string, minWords, maxWords int) string {
+	padding := " Diễn biến trên phản ánh sự phân hóa giữa kỳ vọng tăng trưởng, rủi ro địa chính trị, chu kỳ chính sách tiền tệ và tâm lý nhà đầu tư toàn cầu, đòi hỏi duy trì kỷ luật quản trị rủi ro và theo dõi sát các chỉ báo vĩ mô trong các phiên giao dịch sắp tới."
+	for wordCount(text) < minWords {
+		text += padding
+		if wordCount(text) > maxWords {
+			return trimToMaxWords(text, maxWords)
+		}
+	}
+	return ensureSentenceEnding(text, maxWords*12)
 }
 
 func stripTrailingEllipsis(text string) string {
@@ -165,71 +212,3 @@ func ensureSentenceEnding(text string, max int) string {
 	return text
 }
 
-func trimAtLastSentence(text string, max int) string {
-	runes := []rune(text)
-	if len(runes) <= max {
-		return ensureSentenceEnding(text, max)
-	}
-	chunk := string(runes[:max])
-	best := -1
-	for _, sep := range []string{". ", "! ", "? ", ".\n", "!\n", "?\n"} {
-		if idx := strings.LastIndex(chunk, sep); idx > best {
-			best = idx
-		}
-	}
-	if best > 0 {
-		return strings.TrimSpace(chunk[:best+1])
-	}
-	return ""
-}
-
-func trimAtWordBoundary(text string, max int) string {
-	runes := []rune(text)
-	if len(runes) <= max {
-		return text
-	}
-	chunk := string(runes[:max])
-	if idx := strings.LastIndex(chunk, " "); idx > 0 {
-		return strings.TrimSpace(chunk[:idx])
-	}
-	return strings.TrimSpace(chunk)
-}
-
-func padSummary(text string, target int) string {
-	padding := " Diễn biến trên phản ánh sự phân hóa giữa kỳ vọng tăng trưởng, rủi ro địa chính trị và chu kỳ chính sách tiền tệ, đòi hỏi nhà đầu tư duy trì kỷ luật quản trị rủi ro."
-	for utf8.RuneCountInString(text) < target {
-		remaining := target - utf8.RuneCountInString(text)
-		if remaining <= 0 {
-			break
-		}
-		chunk := trimRunes(padding, remaining)
-		if chunk == "" {
-			break
-		}
-		text += chunk
-	}
-	return trimRunes(text, target)
-}
-
-func trimRunes(text string, max int) string {
-	if max <= 0 {
-		return ""
-	}
-	if utf8.RuneCountInString(text) <= max {
-		return text
-	}
-	var b strings.Builder
-	count := 0
-	for _, r := range text {
-		if count >= max {
-			break
-		}
-		b.WriteRune(r)
-		count++
-	}
-	out := strings.TrimSpace(b.String())
-	if max >= 3 && utf8.RuneCountInString(out) == max {
-		out = trimRunes(out, max-3) + "..."
-	}
-	return out
-}

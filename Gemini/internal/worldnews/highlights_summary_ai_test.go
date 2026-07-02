@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"unicode/utf8"
 )
 
 type mockTextGenerator struct {
@@ -55,9 +54,9 @@ func TestGenerateHighlightSummaryAIUsesMock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	n := utf8.RuneCountInString(summary)
-	if n > HighlightSummaryTargetRunes {
-		t.Fatalf("summary too long: %d runes", n)
+	w := wordCount(summary)
+	if w > HighlightSummaryMaxWords {
+		t.Fatalf("summary too long: %d words", w)
 	}
 	if strings.Contains(summary, "...") {
 		t.Fatalf("AI summary must not end with ellipsis: %q", summary)

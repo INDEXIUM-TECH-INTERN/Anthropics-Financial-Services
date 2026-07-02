@@ -977,11 +977,7 @@ export function createChatPage(): ChatPage {
     parts.push(
       'Nhà đầu tư nên theo dõi sát diễn biến lãi suất, chính sách tiền tệ và các sự kiện vĩ mô trong phiên giao dịch sắp tới.',
     );
-    let text = parts.join(' ');
-    if (text.length > 700) {
-      text = `${text.slice(0, 697)}...`;
-    }
-    return text;
+    return parts.join(' ');
   }
 
   function setSectionSourceRef(
@@ -1250,7 +1246,7 @@ export function createChatPage(): ChatPage {
       'key-metrics-row',
       'stock-charts-grid-primary',
       'stock-charts-grid-more',
-      'stock-summary-list',
+
       'oil-prices-badge',
       'oil-summary-list',
       'gold-usd-summary-list',
@@ -1348,7 +1344,7 @@ export function createChatPage(): ChatPage {
     void worldNewsContainer?.offsetWidth; // Trigger layout reflow
     worldNewsContainer?.classList.add('news-fade-in');
 
-    // 1. Tóm tắt tiêu điểm (~700 chữ)
+    // 1. Tóm tắt tiêu điểm (800–1000 từ)
     const highlightSummaryEl = $('highlight-summary');
     if (highlightSummaryEl) {
       const summary =
@@ -1431,14 +1427,7 @@ export function createChatPage(): ChatPage {
       report.goldUsd.marketSymbol,
     );
 
-    // 3. Stocks detail
-    const stockSummaryList = $('stock-summary-list');
-    if (stockSummaryList) {
-      stockSummaryList.innerHTML = report.stocks.highlights
-        .map(h => `<li class="summary-item">${escHtml(h)}</li>`)
-        .join('');
-    }
-    // 4. Oil details WTI & Brent
+    // 3. Oil details WTI & Brent
     const oilPricesBadge = $('oil-prices-badge');
     if (oilPricesBadge) {
       oilPricesBadge.innerHTML = `

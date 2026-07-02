@@ -4,10 +4,9 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"unicode/utf8"
 )
 
-func TestBuildHighlightSummaryNear700Runes(t *testing.T) {
+func TestBuildHighlightSummaryWordRange(t *testing.T) {
 	sp := &quoteSnapshot{Symbol: "%5EGSPC", Price: 5400, Change: 12, ChangePct: 0.22, IsPositive: true}
 	nd := &quoteSnapshot{Symbol: "%5EIXIC", Price: 17800, Change: -40, ChangePct: -0.22, IsPositive: false}
 	wti := &quoteSnapshot{Symbol: "CL%3DF", Price: 70.5, Change: 0.8, ChangePct: 1.1, IsPositive: true}
@@ -30,9 +29,9 @@ func TestBuildHighlightSummaryNear700Runes(t *testing.T) {
 	}
 
 	summary := buildHighlightSummary(sp, nd, wti, brent, gold, dxy, news, "29/06/2026 (Mỹ)", "29/06/2026 07:00 – 30/06/2026 07:00")
-	n := utf8.RuneCountInString(summary)
-	if n < 650 || n > 700 {
-		t.Fatalf("expected ~700 runes, got %d: %q", n, summary)
+	w := wordCount(summary)
+	if w < HighlightSummaryMinWords || w > HighlightSummaryMaxWords {
+		t.Fatalf("expected %d–%d words, got %d", HighlightSummaryMinWords, HighlightSummaryMaxWords, w)
 	}
 	for _, part := range []string{"S&P 500", "Nasdaq", "WTI", "Brent", "Reuters"} {
 		if !strings.Contains(summary, part) {
