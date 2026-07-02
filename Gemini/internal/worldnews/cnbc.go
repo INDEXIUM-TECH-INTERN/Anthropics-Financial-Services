@@ -133,12 +133,16 @@ func (s *Service) fetchCNBCKeyNumber(symbol, label, displaySymbol string, calend
 	}, nil
 }
 
-// resolveCNBCKeyNumber returns the live CNBC quote exactly as shown on cnbc.com.
-func resolveCNBCKeyNumber(q *cnbcFormattedQuote, _ time.Time) (cnbcResolvedQuote, error) {
+// resolveCNBCKeyNumber uses CNBC last/change but clamps the displayed time to before
+// 07:00 GMT+7 when the quote timestamp is after the morning digest cutoff.
+func resolveCNBCKeyNumber(q *cnbcFormattedQuote, calendarDay time.Time) (cnbcResolvedQuote, error) {
 	last, err := parseCNBCPrice(q.Last)
 	if err != nil {
 		return cnbcResolvedQuote{}, err
 	}
+
+	day := calendarDay.In(vnTimezone)
+	_, cutoff := morningDigestWindow(day)
 
 	prev, _ := parseCNBCPriceOptional(q.PreviousDayClosing)
 	open, _ := parseCNBCPriceOptional(q.Open)
@@ -158,8 +162,31 @@ func resolveCNBCKeyNumber(q *cnbcFormattedQuote, _ time.Time) (cnbcResolvedQuote
 		Change:    change,
 		ChangePct: changePct,
 		Sparkline: cnbcSessionSparkline(prev, open, low, high, last),
-		PriceTime: formatCNBCPriceTimeDisplay(q.LastTime),
+		PriceTime: cnbcKeyNumberPriceTime(q.LastTime, day, cutoff),
 	}, nil
+}
+
+func cnbcKeyNumberPriceTime(lastTime string, reportDay, cutoff time.Time) string {
+	lastTS, err := parseCNBCLastTime(lastTime)
+	if err != nil {
+		return cnbcDigestCutoffTimeLabel(reportDay)
+	}
+	vnLast := lastTS.In(vnTimezone)
+	sameDay := vnLast.Year() == reportDay.Year() &&
+		vnLast.Month() == reportDay.Month() &&
+		vnLast.Day() == reportDay.Day()
+	if sameDay && !vnLast.After(cutoff) {
+		return formatDigestPriceTimeLabel(vnLast)
+	}
+	return cnbcDigestCutoffTimeLabel(reportDay)
+}
+
+func cnbcDigestCutoffTimeLabel(reportDay time.Time) string {
+	t := time.Date(
+		reportDay.Year(), reportDay.Month(), reportDay.Day(),
+		MorningDigestHour-1, 59, 0, 0, vnTimezone,
+	)
+	return formatDigestPriceTimeLabel(t)
 }
 
 // cnbcSessionSparkline builds an 8-point sparkline from CNBC OHLC + previous close.
@@ -244,26 +271,3 @@ func parseCNBCLastTime(lastTime string) (time.Time, error) {
 	return time.Time{}, lastErr
 }
 
-func formatCNBCPriceTimeDisplay(lastTime string) string {
-	t, err := parseCNBCLastTime(lastTime)
-	if err != nil {
-		return ""
-	}
-	return t.Format("02/01 15:04") + " " + cnbcTimeZoneLabel(t)
-}
-
-func cnbcTimeZoneLabel(t time.Time) string {
-	_, offset := t.Zone()
-	switch offset {
-	case 3600:
-		return "BST"
-	case 0:
-		return "GMT"
-	case -4 * 3600:
-		return "EDT"
-	case -5 * 3600:
-		return "EST"
-	default:
-		return t.Format("MST")
-	}
-}
