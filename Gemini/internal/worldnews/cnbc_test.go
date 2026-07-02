@@ -97,6 +97,45 @@ func TestResolveCNBCKeyNumberBeforeCutoffUsesLiveGMT7(t *testing.T) {
 	}
 }
 
+func TestCNBCIsAfterDigestCutoffGoldEDT(t *testing.T) {
+	calendarDay := time.Date(2026, 7, 2, 0, 0, 0, 0, vnTimezone)
+	// 12:46 AM EDT on 07/02 = 11:46 GMT+7 — after 07:00 digest cutoff.
+	if !cnbcIsAfterDigestCutoff("2026-07-02T00:46:00.000-0400", calendarDay) {
+		t.Fatal("expected gold EDT quote after cutoff")
+	}
+}
+
+func TestApplyCNBCCutoffPriceGold(t *testing.T) {
+	calendarDay := time.Date(2026, 7, 2, 0, 0, 0, 0, vnTimezone)
+	q := &cnbcFormattedQuote{
+		Last:               "4074.70",
+		Change:             "-7.70",
+		ChangePct:          "-0.19%",
+		LastTime:           "2026-07-02T00:46:00.000-0400",
+		PreviousDayClosing: "4082.40",
+		Open:               "4049.20",
+		High:               "4086.30",
+		Low:                "4042.80",
+	}
+	base, err := resolveCNBCKeyNumber(q, calendarDay)
+	if err != nil {
+		t.Fatalf("resolve failed: %v", err)
+	}
+	got := applyCNBCCutoffPrice(base, 4047.40, 4082.40, calendarDay, "02/07 06:59 GMT+7")
+	if got.Price != 4047.40 {
+		t.Fatalf("expected cutoff price 4047.40, got %.2f", got.Price)
+	}
+	if diff := got.ChangePct - (-0.8578); diff > 0.05 || diff < -0.05 {
+		t.Fatalf("expected ~-0.86%% change vs prev close, got %.2f", got.ChangePct)
+	}
+	if got.PriceTime != "02/07 06:59 GMT+7" {
+		t.Fatalf("expected 02/07 06:59 GMT+7, got %q", got.PriceTime)
+	}
+	if len(got.Sparkline) == 0 || got.Sparkline[len(got.Sparkline)-1] != 4047.40 {
+		t.Fatalf("expected sparkline to end at cutoff price, got %v", got.Sparkline)
+	}
+}
+
 func TestCNBCQuotePageURL(t *testing.T) {
 	got := cnbcQuotePageURL(cnbcBrentSymbol)
 	want := "https://www.cnbc.com/quotes/@LCO.1"

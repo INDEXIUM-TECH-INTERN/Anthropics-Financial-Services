@@ -88,6 +88,63 @@ func (s *Service) fetchQuote(symbol, label string, calendarDay time.Time) (*quot
 	return priceSnap, nil
 }
 
+type cutoffPriceSnap struct {
+	Price     float64
+	PriceTime string
+}
+
+// fetchYahooIntradayAtCutoff returns the last 1m close at or before the morning digest cutoff.
+// Used for COMEX gold when CNBC's live quote is after 07:00 GMT+7 but the digest needs the pre-cutoff price.
+func (s *Service) fetchYahooIntradayAtCutoff(symbol string, cutoff time.Time) (*cutoffPriceSnap, error) {
+	loc := usEastern
+	periodStart := cutoff.Add(-36 * time.Hour).In(loc)
+	periodEnd := cutoff.Add(time.Hour).In(loc)
+	apiURL := fmt.Sprintf(
+		"%s/%s?period1=%d&period2=%d&interval=1m",
+		yahooChartURL, symbol, periodStart.Unix(), periodEnd.Unix(),
+	)
+	body, err := s.httpGet(apiURL)
+	if err != nil {
+		return nil, err
+	}
+
+	var data yahooChartResponse
+	if err := json.Unmarshal(body, &data); err != nil {
+		return nil, err
+	}
+	if len(data.Chart.Result) == 0 {
+		return nil, fmt.Errorf("empty yahoo 1m result for %s", symbol)
+	}
+
+	result := data.Chart.Result[0]
+	timestamps := result.Timestamp
+	closes := result.Indicators.Quote[0].Close
+	if len(timestamps) == 0 || len(closes) == 0 {
+		return nil, fmt.Errorf("no 1m price data for %s", symbol)
+	}
+
+	cutoffUnix := cutoff.Unix()
+	var lastTS int64
+	var lastClose float64
+	found := false
+	for i, c := range closes {
+		if c == 0 || i >= len(timestamps) || timestamps[i] > cutoffUnix {
+			continue
+		}
+		lastTS = timestamps[i]
+		lastClose = c
+		found = true
+	}
+	if !found {
+		return nil, fmt.Errorf("no 1m bars before cutoff for %s", symbol)
+	}
+
+	return &cutoffPriceSnap{
+		Price:     lastClose,
+		PriceTime: formatDigestPriceTimeLabel(time.Unix(lastTS, 0)),
+	}, nil
+}
+
 func (s *Service) fetchPriceAtCutoff(symbol, label string, quoteDay time.Time, cutoff time.Time) (*quoteSnapshot, error) {
 	loc := usEastern
 	periodStart := cutoff.Add(-12 * 24 * time.Hour).In(loc)

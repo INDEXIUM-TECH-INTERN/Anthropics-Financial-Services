@@ -12,7 +12,7 @@ import (
 const ReportHistoryDays = 90
 
 // reportCacheVersion — tăng khi đổi schema báo cáo để tránh trả cache cũ.
-const reportCacheVersion = 19
+const reportCacheVersion = 20
 
 var (
 	vnTimezone = time.FixedZone("ICT", 7*3600)

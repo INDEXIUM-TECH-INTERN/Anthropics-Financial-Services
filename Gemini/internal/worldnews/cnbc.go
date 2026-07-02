@@ -16,6 +16,7 @@ const (
 	cnbcDataSource   = "CNBC"
 	cnbcBrentSymbol  = "@LCO.1" // ICE Brent Crude — khớp giá trên cnbc.com/quotes/@LCO.1
 	cnbcGoldSymbol   = "@GC.1"  // COMEX Gold
+	cnbcGoldYahooSym = "GC%3DF" // Yahoo proxy for gold price at digest cutoff
 )
 
 type cnbcFormattedResponse struct {
@@ -119,6 +120,15 @@ func (s *Service) fetchCNBCKeyNumber(symbol, label, displaySymbol string, calend
 		return KeyNumber{}, err
 	}
 
+	if symbol == cnbcGoldSymbol && cnbcIsAfterDigestCutoff(q.LastTime, calendarDay) {
+		day := calendarDay.In(vnTimezone)
+		_, cutoff := morningDigestWindow(day)
+		if snap, snapErr := s.fetchYahooIntradayAtCutoff(cnbcGoldYahooSym, cutoff); snapErr == nil && snap.Price > 0 {
+			prev, _ := parseCNBCPriceOptional(q.PreviousDayClosing)
+			resolved = applyCNBCCutoffPrice(resolved, snap.Price, prev, day, snap.PriceTime)
+		}
+	}
+
 	_, pctStr, positive := formatChange(resolved.Change, resolved.ChangePct)
 	return KeyNumber{
 		Label:           label,
@@ -180,6 +190,43 @@ func cnbcResolvedChange(q *cnbcFormattedQuote, last, prev float64) (float64, flo
 		return ch, (ch / prev) * 100
 	}
 	return 0, 0
+}
+
+func cnbcIsAfterDigestCutoff(lastTime string, calendarDay time.Time) bool {
+	day := calendarDay.In(vnTimezone)
+	_, cutoff := morningDigestWindow(day)
+	lastTS, err := parseCNBCLastTime(lastTime)
+	if err != nil {
+		return true
+	}
+	vnLast := lastTS.In(vnTimezone)
+	sameDay := vnLast.Year() == day.Year() &&
+		vnLast.Month() == day.Month() &&
+		vnLast.Day() == day.Day()
+	return !sameDay || vnLast.After(cutoff)
+}
+
+func applyCNBCCutoffPrice(resolved cnbcResolvedQuote, cutoffPrice, prev float64, reportDay time.Time, priceTime string) cnbcResolvedQuote {
+	price := math.Round(cutoffPrice*100) / 100
+	resolved.Price = price
+	resolved.Change, resolved.ChangePct = cnbcChangeFromPrev(price, prev)
+	if strings.TrimSpace(priceTime) != "" {
+		resolved.PriceTime = priceTime
+	} else {
+		resolved.PriceTime = cnbcDigestCutoffTimeLabel(reportDay)
+	}
+	if len(resolved.Sparkline) > 0 {
+		resolved.Sparkline[len(resolved.Sparkline)-1] = price
+	}
+	return resolved
+}
+
+func cnbcChangeFromPrev(price, prev float64) (float64, float64) {
+	if prev == 0 {
+		return 0, 0
+	}
+	ch := price - prev
+	return ch, (ch / prev) * 100
 }
 
 func cnbcKeyNumberPriceTime(lastTime string, reportDay, cutoff time.Time) string {
