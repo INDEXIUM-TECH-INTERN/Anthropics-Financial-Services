@@ -133,6 +133,24 @@ func (s *Service) fetchCNBCKeyNumber(symbol, label, displaySymbol string, calend
 	}, nil
 }
 
+// cnbcUseLiveQuote returns true only when both the viewer and CNBC quote are before
+// 07:00 GMT+7 on the report day — otherwise use settled session close.
+func cnbcUseLiveQuote(lastTime string, reportDay, cutoff time.Time) bool {
+	now := time.Now().In(vnTimezone)
+	if !now.Before(cutoff) {
+		return false
+	}
+	lastTS, err := parseCNBCLastTime(lastTime)
+	if err != nil {
+		return false
+	}
+	vnLast := lastTS.In(vnTimezone)
+	sameDay := vnLast.Year() == reportDay.Year() &&
+		vnLast.Month() == reportDay.Month() &&
+		vnLast.Day() == reportDay.Day()
+	return sameDay && vnLast.Before(cutoff)
+}
+
 // resolveCNBCKeyNumber mirrors the Yahoo digest cutoff: before 07:00 GMT+7 use the
 // live CNBC quote; after cutoff use the last settled session close.
 func resolveCNBCKeyNumber(q *cnbcFormattedQuote, calendarDay time.Time) (cnbcResolvedQuote, error) {
@@ -151,9 +169,8 @@ func resolveCNBCKeyNumber(q *cnbcFormattedQuote, calendarDay time.Time) (cnbcRes
 	low, _ := parseCNBCPriceOptional(q.Low)
 	high, _ := parseCNBCPriceOptional(q.High)
 
-	lastTS, lastErr := parseCNBCLastTime(q.LastTime)
-	afterCutoff := lastErr != nil || lastTS.In(vnTimezone).After(cutoff)
-	if afterCutoff {
+	useLive := cnbcUseLiveQuote(q.LastTime, day, cutoff)
+	if !useLive {
 		price := settle
 		if price == 0 {
 			price = prev

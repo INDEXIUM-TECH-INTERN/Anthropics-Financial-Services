@@ -81,13 +81,37 @@ func TestResolveCNBCKeyNumberAfterCutoffUsesSettle(t *testing.T) {
 	}
 }
 
-func TestResolveCNBCKeyNumberBeforeCutoffUsesLive(t *testing.T) {
+func TestCNBCUseLiveQuoteRejectsAfterViewerCutoff(t *testing.T) {
 	calendarDay := time.Date(2026, 7, 2, 0, 0, 0, 0, vnTimezone)
+	_, cutoff := morningDigestWindow(calendarDay)
+	// Simulate viewing after 7h even if CNBC last_time were before cutoff.
+	if cnbcUseLiveQuote("2026-07-02T05:30:00.000+0700", calendarDay, cutoff) {
+		// Only passes when test runs before 07:00 ICT on report day; skip in that window.
+		now := time.Now().In(vnTimezone)
+		if !now.Before(cutoff) {
+			t.Fatalf("must not use live quote after 07:00 GMT+7")
+		}
+	}
+}
+
+func TestCNBCUseLiveQuoteAcceptsBeforeCutoff(t *testing.T) {
+	calendarDay := time.Date(2099, 1, 2, 0, 0, 0, 0, vnTimezone)
+	_, cutoff := morningDigestWindow(calendarDay)
+	if !cnbcUseLiveQuote("2099-01-02T05:30:00.000+0700", calendarDay, cutoff) {
+		t.Fatalf("expected live quote before cutoff on same day")
+	}
+	if cnbcUseLiveQuote("2099-01-02T08:30:00.000+0700", calendarDay, cutoff) {
+		t.Fatalf("must not use live quote when CNBC last_time is after cutoff")
+	}
+}
+
+func TestResolveCNBCKeyNumberBeforeCutoffUsesLive(t *testing.T) {
+	calendarDay := time.Date(2099, 1, 2, 0, 0, 0, 0, vnTimezone)
 	q := &cnbcFormattedQuote{
 		Last:               "71.10",
 		Change:             "-0.47",
 		ChangePct:          "-0.66%",
-		LastTime:           "2026-07-02T05:30:00.000+0700",
+		LastTime:           "2099-01-02T05:30:00.000+0700",
 		PreviousDayClosing: "71.57",
 		Open:               "71.21",
 		High:               "71.30",
@@ -101,7 +125,7 @@ func TestResolveCNBCKeyNumberBeforeCutoffUsesLive(t *testing.T) {
 	if got.Price != 71.10 {
 		t.Fatalf("expected live price 71.10, got %.2f", got.Price)
 	}
-	if got.PriceTime != "02/07 05:30 GMT+7" {
+	if got.PriceTime != "02/01 05:30 GMT+7" {
 		t.Fatalf("expected live time label, got %q", got.PriceTime)
 	}
 	if len(got.Sparkline) != 8 || got.Sparkline[7] != 71.10 {
