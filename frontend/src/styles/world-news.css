@@ -701,6 +701,13 @@
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
 }
 
+.breaking-date-inline {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
 .breaking-time-inline {
   font-size: 11px;
   font-weight: 600;

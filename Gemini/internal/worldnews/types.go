@@ -133,6 +133,7 @@ type NewsArticle struct {
 }
 
 type BreakingNews struct {
+	Date      string `json:"date"`
 	Time      string `json:"time"`
 	Source    string `json:"source"`
 	Content   string `json:"content"`

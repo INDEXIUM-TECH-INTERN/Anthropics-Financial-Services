@@ -1467,6 +1467,9 @@ export function createChatPage(): ChatPage {
           const thumb = renderArticleThumbnail(b.thumbnail, b.content);
           const logo = renderPublisherLogo(b.logo, b.source);
           const metaSource = `<span class="breaking-meta-source">${logo}<span>${escHtml(b.source)}</span></span>`;
+          const dateMarkup = b.date
+            ? `<span class="breaking-date-inline">${escHtml(b.date)}</span><span>•</span>`
+            : '';
           if (b.url) {
             return `
           <a href="${escHtml(b.url)}" target="_blank" rel="noopener noreferrer" class="breaking-news-item breaking-news-item-link ${b.isUrgent ? 'urgent' : ''}">
@@ -1475,6 +1478,7 @@ export function createChatPage(): ChatPage {
               <div class="breaking-meta">
                 ${metaSource}
                 <span>•</span>
+                ${dateMarkup}
                 <span class="breaking-time-inline">${escHtml(b.time)}</span>
                 <span>• Breaking</span>
               </div>
@@ -1490,6 +1494,7 @@ export function createChatPage(): ChatPage {
               <div class="breaking-meta">
                 ${metaSource}
                 <span>•</span>
+                ${dateMarkup}
                 <span class="breaking-time-inline">${escHtml(b.time)}</span>
                 <span>• Breaking</span>
               </div>

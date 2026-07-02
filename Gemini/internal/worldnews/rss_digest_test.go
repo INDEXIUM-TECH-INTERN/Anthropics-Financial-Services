@@ -48,6 +48,22 @@ func TestFilterBreakingNewsExcludesAfterCutoff(t *testing.T) {
 	}
 }
 
+func TestToBreakingNewsIncludesDate(t *testing.T) {
+	pub := time.Date(2026, 7, 2, 6, 45, 0, 0, vnTimezone)
+	got := toBreakingNews([]rssItem{
+		{Title: "Fed holds rates", Source: "CNBC", PubDate: pub},
+	})
+	if len(got) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(got))
+	}
+	if got[0].Date != "02/07/2026" {
+		t.Fatalf("expected date 02/07/2026, got %q", got[0].Date)
+	}
+	if got[0].Time != "06:45" {
+		t.Fatalf("expected time 06:45, got %q", got[0].Time)
+	}
+}
+
 func TestFilterVTVNewsExcludesAfterCutoff(t *testing.T) {
 	day := time.Date(2026, 7, 2, 0, 0, 0, 0, vnTimezone)
 	since, until := morningDigestWindow(day)

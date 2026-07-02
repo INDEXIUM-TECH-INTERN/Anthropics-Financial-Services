@@ -560,8 +560,10 @@ func toBreakingNews(items []rssItem) []BreakingNews {
 			strings.Contains(strings.ToLower(it.Title), "fed") ||
 			strings.Contains(strings.ToLower(it.Title), "oil") ||
 			strings.Contains(strings.ToLower(it.Title), "war")
+		pubVN := it.PubDate.In(vnTimezone)
 		out = append(out, BreakingNews{
-			Time:      it.PubDate.In(vnTimezone).Format("15:04"),
+			Date:      pubVN.Format("02/01/2006"),
+			Time:      pubVN.Format("15:04"),
 			Source:    it.Source,
 			Content:   it.Title,
 			URL:       it.Link,

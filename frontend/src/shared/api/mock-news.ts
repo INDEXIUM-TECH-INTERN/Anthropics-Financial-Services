@@ -106,6 +106,7 @@ export interface NewsArticle {
 }
 
 export interface BreakingNews {
+  date?: string;
   time: string;
   source: string;
   content: string;
