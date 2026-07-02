@@ -2,6 +2,7 @@ package worldnews
 
 import (
 	"testing"
+	"time"
 )
 
 func TestIsAllowedStockNewsSource(t *testing.T) {
@@ -37,18 +38,52 @@ func TestQuoteToStockInstrument(t *testing.T) {
 		ChartLabels: []string{"01/06", "02/06", "03/06"},
 		PriceTime:   "29/06 03:00 GMT+7",
 	}
-	inst := quoteToStockInstrument(q)
+	inst := quoteToStockInstrument(q, ".SPX")
 	if inst.Symbol != "^GSPC" {
 		t.Fatalf("expected ^GSPC, got %s", inst.Symbol)
 	}
 	if len(inst.ChartPoints) != 3 {
 		t.Fatalf("expected chart points, got %d", len(inst.ChartPoints))
 	}
-	if inst.QuoteURL == "" {
-		t.Fatal("expected quote url")
+	if inst.QuoteURL != "https://www.cnbc.com/quotes/.SPX" {
+		t.Fatalf("expected CNBC quote url, got %s", inst.QuoteURL)
 	}
 	if inst.PriceTime != "29/06 03:00 GMT+7" {
 		t.Fatalf("expected price time, got %q", inst.PriceTime)
+	}
+}
+
+func TestWorldStockTabDefsHaveCNBCSymbols(t *testing.T) {
+	for _, tab := range WorldStockTabDefs {
+		for _, sym := range tab.Symbols {
+			if sym.CNBCSymbol == "" {
+				t.Fatalf("tab %q symbol %q missing CNBCSymbol", tab.ID, sym.Label)
+			}
+		}
+	}
+}
+
+func TestCNBCQuoteToSnapshotSPX(t *testing.T) {
+	calendarDay := time.Date(2026, 7, 2, 0, 0, 0, 0, vnTimezone)
+	q := &cnbcFormattedQuote{
+		Last:               "7,483.23",
+		Change:             "-16.13",
+		ChangePct:          "-0.22%",
+		LastTime:           "2026-07-01",
+		PreviousDayClosing: "7,499.36",
+		Open:               "7,478.84",
+		High:               "7,521.81",
+		Low:                "7,449.63",
+	}
+	got, err := cnbcQuoteToSnapshot(q, "S&P 500", "%5EGSPC", calendarDay)
+	if err != nil {
+		t.Fatalf("snapshot failed: %v", err)
+	}
+	if got.Price != 7483.23 {
+		t.Fatalf("expected 7483.23, got %.2f", got.Price)
+	}
+	if len(got.ChartPoints) != 8 {
+		t.Fatalf("expected 8-point CNBC sparkline, got %d", len(got.ChartPoints))
 	}
 }
 

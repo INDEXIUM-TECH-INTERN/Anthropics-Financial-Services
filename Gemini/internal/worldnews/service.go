@@ -12,7 +12,7 @@ import (
 const ReportHistoryDays = 90
 
 // reportCacheVersion — tăng khi đổi schema báo cáo để tránh trả cache cũ.
-const reportCacheVersion = 22
+const reportCacheVersion = 23
 
 var (
 	vnTimezone = time.FixedZone("ICT", 7*3600)
@@ -172,7 +172,7 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 	brentChg, brentPct, brentPos := formatChange(brent.Change, brent.ChangePct)
 
 	dataSource := fmt.Sprintf(
-		"Yahoo Finance (giá chốt trước 07:00 GMT+7, phiên %s) + tin tức trước 07:00 sáng, khung %s (GMT+7)",
+		"CNBC (chứng khoán, Brent, vàng) + Yahoo Finance (WTI, DXY) — giá chốt trước 07:00 GMT+7, phiên %s; tin tức khung %s (GMT+7)",
 		quoteLabel,
 		digestWindow,
 	)
@@ -183,8 +183,14 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 		oilKeyNumber = keyNumberFromQuote(brent, "Dầu Brent", marketDataSource, yahooFinanceQuoteURL("BZ%3DF"), yahooFinanceDisplaySymbol("BZ%3DF"))
 	}
 
+	spKeyNumber, err := s.fetchCNBCKeyNumber(cnbcSPXSymbol, "S&P 500", "S&P 500", calendarDay)
+	if err != nil {
+		fmt.Printf("⚠️ [WorldNews] CNBC S&P 500 quote failed (%s), fallback snapshot: %v\n", cnbcSPXSymbol, err)
+		spKeyNumber = keyNumberFromQuote(sp500, "S&P 500", cnbcDataSource, cnbcWorldURL, "S&P 500")
+	}
+
 	keyNumbers := []KeyNumber{
-		keyNumberFromQuote(sp500, "S&P 500", "CNBC", "https://www.cnbc.com/world/", "S&P 500"),
+		spKeyNumber,
 		oilKeyNumber,
 	}
 
@@ -207,9 +213,9 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 			CNBCUrl:       "https://www.cnbc.com/world/",
 			WSJUrl:        "https://www.wsj.com/finance/stocks?mod=nav_top_subsection",
 			ReutersUrl:    "https://www.reuters.com/markets/stocks/",
-			MarketSource:  marketDataSource,
-			MarketURL:     yahooFinanceURL + "/world/",
-			MarketSymbol:  "16 mã chỉ số & cổ phiếu lớn (4 tab × 4 biểu đồ)",
+			MarketSource:  cnbcDataSource,
+			MarketURL:     cnbcWorldURL,
+			MarketSymbol:  "16 mã chỉ số & cổ phiếu lớn (CNBC, 4 tab × 4 biểu đồ)",
 		},
 		Oil: OilSection{
 			WTIPrice:         formatPrice(wti.Symbol, wti.Price),

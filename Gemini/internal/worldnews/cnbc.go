@@ -17,6 +17,8 @@ const (
 	cnbcBrentSymbol  = "@LCO.1" // ICE Brent Crude — khớp giá trên cnbc.com/quotes/@LCO.1
 	cnbcGoldSymbol   = "@GC.1"  // COMEX Gold
 	cnbcGoldYahooSym = "GC%3DF" // Yahoo proxy for gold price at digest cutoff
+	cnbcSPXSymbol    = ".SPX"   // S&P 500 Index
+	cnbcWorldURL     = "https://www.cnbc.com/world/"
 )
 
 type cnbcFormattedResponse struct {
@@ -107,6 +109,34 @@ func parseCNBCQuoteBody(body []byte, symbol string) (*cnbcFormattedQuote, error)
 		}
 	}
 	return nil, fmt.Errorf("empty CNBC quote for %s", symbol)
+}
+
+func (s *Service) fetchCNBCStockQuote(cnbcSymbol, label, yahooEncoded string, calendarDay time.Time) (*quoteSnapshot, error) {
+	q, err := s.fetchCNBCFormattedQuote(cnbcSymbol)
+	if err != nil {
+		return nil, err
+	}
+	return cnbcQuoteToSnapshot(q, label, yahooEncoded, calendarDay)
+}
+
+func cnbcQuoteToSnapshot(q *cnbcFormattedQuote, label, yahooEncoded string, calendarDay time.Time) (*quoteSnapshot, error) {
+	resolved, err := resolveCNBCKeyNumber(q, calendarDay)
+	if err != nil {
+		return nil, err
+	}
+	prev, _ := parseCNBCPriceOptional(q.PreviousDayClosing)
+	return &quoteSnapshot{
+		Symbol:      yahooEncoded,
+		Label:       label,
+		Price:       resolved.Price,
+		PrevClose:   prev,
+		Change:      resolved.Change,
+		ChangePct:   resolved.ChangePct,
+		IsPositive:  resolved.Change >= 0,
+		ChartPoints: resolved.Sparkline,
+		ChartLabels: nil,
+		PriceTime:   resolved.PriceTime,
+	}, nil
 }
 
 func (s *Service) fetchCNBCKeyNumber(symbol, label, displaySymbol string, calendarDay time.Time) (KeyNumber, error) {
@@ -322,6 +352,9 @@ func parseCNBCLastTime(lastTime string) (time.Time, error) {
 		"2006-01-02T15:04:05.000-0700",
 		"2006-01-02T15:04:05-0700",
 		time.RFC3339,
+	}
+	if dayOnly, err := time.ParseInLocation("2006-01-02", lastTime, usEastern); err == nil {
+		return time.Date(dayOnly.Year(), dayOnly.Month(), dayOnly.Day(), 16, 0, 0, 0, usEastern), nil
 	}
 	var lastErr error
 	for _, layout := range layouts {

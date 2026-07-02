@@ -1,13 +1,15 @@
 package worldnews
 
 import (
+	"fmt"
 	"sync"
 	"time"
 )
 
 type stockSymbolDef struct {
-	Encoded string
-	Label   string
+	Encoded    string
+	Label      string
+	CNBCSymbol string
 }
 
 type stockTabDef struct {
@@ -28,47 +30,51 @@ var WorldStockTabDefs = []stockTabDef{
 		ID:    "tab-1",
 		Label: "Chỉ số Mỹ",
 		Symbols: []stockSymbolDef{
-			{Encoded: "%5EGSPC", Label: "S&P 500"},
-			{Encoded: "%5EIXIC", Label: "Nasdaq Composite"},
-			{Encoded: "%5EDJI", Label: "Dow Jones"},
-			{Encoded: "%5ERUT", Label: "Russell 2000"},
+			{Encoded: "%5EGSPC", Label: "S&P 500", CNBCSymbol: ".SPX"},
+			{Encoded: "%5EIXIC", Label: "Nasdaq Composite", CNBCSymbol: ".IXIC"},
+			{Encoded: "%5EDJI", Label: "Dow Jones", CNBCSymbol: ".DJI"},
+			{Encoded: "%5ERUT", Label: "Russell 2000", CNBCSymbol: ".RUT"},
 		},
 	},
 	{
 		ID:    "tab-2",
 		Label: "Big Tech I",
 		Symbols: []stockSymbolDef{
-			{Encoded: "AAPL", Label: "Apple"},
-			{Encoded: "MSFT", Label: "Microsoft"},
-			{Encoded: "NVDA", Label: "NVIDIA"},
-			{Encoded: "GOOGL", Label: "Alphabet"},
+			{Encoded: "AAPL", Label: "Apple", CNBCSymbol: "AAPL"},
+			{Encoded: "MSFT", Label: "Microsoft", CNBCSymbol: "MSFT"},
+			{Encoded: "NVDA", Label: "NVIDIA", CNBCSymbol: "NVDA"},
+			{Encoded: "GOOGL", Label: "Alphabet", CNBCSymbol: "GOOGL"},
 		},
 	},
 	{
 		ID:    "tab-3",
 		Label: "Big Tech II",
 		Symbols: []stockSymbolDef{
-			{Encoded: "AMZN", Label: "Amazon"},
-			{Encoded: "META", Label: "Meta"},
-			{Encoded: "TSLA", Label: "Tesla"},
-			{Encoded: "NFLX", Label: "Netflix"},
+			{Encoded: "AMZN", Label: "Amazon", CNBCSymbol: "AMZN"},
+			{Encoded: "META", Label: "Meta", CNBCSymbol: "META"},
+			{Encoded: "TSLA", Label: "Tesla", CNBCSymbol: "TSLA"},
+			{Encoded: "NFLX", Label: "Netflix", CNBCSymbol: "NFLX"},
 		},
 	},
 	{
 		ID:    "tab-4",
 		Label: "Blue chip",
 		Symbols: []stockSymbolDef{
-			{Encoded: "JPM", Label: "JPMorgan"},
-			{Encoded: "V", Label: "Visa"},
-			{Encoded: "BRK-B", Label: "Berkshire Hathaway"},
-			{Encoded: "ORCL", Label: "Oracle"},
+			{Encoded: "JPM", Label: "JPMorgan", CNBCSymbol: "JPM"},
+			{Encoded: "V", Label: "Visa", CNBCSymbol: "V"},
+			{Encoded: "BRK-B", Label: "Berkshire Hathaway", CNBCSymbol: "BRK.B"},
+			{Encoded: "ORCL", Label: "Oracle", CNBCSymbol: "ORCL"},
 		},
 	},
 }
 
-func quoteToStockInstrument(q *quoteSnapshot) StockInstrument {
+func quoteToStockInstrument(q *quoteSnapshot, cnbcSymbol string) StockInstrument {
 	chg, pct, pos := formatChange(q.Change, q.ChangePct)
 	displaySymbol := yahooFinanceDisplaySymbol(q.Symbol)
+	quoteURL := yahooFinanceQuoteURL(q.Symbol)
+	if cnbcSymbol != "" {
+		quoteURL = cnbcQuotePageURL(cnbcSymbol)
+	}
 	return StockInstrument{
 		Symbol:        displaySymbol,
 		Label:         q.Label,
@@ -79,21 +85,28 @@ func quoteToStockInstrument(q *quoteSnapshot) StockInstrument {
 		ChartPoints:   q.ChartPoints,
 		ChartLabels:   q.ChartLabels,
 		PriceTime:     q.PriceTime,
-		QuoteURL:      yahooFinanceQuoteURL(q.Symbol),
+		QuoteURL:      quoteURL,
 	}
 }
 
 func (s *Service) fetchWorldStockQuotes(calendarDay time.Time) (map[string]*quoteSnapshot, []StockInstrument, []StockTab) {
 	type job struct {
-		tabIdx  int
-		symIdx  int
-		encoded string
-		label   string
+		tabIdx     int
+		symIdx     int
+		encoded    string
+		label      string
+		cnbcSymbol string
 	}
 	var jobs []job
 	for ti, tab := range WorldStockTabDefs {
 		for si, sym := range tab.Symbols {
-			jobs = append(jobs, job{tabIdx: ti, symIdx: si, encoded: sym.Encoded, label: sym.Label})
+			jobs = append(jobs, job{
+				tabIdx:     ti,
+				symIdx:     si,
+				encoded:    sym.Encoded,
+				label:      sym.Label,
+				cnbcSymbol: sym.CNBCSymbol,
+			})
 		}
 	}
 
@@ -110,7 +123,11 @@ func (s *Service) fetchWorldStockQuotes(calendarDay time.Time) (map[string]*quot
 		wg.Add(1)
 		go func(j job) {
 			defer wg.Done()
-			q, err := s.fetchQuote(j.encoded, j.label, calendarDay)
+			q, err := s.fetchCNBCStockQuote(j.cnbcSymbol, j.label, j.encoded, calendarDay)
+			if err != nil {
+				fmt.Printf("⚠️ [WorldNews] CNBC stock quote failed (%s), fallback Yahoo %s: %v\n", j.cnbcSymbol, j.encoded, err)
+				q, err = s.fetchQuote(j.encoded, j.label, calendarDay)
+			}
 			if err != nil {
 				ch <- result{job: j, ok: false}
 				return
@@ -133,7 +150,7 @@ func (s *Service) fetchWorldStockQuotes(calendarDay time.Time) (map[string]*quot
 			continue
 		}
 		quotes[r.job.encoded] = r.quote
-		tabBuckets[r.job.tabIdx][r.job.symIdx] = quoteToStockInstrument(r.quote)
+		tabBuckets[r.job.tabIdx][r.job.symIdx] = quoteToStockInstrument(r.quote, r.job.cnbcSymbol)
 	}
 
 	tabs := make([]StockTab, 0, len(WorldStockTabDefs))

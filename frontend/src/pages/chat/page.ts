@@ -1396,10 +1396,9 @@ export function createChatPage(): ChatPage {
     }
 
     renderSectionSourceBadges('stock-section-sources', [
-      { label: 'CNBC', url: report.stocks.cnbcUrl },
+      { label: report.stocks.marketSource || 'CNBC', url: report.stocks.marketUrl || report.stocks.cnbcUrl },
       { label: 'WSJ', url: report.stocks.wsjUrl },
       { label: 'Reuters', url: report.stocks.reutersUrl },
-      { label: report.stocks.marketSource || 'Yahoo Finance', url: report.stocks.marketUrl },
     ]);
     renderSectionSourceBadges('oil-section-sources', [
       { label: 'Yahoo Finance', url: report.oil.marketUrl },
@@ -1414,10 +1413,9 @@ export function createChatPage(): ChatPage {
 
     renderStockInstrumentCharts(report.stocks);
     setSectionSourceRef('stock-section-chart-ref', [
-      { label: 'CNBC', url: report.stocks.cnbcUrl },
+      { label: report.stocks.marketSource || 'CNBC', url: report.stocks.marketUrl || report.stocks.cnbcUrl },
       { label: 'WSJ', url: report.stocks.wsjUrl },
       { label: 'Reuters', url: report.stocks.reutersUrl },
-      { label: report.stocks.marketSource || 'Yahoo Finance', url: report.stocks.marketUrl },
     ], 'Dữ liệu biểu đồ');
     setChartDataRef('oil-chart', report.oil.marketSource, report.oil.marketUrl, report.oil.marketSymbol);
     setChartDataRef(
