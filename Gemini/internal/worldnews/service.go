@@ -12,7 +12,7 @@ import (
 const ReportHistoryDays = 90
 
 // reportCacheVersion — tăng khi đổi schema báo cáo để tránh trả cache cũ.
-const reportCacheVersion = 18
+const reportCacheVersion = 19
 
 var (
 	vnTimezone = time.FixedZone("ICT", 7*3600)
@@ -101,7 +101,7 @@ func (s *Service) GetReport(dateStr string) (*WorldNewsReport, error) {
 	}
 
 	s.mu.Lock()
-	s.cache[key] = cacheEntry{report: *report, expiresAt: time.Now().Add(30 * time.Minute)}
+	s.cache[key] = cacheEntry{report: *report, expiresAt: time.Now().Add(5 * time.Minute)}
 	s.mu.Unlock()
 
 	return report, nil

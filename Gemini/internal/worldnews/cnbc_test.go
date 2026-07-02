@@ -33,12 +33,28 @@ func TestParseCNBCQuoteBodyBrentSample(t *testing.T) {
 	}
 }
 
+func TestCNBCResolvedChangeUsesAPIFields(t *testing.T) {
+	q := &cnbcFormattedQuote{
+		Last:               "70.84",
+		Change:             "-0.73",
+		ChangePct:          "-1.02%",
+		PreviousDayClosing: "71.57",
+	}
+	ch, pct := cnbcResolvedChange(q, 70.84, 71.57)
+	if ch != -0.73 {
+		t.Fatalf("expected change -0.73, got %.2f", ch)
+	}
+	if pct != -1.02 {
+		t.Fatalf("expected pct -1.02, got %.2f", pct)
+	}
+}
+
 func TestResolveCNBCKeyNumberAfterCutoffKeepsCNBCPrice(t *testing.T) {
 	calendarDay := time.Date(2026, 7, 2, 0, 0, 0, 0, vnTimezone)
 	q := &cnbcFormattedQuote{
-		Last:               "70.80",
-		Change:             "-0.77",
-		ChangePct:          "-1.08%",
+		Last:               "70.84",
+		Change:             "-0.73",
+		ChangePct:          "-1.02%",
 		LastTime:           "2026-07-02T05:04:00.000+0100",
 		PreviousDayClosing: "71.57",
 		Open:               "71.21",
@@ -49,11 +65,11 @@ func TestResolveCNBCKeyNumberAfterCutoffKeepsCNBCPrice(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolve failed: %v", err)
 	}
-	if got.Price != 70.80 {
-		t.Fatalf("expected CNBC price 70.80, got %.2f", got.Price)
+	if got.Price != 70.84 {
+		t.Fatalf("expected CNBC price 70.84, got %.2f", got.Price)
 	}
-	if diff := got.ChangePct - (-1.08); diff > 0.01 || diff < -0.01 {
-		t.Fatalf("expected change pct -1.08, got %.2f", got.ChangePct)
+	if diff := got.ChangePct - (-1.02); diff > 0.01 || diff < -0.01 {
+		t.Fatalf("expected change pct -1.02, got %.2f", got.ChangePct)
 	}
 	if got.PriceTime != "02/07 06:59 GMT+7" {
 		t.Fatalf("expected pre-7h GMT+7 label, got %q", got.PriceTime)

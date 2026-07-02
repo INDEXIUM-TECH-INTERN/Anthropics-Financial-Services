@@ -13,3 +13,15 @@ func TestCNBCKeyNumberPriceTimeClampsBSTAfterCutoff(t *testing.T) {
 		t.Fatalf("expected 02/07 06:59 GMT+7, got %q", got)
 	}
 }
+
+func TestCNBCResolvedChangeMatchesReferenceBar(t *testing.T) {
+	q := &cnbcFormattedQuote{
+		Change:             "-0.73",
+		ChangePct:          "-1.02%",
+		PreviousDayClosing: "71.57",
+	}
+	_, pct := cnbcResolvedChange(q, 70.84, 71.57)
+	if pct != -1.02 {
+		t.Fatalf("expected -1.02%%, got %.2f", pct)
+	}
+}

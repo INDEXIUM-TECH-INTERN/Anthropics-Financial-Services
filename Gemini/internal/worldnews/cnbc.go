@@ -3,6 +3,7 @@ package worldnews
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/url"
 	"strconv"
 	"strings"
@@ -133,13 +134,14 @@ func (s *Service) fetchCNBCKeyNumber(symbol, label, displaySymbol string, calend
 	}, nil
 }
 
-// resolveCNBCKeyNumber uses CNBC last/change but clamps the displayed time to before
-// 07:00 GMT+7 when the quote timestamp is after the morning digest cutoff.
+// resolveCNBCKeyNumber uses CNBC session OHLC/change and snaps the displayed time to
+// before 07:00 GMT+7 when the live quote timestamp is after the morning digest cutoff.
 func resolveCNBCKeyNumber(q *cnbcFormattedQuote, calendarDay time.Time) (cnbcResolvedQuote, error) {
 	last, err := parseCNBCPrice(q.Last)
 	if err != nil {
 		return cnbcResolvedQuote{}, err
 	}
+	last = math.Round(last*100) / 100
 
 	day := calendarDay.In(vnTimezone)
 	_, cutoff := morningDigestWindow(day)
@@ -149,14 +151,7 @@ func resolveCNBCKeyNumber(q *cnbcFormattedQuote, calendarDay time.Time) (cnbcRes
 	low, _ := parseCNBCPriceOptional(q.Low)
 	high, _ := parseCNBCPriceOptional(q.High)
 
-	change, _ := parseCNBCPriceOptional(q.Change)
-	if change == 0 && prev != 0 {
-		change = last - prev
-	}
-	changePct, _ := parseCNBCPercentOptional(q.ChangePct)
-	if changePct == 0 && prev != 0 {
-		changePct = (change / prev) * 100
-	}
+	change, changePct := cnbcResolvedChange(q, last, prev)
 	return cnbcResolvedQuote{
 		Price:     last,
 		Change:    change,
@@ -164,6 +159,27 @@ func resolveCNBCKeyNumber(q *cnbcFormattedQuote, calendarDay time.Time) (cnbcRes
 		Sparkline: cnbcSessionSparkline(prev, open, low, high, last),
 		PriceTime: cnbcKeyNumberPriceTime(q.LastTime, day, cutoff),
 	}, nil
+}
+
+func cnbcResolvedChange(q *cnbcFormattedQuote, last, prev float64) (float64, float64) {
+	if raw := strings.TrimSpace(q.Change); raw != "" && raw != "-" {
+		if ch, err := parseCNBCPrice(raw); err == nil {
+			if rawPct := strings.TrimSpace(q.ChangePct); rawPct != "" && rawPct != "-" {
+				if pct, err := parseCNBCPercentOptional(rawPct); err == nil {
+					return ch, pct
+				}
+			}
+			if prev != 0 {
+				return ch, (ch / prev) * 100
+			}
+			return ch, 0
+		}
+	}
+	if prev != 0 {
+		ch := last - prev
+		return ch, (ch / prev) * 100
+	}
+	return 0, 0
 }
 
 func cnbcKeyNumberPriceTime(lastTime string, reportDay, cutoff time.Time) string {
