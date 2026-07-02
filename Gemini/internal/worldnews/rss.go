@@ -167,13 +167,119 @@ func (s *Service) fetchHistoricalStockGoogleNews(since, until time.Time) []rssIt
 
 func (s *Service) fetchNewsForReport(calendarDay time.Time) []rssItem {
 	since, until := morningDigestWindow(calendarDay)
-	items, _ := s.fetchAllNews()
+	var items []rssItem
+	for _, src := range vietnamFeeds {
+		feedItems, err := s.fetchFeed(src)
+		if err != nil {
+			continue
+		}
+		items = append(items, feedItems...)
+	}
 	filtered := filterNewsBetween(items, since, until)
 	if len(filtered) < 4 {
 		historical := s.fetchHistoricalGoogleNews(since, until)
-		filtered = dedupeNews(append(filtered, historical...))
+		filtered = filterNewsBetween(dedupeNews(append(filtered, historical...)), since, until)
 	}
 	return s.enrichItemMedia(filtered, 6)
+}
+
+// fetchBreakingNewsForReport returns breaking/global headlines published in the 24h window
+// ending at 07:00 GMT+7 on calendarDay (exclusive — nothing at or after 07:00).
+func (s *Service) fetchBreakingNewsForReport(calendarDay time.Time) []rssItem {
+	since, until := morningDigestWindow(calendarDay)
+	var items []rssItem
+	for _, src := range globalFeeds {
+		if src.Kind != "breaking" && src.Name != "CNBC" {
+			continue
+		}
+		feedItems, err := s.fetchFeed(src)
+		if err != nil {
+			continue
+		}
+		items = append(items, feedItems...)
+	}
+	items = filterNewsBetween(items, since, until)
+	if len(items) < 3 {
+		historical := s.fetchHistoricalBreakingNews(since, until)
+		items = filterNewsBetween(dedupeNews(append(items, historical...)), since, until)
+	}
+	return s.enrichItemMedia(sortNewsByDateDesc(items), 8)
+}
+
+// fetchVTVNewsForReport returns VTV / VTVIndex articles before 07:00 GMT+7 on calendarDay.
+func (s *Service) fetchVTVNewsForReport(calendarDay time.Time) []rssItem {
+	since, until := morningDigestWindow(calendarDay)
+	items, err := s.fetchFeed(vtvFeed)
+	if err != nil {
+		items = nil
+	}
+	items = filterNewsBetween(items, since, until)
+	if len(items) < 2 {
+		historical := s.fetchHistoricalVTVNews(since, until)
+		items = filterNewsBetween(dedupeNews(append(items, historical...)), since, until)
+	}
+	return s.enrichItemMedia(sortNewsByDateDesc(items), 5)
+}
+
+type historicalNewsQuery struct {
+	query string
+	name  string
+}
+
+func (s *Service) fetchHistoricalBreakingNews(since, until time.Time) []rssItem {
+	after := since.Format("2006-01-02")
+	before := until.Format("2006-01-02")
+	queries := []historicalNewsQuery{
+		{
+			query: fmt.Sprintf("(breaking OR \"stock market\" OR Fed OR oil OR gold) after:%s before:%s", after, before),
+			name:  "Google News (Breaking)",
+		},
+		{
+			query: fmt.Sprintf("(site:cnbc.com OR site:bloomberg.com OR site:ft.com) after:%s before:%s", after, before),
+			name:  "Google News (Breaking CNBC/Bloomberg/FT)",
+		},
+	}
+	return s.fetchHistoricalNewsQueries(queries, "breaking", since, until)
+}
+
+func (s *Service) fetchHistoricalVTVNews(since, until time.Time) []rssItem {
+	after := since.Format("2006-01-02")
+	before := until.Format("2006-01-02")
+	queries := []historicalNewsQuery{
+		{
+			query: fmt.Sprintf("(site:vtv.vn OR site:vtvindex.vn) (kinh te OR tai chinh) after:%s before:%s", after, before),
+			name:  "Google News (VTV)",
+		},
+	}
+	return s.fetchHistoricalNewsQueries(queries, "vtv", since, until)
+}
+
+func (s *Service) fetchHistoricalNewsQueries(
+	queries []historicalNewsQuery,
+	kind string,
+	since, until time.Time,
+) []rssItem {
+	var out []rssItem
+	for _, q := range queries {
+		src := feedSource{
+			Name: q.name,
+			URL:  fmt.Sprintf("https://news.google.com/rss/search?q=%s&hl=vi&gl=VN&ceid=VN:vi", url.QueryEscape(q.query)),
+			Kind: kind,
+		}
+		items, err := s.fetchFeed(src)
+		if err != nil {
+			continue
+		}
+		out = append(out, filterNewsBetween(items, since, until)...)
+	}
+	return dedupeNews(out)
+}
+
+func takeNewsItems(items []rssItem, limit int) []rssItem {
+	if limit <= 0 || len(items) <= limit {
+		return items
+	}
+	return items[:limit]
 }
 
 func (s *Service) fetchHistoricalGoogleNews(since, until time.Time) []rssItem {
@@ -219,14 +325,40 @@ func (s *Service) fetchHistoricalGoogleNews(since, until time.Time) []rssItem {
 }
 
 func filterNewsBetween(items []rssItem, since, until time.Time) []rssItem {
+	since = since.In(vnTimezone)
+	until = until.In(vnTimezone)
 	var out []rssItem
 	for _, it := range items {
-		if it.PubDate.Before(since) || !it.PubDate.Before(until) {
+		if !isNewsInDigestWindow(it.PubDate, since, until) {
 			continue
 		}
 		out = append(out, it)
 	}
 	return out
+}
+
+// isNewsInDigestWindow keeps articles with since <= pubDate < until (07:00 GMT+7 cutoff).
+func isNewsInDigestWindow(pubDate, since, until time.Time) bool {
+	if pubDate.IsZero() {
+		return false
+	}
+	pub := pubDate.In(vnTimezone)
+	return !pub.Before(since) && pub.Before(until)
+}
+
+func sortNewsByDateDesc(items []rssItem) []rssItem {
+	if len(items) < 2 {
+		return items
+	}
+	sorted := append([]rssItem(nil), items...)
+	for i := 0; i < len(sorted); i++ {
+		for j := i + 1; j < len(sorted); j++ {
+			if sorted[j].PubDate.After(sorted[i].PubDate) {
+				sorted[i], sorted[j] = sorted[j], sorted[i]
+			}
+		}
+	}
+	return sorted
 }
 
 func dedupeNews(items []rssItem) []rssItem {
@@ -383,7 +515,7 @@ func parsePubDate(raw string) time.Time {
 			return t
 		}
 	}
-	return time.Now()
+	return time.Time{}
 }
 
 func filterRecent(items []rssItem, since time.Time, limit int) []rssItem {

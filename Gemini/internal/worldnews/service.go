@@ -12,7 +12,7 @@ import (
 const ReportHistoryDays = 90
 
 // reportCacheVersion — tăng khi đổi schema báo cáo để tránh trả cache cũ.
-const reportCacheVersion = 23
+const reportCacheVersion = 24
 
 var (
 	vnTimezone = time.FixedZone("ICT", 7*3600)
@@ -139,22 +139,13 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 
 	newsItems := s.fetchNewsForReport(calendarDay)
 	stockNewsItems := s.fetchStockNewsForReport(calendarDay)
+	breakingItems := s.fetchBreakingNewsForReport(calendarDay)
+	vtvItems := s.fetchVTVNewsForReport(calendarDay)
 
-	var vtvItems, vnItems, breakingItems []rssItem
+	var vnItems []rssItem
 	for _, it := range newsItems {
-		switch it.Kind {
-		case "vtv":
-			if len(vtvItems) < 5 {
-				vtvItems = append(vtvItems, it)
-			}
-		case "vietnam":
-			if len(vnItems) < 6 {
-				vnItems = append(vnItems, it)
-			}
-		case "breaking", "global":
-			if len(breakingItems) < 8 {
-				breakingItems = append(breakingItems, it)
-			}
+		if it.Kind == "vietnam" && len(vnItems) < 6 {
+			vnItems = append(vnItems, it)
 		}
 	}
 
@@ -239,9 +230,9 @@ func (s *Service) buildReport(calendarDay time.Time) (*WorldNewsReport, error) {
 			MarketSymbol:     yahooFinanceDisplaySymbol("CL%3DF") + ", " + yahooFinanceDisplaySymbol("BZ%3DF"),
 		},
 		GoldUsd:            buildGoldSection(gold, dxy, breakingItems, quoteLabel),
-		VTVIndexNews:       toNewsArticles(vtvItems),
+		VTVIndexNews:       toNewsArticles(takeNewsItems(vtvItems, 5)),
 		VietnamFinanceNews: toNewsArticles(vnItems),
-		BreakingNews:       toBreakingNews(takeItems(breakingItems, 5)),
+		BreakingNews:       toBreakingNews(takeNewsItems(breakingItems, 5)),
 		Watchlist:          buildWatchlist(breakingItems, calendarDay),
 		GeneratedAt:        time.Now().In(vnTimezone).Format(time.RFC3339),
 		ReportVersion:      reportCacheVersion,
