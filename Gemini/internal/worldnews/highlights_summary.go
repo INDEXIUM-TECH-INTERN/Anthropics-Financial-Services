@@ -16,9 +16,9 @@ func buildHighlightSummary(
 	news []rssItem,
 	quoteLabel, digestWindow string,
 ) string {
-	var sentences []string
+	var paragraphs []string
 
-	sentences = append(sentences, fmt.Sprintf(
+	paragraphs = append(paragraphs, fmt.Sprintf(
 		"Bản tin sáng tổng hợp diễn biến tài chính toàn cầu trước 07:00 (GMT+7), khung %s.",
 		digestWindow,
 	))
@@ -37,7 +37,7 @@ func buildHighlightSummary(
 			_, nPct, _ := formatChange(nd.Change, nd.ChangePct)
 			market += fmt.Sprintf("; Nasdaq Composite %s, đóng cửa %s", nPct, formatPrice(nd.Symbol, nd.Price))
 		}
-		sentences = append(sentences, market+".")
+		paragraphs = append(paragraphs, market+".")
 	}
 
 	var commodityParts []string
@@ -62,11 +62,12 @@ func buildHighlightSummary(
 		commodityParts = append(commodityParts, fmt.Sprintf("chỉ số USD (DXY) %s", dPct))
 	}
 	if len(commodityParts) > 0 {
-		sentences = append(sentences, "Nhóm hàng hóa và ngoại tệ: "+strings.Join(commodityParts, ", ")+".")
+		paragraphs = append(paragraphs, "Nhóm hàng hóa và ngoại tệ: "+strings.Join(commodityParts, ", ")+".")
 	}
 
 	if len(news) > 0 {
-		sentences = append(sentences, "Trên mặt trận tin tức, các dòng sự kiện đáng chú ý gồm:")
+		paragraphs = append(paragraphs, "Trên mặt trận tin tức, các dòng sự kiện đáng chú ý gồm:")
+		var chunk []string
 		for i, it := range news {
 			if i >= 10 {
 				break
@@ -76,17 +77,21 @@ func buildHighlightSummary(
 			if source == "" {
 				source = "Nguồn tin"
 			}
-			sentences = append(sentences, fmt.Sprintf(
+			chunk = append(chunk, fmt.Sprintf(
 				"%s (%s) — %s; góc nhìn thị trường xoay quanh %s",
 				source, when, it.Title, summarizeNewsAngle(it.Title),
 			)+".")
+			if len(chunk) >= 3 || i == len(news)-1 || i == 9 {
+				paragraphs = append(paragraphs, strings.Join(chunk, " "))
+				chunk = nil
+			}
 		}
 	}
 
-	sentences = append(sentences, "Nhà đầu tư nên theo dõi sát diễn biến lãi suất, chính sách tiền tệ và các báo cáo kinh tế vĩ mô trong phiên giao dịch sắp tới để điều chỉnh danh mục phù hợp.")
+	paragraphs = append(paragraphs, "Nhà đầu tư nên theo dõi sát diễn biến lãi suất, chính sách tiền tệ và các báo cáo kinh tế vĩ mô trong phiên giao dịch sắp tới để điều chỉnh danh mục phù hợp.")
 
-	text := strings.Join(sentences, " ")
-	return fitSummaryWordLength(text, HighlightSummaryMinWords, HighlightSummaryMaxWords)
+	text := joinSummaryParagraphs(paragraphs)
+	return ensureSummaryParagraphs(fitSummaryWordLength(text, HighlightSummaryMinWords, HighlightSummaryMaxWords))
 }
 
 func wordCount(text string) int {
@@ -112,30 +117,115 @@ func summarizeNewsAngle(title string) string {
 }
 
 func fitSummaryWordLength(text string, minWords, maxWords int) string {
-	text = strings.Join(strings.Fields(text), " ")
+	text = collapseParagraphSpaces(text)
 	if wordCount(text) > maxWords {
-		return trimToMaxWords(text, maxWords)
+		return ensureSummaryParagraphs(trimToMaxWords(text, maxWords))
 	}
 	if wordCount(text) < minWords {
-		return padSummaryWords(text, minWords, maxWords)
+		return ensureSummaryParagraphs(padSummaryWords(text, minWords, maxWords))
 	}
-	return ensureSentenceEnding(text, maxWords*12)
+	return ensureSummaryParagraphs(ensureSentenceEnding(text, maxWords*12))
 }
 
 // normalizeAISummaryWords trims AI prose to the word budget without "..." padding.
 func normalizeAISummaryWords(text string, minWords, maxWords int) string {
-	text = strings.Join(strings.Fields(text), " ")
+	text = collapseParagraphSpaces(text)
 	text = stripTrailingEllipsis(text)
 	if text == "" {
 		return ""
 	}
 	if wordCount(text) > maxWords {
 		if trimmed := trimToMaxWordsAtSentence(text, maxWords); trimmed != "" {
-			return trimmed
+			return ensureSummaryParagraphs(trimmed)
 		}
-		return trimToMaxWords(text, maxWords)
+		return ensureSummaryParagraphs(trimToMaxWords(text, maxWords))
 	}
-	return ensureSentenceEnding(text, maxWords*12)
+	return ensureSummaryParagraphs(ensureSentenceEnding(text, maxWords*12))
+}
+
+func splitSummaryParagraphs(text string) []string {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return nil
+	}
+	raw := strings.Split(text, "\n\n")
+	out := make([]string, 0, len(raw))
+	for _, part := range raw {
+		part = strings.Join(strings.Fields(part), " ")
+		if part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
+}
+
+func joinSummaryParagraphs(paragraphs []string) string {
+	cleaned := make([]string, 0, len(paragraphs))
+	for _, part := range paragraphs {
+		part = strings.Join(strings.Fields(part), " ")
+		if part != "" {
+			cleaned = append(cleaned, part)
+		}
+	}
+	return strings.Join(cleaned, "\n\n")
+}
+
+func collapseParagraphSpaces(text string) string {
+	return joinSummaryParagraphs(splitSummaryParagraphs(text))
+}
+
+func ensureSummaryParagraphs(text string) string {
+	text = collapseParagraphSpaces(text)
+	if text == "" {
+		return ""
+	}
+	if len(splitSummaryParagraphs(text)) > 1 {
+		return text
+	}
+	return autoSplitSummaryParagraphs(text)
+}
+
+func autoSplitSummaryParagraphs(text string) string {
+	const sentencesPerParagraph = 4
+	sentences := splitSummarySentences(text)
+	if len(sentences) <= sentencesPerParagraph {
+		return text
+	}
+	var paragraphs []string
+	for i := 0; i < len(sentences); i += sentencesPerParagraph {
+		end := i + sentencesPerParagraph
+		if end > len(sentences) {
+			end = len(sentences)
+		}
+		paragraphs = append(paragraphs, strings.Join(sentences[i:end], " "))
+	}
+	return joinSummaryParagraphs(paragraphs)
+}
+
+func splitSummarySentences(text string) []string {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return nil
+	}
+	var sentences []string
+	var current strings.Builder
+	for _, r := range text {
+		current.WriteRune(r)
+		if r == '.' || r == '!' || r == '?' {
+			sentence := strings.TrimSpace(current.String())
+			if sentence != "" {
+				sentences = append(sentences, sentence)
+			}
+			current.Reset()
+		}
+	}
+	if tail := strings.TrimSpace(current.String()); tail != "" {
+		sentences = append(sentences, tail)
+	}
+	if len(sentences) == 0 {
+		return []string{text}
+	}
+	return sentences
 }
 
 func trimToMaxWords(text string, maxWords int) string {
@@ -166,13 +256,18 @@ func trimToMaxWordsAtSentence(text string, maxWords int) string {
 
 func padSummaryWords(text string, minWords, maxWords int) string {
 	padding := " Diễn biến trên phản ánh sự phân hóa giữa kỳ vọng tăng trưởng, rủi ro địa chính trị, chu kỳ chính sách tiền tệ và tâm lý nhà đầu tư toàn cầu, đòi hỏi duy trì kỷ luật quản trị rủi ro và theo dõi sát các chỉ báo vĩ mô trong các phiên giao dịch sắp tới."
-	for wordCount(text) < minWords {
-		text += padding
-		if wordCount(text) > maxWords {
-			return trimToMaxWords(text, maxWords)
+	paragraphs := splitSummaryParagraphs(text)
+	if len(paragraphs) == 0 {
+		paragraphs = []string{""}
+	}
+	for wordCount(joinSummaryParagraphs(paragraphs)) < minWords {
+		last := len(paragraphs) - 1
+		paragraphs[last] += padding
+		if wordCount(joinSummaryParagraphs(paragraphs)) > maxWords {
+			return trimToMaxWords(joinSummaryParagraphs(paragraphs), maxWords)
 		}
 	}
-	return ensureSentenceEnding(text, maxWords*12)
+	return ensureSentenceEnding(joinSummaryParagraphs(paragraphs), maxWords*12)
 }
 
 func stripTrailingEllipsis(text string) string {

@@ -222,6 +222,13 @@
 .highlight-summary {
   margin: 0 0 14px;
   padding: 0 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.highlight-summary__para {
+  margin: 0;
   font-size: 14px;
   line-height: 1.75;
   color: var(--text-secondary);
@@ -233,6 +240,7 @@
   content: 'Đang tải tóm tắt...';
   color: var(--text-tertiary);
   font-style: italic;
+  font-size: 14px;
 }
 
 /* ─── Canvas Chart Drawing Styles ─── */
@@ -808,20 +816,22 @@
   gap: 6px;
   padding: 3px 10px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
   font-size: 11px;
   line-height: 1;
+  color: var(--text-secondary);
 }
 
 .breaking-card__date {
-  font-weight: 600;
-  color: var(--text-primary);
-  letter-spacing: 0.01em;
+  font-weight: 700;
+  color: var(--accent-hover);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .breaking-card__datetime-sep {
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--text-quaternary);
   font-weight: 700;
   line-height: 1;
 }
@@ -829,14 +839,15 @@
 .breaking-card__time {
   font-weight: 700;
   color: #ff6b6b;
+  white-space: nowrap;
 }
 
 .breaking-card__time--solo {
   display: inline-flex;
   padding: 3px 10px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
   font-size: 11px;
 }
 

@@ -17,6 +17,10 @@ POST /api/chat/stream            → handleChatStream (handlers.go:258)
 GET  /api/history?chat_id=X      → handleHistory (handlers.go:370)
 POST /api/config/keys            → handleConfigKeys (handlers.go:400)
 POST /api/reset                  → handleReset (handlers.go:80)
+GET  /api/world-news             → handleWorldNews (worldnews digest)
+GET  /api/world-news/dates       → handleWorldNewsDates
+GET  /api/world-news/favicon     → handleWorldNewsFavicon
+GET  /api/world-news/image       → handleWorldNewsImage
 GET  /events                    → handleSSE (handlers.go:39)
 ```
 
@@ -76,6 +80,7 @@ User Request → HTTP Handler → Agent Interface → Load History → ProcessMe
 ## Key Files
 - `Gemini/cmd/gemini-cli/main.go` - Entry point (CLI mode or server mode)
 - `Gemini/internal/api/handlers.go` - All HTTP handlers (500+ lines)
+- `Gemini/internal/worldnews/service.go` - Morning digest report builder + cache (v27)
 - `Gemini/internal/core/agent.go` - Main agent logic (critical path)
 - `Gemini/internal/providers/gemini.go` - Gemini API integration
 - `Gemini/internal/store/memory.go` - Session persistence

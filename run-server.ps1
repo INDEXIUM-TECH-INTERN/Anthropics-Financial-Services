@@ -1,9 +1,11 @@
 ﻿# run-server.ps1 - Unified launcher for Indexium Financial AI (Frontend + Backend)
-# Usage:  .\run-server.ps1 [-Query "your query"]
-#         .\run-server.ps1 (starts backend server & UI browser)
+# Usage:  .\run-server.ps1 [-Port 3000]
+#         .\run-server.ps1 [-Query "your query"]
+#         .\run-server.ps1 (starts backend server & UI browser on :8080)
 
 param(
-    [string]$Query = ""
+    [string]$Query = "",
+    [int]$Port = 8080
 )
 
 # Use $PSScriptRoot to avoid hardcoding or relying on Get-Location
@@ -58,10 +60,10 @@ foreach ($line in $envContent) {
 $tcpClient = New-Object System.Net.Sockets.TcpClient
 $parts = $RedisAddr.Split(':')
 $redisHost = $parts[0]
-$port = if ($parts.Length -gt 1) { [int]$parts[1] } else { 6379 }
+$redisPort = if ($parts.Length -gt 1) { [int]$parts[1] } else { 6379 }
 
 try {
-    $wait = $tcpClient.ConnectAsync($redisHost, $port)
+    $wait = $tcpClient.ConnectAsync($redisHost, $redisPort)
     if (-not $wait.Wait(300)) { throw "Timeout" }
     Write-Host "[Redis] Detected running on $RedisAddr" -ForegroundColor Gray
 } catch {
@@ -97,15 +99,17 @@ if ($Query) {
     .\server.exe $Query
 } else {
     Write-Host ""
+    $env:PORT = "$Port"
+
     Write-Host "[Start] Starting Backend Server and Serving Frontend..." -ForegroundColor Green
-    Write-Host "[URL] Local URL: http://localhost:8080" -ForegroundColor White
+    Write-Host "[URL] Local URL: http://localhost:$Port" -ForegroundColor White
     Write-Host "[Tip] The browser will open automatically in 3 seconds..." -ForegroundColor Gray
     Write-Host "----------------------------------------------------" -ForegroundColor Gray
 
     # Start browser in background
     Start-Sleep -Seconds 3
-    Start-Process "http://localhost:8080"
+    Start-Process "http://localhost:$Port"
 
     # Run Backend Server
-    .\server.exe -server
+    .\server.exe -server -port $Port
 }

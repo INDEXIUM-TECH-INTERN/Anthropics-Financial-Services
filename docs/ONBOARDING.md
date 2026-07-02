@@ -11,11 +11,19 @@
 
 ### Setup
 
-```bash
+```powershell
 cd Gemini
-cp .env.example .env  # Add your API keys
-go build -o gemini ./cmd/gemini-cli
-./gemini -server  # Starts on port 8080
+# Tạo .env và thêm API keys (xem docs/ENV.md)
+go build -o server.exe ./cmd/gemini-cli
+
+# Server (mặc định :8080)
+.\server.exe -server
+.\server.exe -server -port 3000
+
+# Hoặc từ thư mục gốc — build frontend + backend + mở browser
+cd ..
+.\run-server.ps1
+.\run-server.ps1 -Port 3000
 ```
 
 ### Project Architecture

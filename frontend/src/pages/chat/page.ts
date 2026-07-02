@@ -917,14 +917,18 @@ export function createChatPage(): ChatPage {
       ? `<div class="breaking-card__media">${renderArticleThumbnail(b.thumbnail, b.content)}</div>`
       : '';
     const logo = renderPublisherLogo(b.logo, b.source);
-    const articleDate = resolveBreakingArticleDate(b, reportDate);
+    const articleDate =
+      resolveBreakingArticleDate(b, reportDate) ||
+      (reportDate ? formatReportDateLabel(reportDate) : '');
     const dateTimeMarkup = articleDate
-      ? `<time class="breaking-card__datetime" datetime="${escHtml(articleDate)} ${escHtml(b.time)}">
+      ? `<time class="breaking-card__datetime" datetime="${escHtml(articleDate)}${b.time ? ` ${escHtml(b.time)}` : ''}">
           <span class="breaking-card__date">${escHtml(articleDate)}</span>
-          <span class="breaking-card__datetime-sep" aria-hidden="true">·</span>
-          <span class="breaking-card__time">${escHtml(b.time)}</span>
+          ${b.time ? `<span class="breaking-card__datetime-sep" aria-hidden="true">·</span>
+          <span class="breaking-card__time">${escHtml(b.time)}</span>` : ''}
         </time>`
-      : `<span class="breaking-card__time breaking-card__time--solo">${escHtml(b.time)}</span>`;
+      : b.time
+        ? `<span class="breaking-card__time breaking-card__time--solo">${escHtml(b.time)}</span>`
+        : '';
 
     const inner = `
       <article class="breaking-card${urgentClass}">
@@ -1018,25 +1022,68 @@ export function createChatPage(): ChatPage {
     ref.innerHTML = `Dữ liệu biểu đồ: <a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer" class="data-reference-link">${escHtml(source)}${symbolPart}</a>`;
   }
 
+  function splitHighlightSummaryParagraphs(summary: string): string[] {
+    const trimmed = summary.trim();
+    if (!trimmed) return [];
+
+    if (/\n\s*\n/.test(trimmed)) {
+      return trimmed
+        .split(/\n\s*\n+/)
+        .map((part) => part.replace(/\s+/g, ' ').trim())
+        .filter(Boolean);
+    }
+
+    const sentences = trimmed.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) ?? [trimmed];
+    const paragraphs: string[] = [];
+    const sentencesPerParagraph = 4;
+    for (let i = 0; i < sentences.length; i += sentencesPerParagraph) {
+      const chunk = sentences
+        .slice(i, i + sentencesPerParagraph)
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (chunk) paragraphs.push(chunk);
+    }
+    return paragraphs.length > 0 ? paragraphs : [trimmed];
+  }
+
+  function renderHighlightSummary(summary: string): string {
+    const paragraphs = splitHighlightSummaryParagraphs(summary);
+    if (paragraphs.length === 0) return '';
+    return paragraphs
+      .map((part) => `<p class="highlight-summary__para">${escHtml(part)}</p>`)
+      .join('');
+  }
+
   function buildHighlightSummaryFallback(report: WorldNewsReport): string {
-    const parts: string[] = [];
+    const paragraphs: string[] = [];
     if (report.digestWindow) {
-      parts.push(
+      paragraphs.push(
         `Bản tin sáng tổng hợp diễn biến tài chính toàn cầu trước 07:00 (GMT+7), khung ${report.digestWindow}.`,
       );
     }
-    for (const m of report.keyNumbers ?? []) {
-      parts.push(`${m.label} chốt ${m.value} (${m.change})${m.priceTime ? `, thời điểm ${m.priceTime}` : ''}.`);
-    }
+    const metrics = (report.keyNumbers ?? [])
+      .map(
+        (m) =>
+          `${m.label} chốt ${m.value} (${m.change})${m.priceTime ? `, thời điểm ${m.priceTime}` : ''}.`,
+      )
+      .join(' ');
+    if (metrics) paragraphs.push(metrics);
+
+    const newsParts: string[] = [];
     for (const item of report.breakingNews ?? []) {
-      if (parts.length > 6) break;
+      if (newsParts.length >= 5) break;
       const when = item.time ? ` (${item.time})` : '';
-      parts.push(`${item.source}${when}: ${item.content}.`);
+      newsParts.push(`${item.source}${when}: ${item.content}.`);
     }
-    parts.push(
+    if (newsParts.length > 0) {
+      paragraphs.push(newsParts.join(' '));
+    }
+
+    paragraphs.push(
       'Nhà đầu tư nên theo dõi sát diễn biến lãi suất, chính sách tiền tệ và các sự kiện vĩ mô trong phiên giao dịch sắp tới.',
     );
-    return parts.join(' ');
+    return paragraphs.join('\n\n');
   }
 
   function setSectionSourceRef(
@@ -1318,7 +1365,7 @@ export function createChatPage(): ChatPage {
       const el = $(id);
       if (!el) continue;
       if (id === 'highlight-summary') {
-        el.textContent = '';
+        el.innerHTML = '';
       } else {
         el.innerHTML = '';
       }
@@ -1408,7 +1455,7 @@ export function createChatPage(): ChatPage {
     if (highlightSummaryEl) {
       const summary =
         report.highlightSummary?.trim() || buildHighlightSummaryFallback(report);
-      highlightSummaryEl.textContent = summary;
+      highlightSummaryEl.innerHTML = renderHighlightSummary(summary);
     }
 
     // 2. Key Metrics Row

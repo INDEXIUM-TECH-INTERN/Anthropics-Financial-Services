@@ -131,6 +131,40 @@ Health check endpoint. Returns `200 OK` with body `"ok"`.
 
 **Response:** `ok`
 
+---
+
+### `GET /api/world-news?date=YYYY-MM-DD`
+
+Morning digest dashboard data (tab **Bản tin Thế giới**). Optional `date` query (ISO `YYYY-MM-DD`, GMT+7 calendar day); defaults to today.
+
+**Response:** `WorldNewsReport` JSON — see [docs/WORLD_NEWS.md](./WORLD_NEWS.md) for full schema.
+
+Key fields:
+- `reportVersion` — cache schema version (bust cache when incremented)
+- `highlightSummary` — 800–1000 words, paragraphs separated by `\n\n`
+- `breakingNews[]` — `{ date, time, source, content, url, ... }` (news before 07:00 GMT+7)
+- `digestWindow`, `digestUntil` — digest time range labels
+
+---
+
+### `GET /api/world-news/dates`
+
+Available report dates for the date picker (90 days).
+
+**Response:** `{ "dates": [{ "value", "label", "isToday" }], "defaultDate": "YYYY-MM-DD" }`
+
+---
+
+### `GET /api/world-news/favicon?host=<hostname>`
+
+Proxy publisher favicon (avoids browser CORS).
+
+---
+
+### `GET /api/world-news/image?url=<encoded-url>`
+
+Proxy article thumbnail image.
+
 <!-- /AUTO-GENERATED -->
 
 ---

@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 
 	"gemini-cli/internal/api"
 	"gemini-cli/internal/core"
@@ -11,7 +12,12 @@ import (
 
 func main() {
 	serverMode := flag.Bool("server", false, "Chạy Agent ở chế độ Web Server")
+	portFlag := flag.String("port", "", "Cổng HTTP (ưu tiên hơn biến môi trường PORT; mặc định 8080)")
 	flag.Parse()
+
+	if *portFlag != "" {
+		os.Setenv("PORT", *portFlag)
+	}
 
 	agent := core.NewAgent()
 
@@ -37,9 +43,11 @@ func main() {
 	// Không có mode nào được chỉ định — hướng dẫn sử dụng
 	fmt.Println("Usage:")
 	fmt.Println("  --server          Chạy ở chế độ Web Server")
+	fmt.Println("  --port <cổng>     Chỉ định cổng HTTP (vd: 3000, 8081)")
 	fmt.Println("  <message>         Chạy một lần với message")
 	fmt.Println("")
 	fmt.Println("Ví dụ:")
 	fmt.Println("  gemini-cli --server")
+	fmt.Println("  gemini-cli --server --port 3000")
 	fmt.Println("  gemini-cli \"Phân tích cổ phiếu VNM\"")
 }

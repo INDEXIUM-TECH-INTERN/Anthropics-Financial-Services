@@ -52,7 +52,13 @@ make server              # http://localhost:8080
 
 # Or use the unified launcher
 cd ..
-.\run-server.ps1         # Builds + serves + opens browser
+.\run-server.ps1                    # :8080 (mặc định)
+.\run-server.ps1 -Port 3000         # port tùy chọn
+
+# Hoặc chỉ định port qua Go CLI / env
+cd Gemini
+$env:PORT = "3000"
+go run ./cmd/gemini-cli --server --port 3000
 ```
 
 ## Health Checks
@@ -63,6 +69,7 @@ cd ..
 | Chat working | `POST /api/chat` | `200` with `reply` field | End-to-end AI response |
 | SSE connected | `GET /api/events` | `text/event-stream` | Real-time event stream |
 | Sessions | `GET /api/chats` | `200` with `chats` array | Session store reachable |
+| World news | `GET /api/world-news?date=YYYY-MM-DD` | `200` with `reportVersion`, `breakingNews` | Morning digest pipeline |
 
 ### Quick Health Test
 
@@ -113,7 +120,8 @@ Every `POST /api/chat` response includes:
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `bind: address already in use` | Port 8080 occupied | Kill existing process or change `PORT` env var |
+| `bind: address already in use` | Port đang bị chiếm | `.\run-server.ps1 -Port 3000` hoặc `$env:PORT=3000` |
+| Server chạy nhầm port 6379 | Bug cũ: `$port` Redis ghi đè `-Port` | Dùng `run-server.ps1` mới nhất (`$redisPort` tách biệt) |
 | `go: command not found` | Go not installed | Install Go 1.25.6+ from https://go.dev/dl/ |
 | `.env not found` | Missing config | Copy `.env.example` to `.env` and add keys |
 
@@ -139,7 +147,8 @@ Every `POST /api/chat` response includes:
 |---------|-------|-----|
 | Blank page | Frontend not built | Run `npm run build` in `frontend/` |
 | API calls fail (CORS) | Wrong `ALLOWED_ORIGIN` | Set `ALLOWED_ORIGIN` to match your frontend URL |
-| SSE not connecting | Proxy misconfigured | Ensure `/api` proxy targets `:8080` |
+| SSE not connecting | Proxy misconfigured | Ensure `/api` proxy targets đúng backend port |
+| Bản tin cũ / thiếu ngày tin | Cache `reportVersion` cũ | Hard refresh; kiểm tra `reportVersion` trong API response |
 
 ## Rollback
 

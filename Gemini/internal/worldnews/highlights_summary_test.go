@@ -38,4 +38,10 @@ func TestBuildHighlightSummaryWordRange(t *testing.T) {
 			t.Fatalf("summary missing %q: %s", part, summary)
 		}
 	}
+	if !strings.Contains(summary, "\n\n") {
+		t.Fatalf("expected multiple paragraphs separated by blank lines, got single block")
+	}
+	if len(splitSummaryParagraphs(summary)) < 3 {
+		t.Fatalf("expected at least 3 paragraphs, got %d", len(splitSummaryParagraphs(summary)))
+	}
 }

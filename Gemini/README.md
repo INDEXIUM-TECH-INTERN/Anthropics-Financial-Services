@@ -1,29 +1,44 @@
-# Gemini Financial AI Agent (Anthropics-Financial-Services)
+# Gemini Backend — Indexium Financial AI
 
-## Tài liệu quan trọng
-
-- **Hướng dẫn sử dụng cho người mới bắt đầu**: [docs/User_Guide.md](docs/User_Guide.md)
-- **Technical Document - Context Window** (chỉ giải thích phần context window): [docs/Technical_Context_Window.md](docs/Technical_Context_Window.md)
+Backend Go cho **Anthropics-Financial-Services**: chat AI, SSE, session store, và **Bản tin Tài chính Thế giới**.
 
 ## Chạy nhanh
 
 ```powershell
-cd "C:\indexium\Term 2\Anthropics-Financial-Services\Gemini"
-.\run.ps1
+# Từ thư mục gốc repo (khuyến nghị)
+cd "C:\indexium\Term 1\Anthropics-Financial-Services"
+.\run-server.ps1              # :8080
+.\run-server.ps1 -Port 3000   # port tùy chọn
+
+# Chỉ backend (từ thư mục Gemini)
+cd Gemini
+go run ./cmd/gemini-cli --server
+go run ./cmd/gemini-cli --server --port 3000
 ```
 
-Sau đó mở trình duyệt: http://localhost:8080
+Mở trình duyệt: `http://localhost:<port>` → tab **Bản tin Thế giới**.
 
-## Cấu trúc thư mục chính
+## Cấu trúc chính
 
-- `cmd/gemini-cli/` — Entry point, server, logic chính (agent, context window, orchestrator)
-- `internal/core/` — ContextWindow, Agent, Orchestrator, Dispatcher
-- `internal/store/` — Redis session store (lưu nhiều đoạn chat)
-- `internal/prompt/` — Các prompt hệ thống
-- `frontend/` — Giao diện web (được Go serve)
-- `docs/` — Tài liệu (User Guide + Technical Context Window)
+| Thư mục | Vai trò |
+|---------|---------|
+| `cmd/gemini-cli/` | Entry point — `--server`, `--port`, one-shot query |
+| `internal/api/` | HTTP server, SSE, world-news handlers |
+| `internal/worldnews/` | Morning digest (CNBC, RSS, AI summary) |
+| `internal/core/` | Agent, orchestrator, router |
+| `internal/prompt/` | System prompts (gồm `world_news_highlight_summary.txt`) |
 
-## Lưu ý
+## Tài liệu liên quan
 
-- Technical Document chỉ tập trung giải thích **Context Window** như yêu cầu.
-- User Guide dành cho người mới, hướng dẫn chạy và sử dụng cơ bản.
+- [docs/WORLD_NEWS.md](../docs/WORLD_NEWS.md) — API bản tin, cache v27, nguồn dữ liệu
+- [docs/ENV.md](../docs/ENV.md) — `PORT`, `ALLOWED_ORIGIN`, API keys
+- [docs/RUNBOOK.md](../docs/RUNBOOK.md) — vận hành, health check, xử lý lỗi
+- [docs/API.md](../docs/API.md) — REST endpoints
+
+## Test
+
+```powershell
+cd Gemini
+go test ./internal/worldnews/... -short
+go test ./internal/api/... -short
+```

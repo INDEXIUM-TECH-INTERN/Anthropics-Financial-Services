@@ -58,8 +58,18 @@ When Redis is unavailable, system sẽ fall back về in-memory session storage 
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `PORT` | No | `8080` | HTTP server port |
-| `ALLOWED_ORIGIN` | No | `http://localhost:8080` | CORS allowed origin |
+| `PORT` | No | `8080` | HTTP server port (ưu tiên thấp hơn flag `--port`) |
+| `ALLOWED_ORIGIN` | No | `http://localhost:8080` | CORS allowed origin — **phải khớp URL frontend** khi đổi port |
+
+### Chọn port khi chạy local
+
+| Cách | Ví dụ |
+|------|-------|
+| `run-server.ps1` | `.\run-server.ps1 -Port 3000` |
+| Go CLI | `go run ./cmd/gemini-cli --server --port 3000` |
+| Biến môi trường | `$env:PORT = "3000"` rồi `go run ./cmd/gemini-cli --server` |
+
+Khi đổi port, cập nhật `ALLOWED_ORIGIN=http://localhost:3000` trong `Gemini/.env`.
 
 ## Context Window Management
 

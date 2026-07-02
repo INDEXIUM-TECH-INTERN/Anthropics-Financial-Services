@@ -34,8 +34,14 @@ func TestBuildHighlightSummaryMarketData(t *testing.T) {
 func TestSanitizeAISummary(t *testing.T) {
 	raw := "## Tiêu đề\n\n**S&P 500** tăng mạnh.\n\nKết luận."
 	got := sanitizeAISummary(raw)
-	if strings.Contains(got, "#") || strings.Contains(got, "**") || strings.Contains(got, "\n") {
-		t.Fatalf("expected cleaned single-line prose, got %q", got)
+	if strings.Contains(got, "#") || strings.Contains(got, "**") {
+		t.Fatalf("expected markdown removed, got %q", got)
+	}
+	if !strings.Contains(got, "\n\n") {
+		t.Fatalf("expected paragraph breaks preserved, got %q", got)
+	}
+	if len(splitSummaryParagraphs(got)) < 2 {
+		t.Fatalf("expected multiple paragraphs, got %q", got)
 	}
 }
 

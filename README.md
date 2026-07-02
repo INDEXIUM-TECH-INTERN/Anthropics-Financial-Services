@@ -9,11 +9,22 @@
 copy Gemini\.env.example Gemini\.env
 notepad Gemini\.env   # Add your keys
 
-# 2. Launch
+# 2. Launch (mặc định port 8080)
 .\run-server.ps1
+
+# Hoặc chọn port khác
+.\run-server.ps1 -Port 3000
 ```
 
-Open **http://localhost:8080** in your browser.
+Open **http://localhost:8080** (hoặc port bạn chọn) in your browser.
+
+### Server trực tiếp (Go)
+
+```powershell
+cd Gemini
+go run ./cmd/gemini-cli --server              # port 8080
+go run ./cmd/gemini-cli --server --port 3000  # port tùy chọn
+```
 
 ### CLI Mode (no UI)
 
@@ -38,6 +49,7 @@ go run cmd/gemini-cli/main.go "Phân tích cổ phiếu VCB" # One-shot
 | 🔁 **Multi-Provider Failover** | Gemini → OpenRouter with 5+ free models, quota-aware rotation |
 | 🧠 **Context Summarization** | Automatic LLM-based compression for long conversations |
 | 🇻🇳 **Vietnamese-First** | All prompts, routing, UI, and error messages in Vietnamese |
+| 📰 **World News Digest** | Morning market dashboard — CNBC stocks, breaking news, AI summary (800–1000 từ, nhiều đoạn) |
 
 ---
 
@@ -125,7 +137,11 @@ SERPAPI_KEY=your_key
 TAVILY_API_KEY=your_key
 REDIS_ADDR=127.0.0.1:6379
 USE_OPENROUTER_ONLY=0
+PORT=8080
+ALLOWED_ORIGIN=http://localhost:8080
 ```
+
+> Nếu đổi `PORT`, cập nhật `ALLOWED_ORIGIN` cho khớp (vd. `http://localhost:3000`).
 
 ---
 
@@ -139,6 +155,7 @@ USE_OPENROUTER_ONLY=0
 | [docs/API.md](./docs/API.md) | REST endpoints, SSE events, metrics |
 | [docs/PROVIDERS.md](./docs/PROVIDERS.md) | LLM providers, multi-provider failover, context window |
 | [docs/CONTEXT.md](./docs/CONTEXT.md) | Domain glossary — key concepts and terminology |
+| [docs/WORLD_NEWS.md](./docs/WORLD_NEWS.md) | Bản tin Thế giới — API, cache, nguồn dữ liệu |
 
 ---
 

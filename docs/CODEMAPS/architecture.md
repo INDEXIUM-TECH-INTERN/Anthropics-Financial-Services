@@ -23,7 +23,7 @@ Full-stack monorepo — Go backend + Vanilla TypeScript frontend, single-process
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  Go API Server (:8080)                                      │
+│  Go API Server (PORT / --port, mặc định :8080)              │
 │  Gemini/internal/api/server.go                              │
 │  ├── securityHeaders  (CSP, HSTS, etc.)                     │
 │  ├── rateLimitMiddleware (20 req/s, burst 50)               │

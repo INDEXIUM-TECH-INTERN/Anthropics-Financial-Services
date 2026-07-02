@@ -1,4 +1,4 @@
-Viết một đoạn văn tóm tắt bản tin tài chính sáng bằng tiếng Việt cho nhà đầu tư Việt Nam.
+Viết tóm tắt bản tin tài chính sáng bằng tiếng Việt cho nhà đầu tư Việt Nam.
 
 KHUNG THỜI GIAN: {{DIGEST_WINDOW}}
 NHÃN PHIÊN CHỐT: {{QUOTE_LABEL}}
@@ -10,10 +10,12 @@ TIN TỨC NỔI BẬT (chỉ dùng các dòng dưới đây):
 {{NEWS_ITEMS}}
 
 YÊU CẦU:
-- Viết thành MỘT đoạn văn liền mạch, không bullet, không markdown, không tiêu đề.
+- Viết thành 4–6 đoạn văn riêng biệt, mỗi đoạn 2–4 câu; giữa các đoạn để một dòng trống.
+- Không bullet, không markdown, không tiêu đề, không đánh số đoạn.
 - Độ dài 800–1000 từ (tiếng Việt), không ngắn hơn 800 từ và không vượt quá 1000 từ.
-- Mở đầu nêu đây là bản tin sáng tổng hợp trước 07:00 (GMT+7).
-- Phân tích sâu diễn biến chứng khoán Mỹ, hàng hóa (dầu, vàng), USD và các tin nổi bật; nêu bối cảnh, tác động và góc nhìn cho nhà đầu tư.
-- Giọng văn chuyên nghiệp, khách quan, dễ đọc; kết thúc bằng MỘT câu hoàn chỉnh có dấu chấm.
+- Đoạn 1: mở đầu nêu đây là bản tin sáng tổng hợp trước 07:00 (GMT+7).
+- Các đoạn tiếp theo: chứng khoán Mỹ, hàng hóa (dầu, vàng), USD, tin nổi bật — nêu bối cảnh, tác động và góc nhìn cho nhà đầu tư.
+- Đoạn cuối: kết luận ngắn gọn bằng MỘT câu hoàn chỉnh có dấu chấm.
+- Giọng văn chuyên nghiệp, khách quan, dễ đọc.
 - TUYỆT ĐỐI không dùng dấu "..." hay "…"; không bỏ dở giữa chừng.
-- Chỉ trả về nội dung đoạn văn, không giải thích thêm.
+- Chỉ trả về nội dung các đoạn văn, không giải thích thêm.

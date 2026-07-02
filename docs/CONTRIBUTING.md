@@ -75,16 +75,10 @@ go mod tidy
 ```powershell
 # Chạy cả backend + frontend
 .\run-server.ps1
+.\run-server.ps1 -Port 3000
 ```
 
 <!-- /AUTO-GENERATED -->
-
-### Full Stack (PowerShell)
-
-```powershell
-# Chạy cả backend + frontend
-.\run-server.ps1
-```
 
 ## 🧪 Quy trình Testing
 

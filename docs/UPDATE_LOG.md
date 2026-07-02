@@ -1,3 +1,36 @@
+# Cập Nhật Tài Liệu - 2026-07-02
+
+## Tóm tắt
+
+Đồng bộ tài liệu với **Morning Digest v27** và cải tiến launcher local.
+
+```
+Created:  docs/WORLD_NEWS.md (API, cache, nguồn dữ liệu bản tin thế giới)
+Updated:  README.md, CONTRIBUTING.md, docs/RUNBOOK.md, docs/ENV.md
+Updated:  docs/API.md (world-news endpoints), docs/ONBOARDING.md
+Updated:  Gemini/README.md, CLAUDE.md, docs/CONTRIBUTING.md
+Fixed:    run-server.ps1 — $redisPort tách khỏi -Port (PowerShell case-insensitive)
+Added:    --port flag (gemini-cli), run-server.ps1 -Port
+```
+
+## Thay đổi sản phẩm (tham chiếu tài liệu)
+
+| Version | Nội dung |
+|---------|----------|
+| v22–v25 | Tóm tắt 800–1000 từ; CNBC stocks; tin trước 07:00; `breakingNews.date` |
+| v26 | Hiển thị ngày Breaking News (API + URL fallback) |
+| v27 | Tóm tắt **nhiều đoạn văn** (`\n\n`), UI render từng `<p>` |
+
+## Chạy local — port tùy chọn
+
+```powershell
+.\run-server.ps1 -Port 3000
+go run ./cmd/gemini-cli --server --port 3000
+$env:PORT = "3000"; $env:ALLOWED_ORIGIN = "http://localhost:3000"
+```
+
+---
+
 # Cập Nhật Tài Liệu - 2026-06-18
 
 ## Tóm Tắt Cập Nhật

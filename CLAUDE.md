@@ -122,7 +122,9 @@ go run cmd/gemini-cli/main.go "câu hỏi"   # One-shot
 ### Full Stack (PowerShell)
 
 ```powershell
-.\run-server.ps1     # Launch cả backend + frontend
+.\run-server.ps1                  # :8080
+.\run-server.ps1 -Port 3000       # port tùy chọn
+go run ./cmd/gemini-cli --server --port 3000   # chỉ backend
 ```
 
 ---

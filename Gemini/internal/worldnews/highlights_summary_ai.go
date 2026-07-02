@@ -9,10 +9,10 @@ import (
 )
 
 const highlightSummarySystemPrompt = `Bạn là biên tập viên tài chính chuyên nghiệp của INDEXIUM.
-Nhiệm vụ: viết đoạn tóm tắt bản tin sáng chi tiết, chính xác, bằng tiếng Việt.
-Độ dài: 800–1000 từ, một đoạn văn liền mạch.
+Nhiệm vụ: viết tóm tắt bản tin sáng chi tiết, chính xác, bằng tiếng Việt.
+Độ dài: 800–1000 từ, chia thành 4–6 đoạn văn (mỗi đoạn 2–4 câu), cách nhau bằng một dòng trống.
 Chỉ dùng dữ liệu được cung cấp — không bịa số liệu hay sự kiện.
-Không dùng bullet, markdown, hoặc lời dẫn ngoài đoạn văn.`
+Không dùng bullet, markdown, tiêu đề, hoặc lời dẫn ngoài nội dung.`
 
 var markdownNoise = regexp.MustCompile(`(?m)^#{1,6}\s+`)
 
@@ -41,7 +41,7 @@ func (s *Service) resolveHighlightSummary(
 		fmt.Printf("⚠️ [WorldNews] AI highlight summary failed, using template: %v\n", err)
 		return fallback
 	}
-	return aiSummary
+	return ensureSummaryParagraphs(aiSummary)
 }
 
 func generateHighlightSummaryAI(
@@ -73,7 +73,9 @@ func generateHighlightSummaryAI(
 	if cleaned == "" {
 		return "", fmt.Errorf("empty AI response")
 	}
-	return normalizeAISummaryWords(cleaned, HighlightSummaryMinWords, HighlightSummaryMaxWords), nil
+	return ensureSummaryParagraphs(
+		normalizeAISummaryWords(cleaned, HighlightSummaryMinWords, HighlightSummaryMaxWords),
+	), nil
 }
 
 func buildHighlightSummaryMarketData(
@@ -156,7 +158,38 @@ func sanitizeAISummary(text string) string {
 	text = markdownNoise.ReplaceAllString(text, "")
 	text = strings.ReplaceAll(text, "**", "")
 	text = strings.ReplaceAll(text, "__", "")
-	text = strings.ReplaceAll(text, "\n", " ")
-	text = strings.Join(strings.Fields(text), " ")
-	return stripTrailingEllipsis(text)
+	text = strings.ReplaceAll(text, "\r\n", "\n")
+	text = strings.ReplaceAll(text, "\r", "\n")
+	for strings.Contains(text, "\n\n\n") {
+		text = strings.ReplaceAll(text, "\n\n\n", "\n\n")
+	}
+
+	var paragraphs []string
+	if strings.Contains(text, "\n\n") {
+		paragraphs = splitSummaryParagraphs(text)
+	} else {
+		var current strings.Builder
+		for _, line := range strings.Split(text, "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				if current.Len() > 0 {
+					paragraphs = append(paragraphs, strings.Join(strings.Fields(current.String()), " "))
+					current.Reset()
+				}
+				continue
+			}
+			if current.Len() > 0 {
+				current.WriteByte(' ')
+			}
+			current.WriteString(line)
+		}
+		if current.Len() > 0 {
+			paragraphs = append(paragraphs, strings.Join(strings.Fields(current.String()), " "))
+		}
+	}
+
+	for i, part := range paragraphs {
+		paragraphs[i] = stripTrailingEllipsis(part)
+	}
+	return joinSummaryParagraphs(paragraphs)
 }

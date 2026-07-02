@@ -23,7 +23,7 @@
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start Vite dev server (port 5173, proxies `/api` → `:8080`) |
+| `npm run dev` | Start Vite dev server (port 5173, proxies `/api` → backend; mặc định `:8080`) |
 | `npm run build` | Type-check + production build (output: `frontend/dist`) |
 | `npm run preview` | Preview the production build locally |
 | `npm run typecheck` | Run TypeScript type checking (`tsc --noEmit`) |
@@ -32,7 +32,8 @@
 
 | Command | Description |
 |---------|-------------|
-| `.\run-server.ps1` | Unified launcher — builds Go binary + starts server on :8080 + opens browser |
+| `.\run-server.ps1` | Unified launcher — build frontend + backend, serve on `:8080`, mở browser |
+| `.\run-server.ps1 -Port 3000` | Chạy trên port tùy chọn |
 | `.\run-server.ps1 -Query "..."` | One-shot CLI query (no UI) |
 
 <!-- /AUTO-GENERATED -->
@@ -55,7 +56,7 @@ notepad .env            # Add your keys
 
 # 2. Backend only
 make build
-make server             # Starts on http://localhost:8080
+make server             # Starts on http://localhost:8080 (hoặc $env:PORT)
 
 # 3. Frontend only (separate terminal, for dev with hot reload)
 cd frontend
@@ -64,8 +65,11 @@ npm run dev             # Starts on http://localhost:5173
 
 # 4. Full stack (simplest)
 cd ..                   # Back to project root
-.\run-server.ps1        # Builds + serves + opens browser
+.\run-server.ps1        # Builds + serves + opens browser (:8080)
+.\run-server.ps1 -Port 3000
 ```
+
+> **Lưu ý:** Khi dùng `npm run dev` với backend port khác 8080, sửa `proxy.target` trong `frontend/vite.config.ts`.
 
 ### Running Tests
 
