@@ -887,6 +887,39 @@ export function createChatPage(): ChatPage {
     `;
   }
 
+  function renderBreakingNewsCard(b: WorldNewsReport['breakingNews'][number]): string {
+    const urgentClass = b.isUrgent ? ' breaking-card--urgent' : '';
+    const thumb = b.thumbnail
+      ? `<div class="breaking-card__media">${renderArticleThumbnail(b.thumbnail, b.content)}</div>`
+      : '';
+    const logo = renderPublisherLogo(b.logo, b.source);
+    const dateTimeMarkup = b.date
+      ? `<time class="breaking-card__datetime">
+          <span class="breaking-card__date">${escHtml(b.date)}</span>
+          <span class="breaking-card__time">${escHtml(b.time)}</span>
+        </time>`
+      : `<span class="breaking-card__time breaking-card__time--solo">${escHtml(b.time)}</span>`;
+
+    const inner = `
+      <article class="breaking-card${urgentClass}">
+        ${thumb}
+        <div class="breaking-card__body">
+          <div class="breaking-card__meta">
+            <span class="breaking-card__source">${logo}<span>${escHtml(b.source)}</span></span>
+            ${dateTimeMarkup}
+            <span class="breaking-card__badge">Tin nóng</span>
+          </div>
+          <h4 class="breaking-card__headline">${escHtml(b.content)}</h4>
+        </div>
+      </article>
+    `;
+
+    if (b.url) {
+      return `<a href="${escHtml(b.url)}" target="_blank" rel="noopener noreferrer" class="breaking-card-link">${inner}</a>`;
+    }
+    return inner;
+  }
+
   function renderSourceBadge(source: string, logo?: string): string {
     return `
       <span class="news-item-source">
@@ -1462,48 +1495,9 @@ export function createChatPage(): ChatPage {
     // 6. Breaking News
     const breakingNewsListEl = $('breaking-news-list');
     if (breakingNewsListEl) {
-      breakingNewsListEl.innerHTML = report.breakingNews
-        .map(b => {
-          const thumb = renderArticleThumbnail(b.thumbnail, b.content);
-          const logo = renderPublisherLogo(b.logo, b.source);
-          const metaSource = `<span class="breaking-meta-source">${logo}<span>${escHtml(b.source)}</span></span>`;
-          const dateMarkup = b.date
-            ? `<span class="breaking-date-inline">${escHtml(b.date)}</span><span>•</span>`
-            : '';
-          if (b.url) {
-            return `
-          <a href="${escHtml(b.url)}" target="_blank" rel="noopener noreferrer" class="breaking-news-item breaking-news-item-link ${b.isUrgent ? 'urgent' : ''}">
-            ${thumb}
-            <div class="breaking-content-area">
-              <div class="breaking-meta">
-                ${metaSource}
-                <span>•</span>
-                ${dateMarkup}
-                <span class="breaking-time-inline">${escHtml(b.time)}</span>
-                <span>• Breaking</span>
-              </div>
-              <div class="breaking-text">${escHtml(b.content)}</div>
-            </div>
-          </a>
-        `;
-          }
-          return `
-          <div class="breaking-news-item ${b.isUrgent ? 'urgent' : ''}">
-            ${thumb}
-            <div class="breaking-content-area">
-              <div class="breaking-meta">
-                ${metaSource}
-                <span>•</span>
-                ${dateMarkup}
-                <span class="breaking-time-inline">${escHtml(b.time)}</span>
-                <span>• Breaking</span>
-              </div>
-              <div class="breaking-text">${escHtml(b.content)}</div>
-            </div>
-          </div>
-        `;
-        })
-        .join('');
+      breakingNewsListEl.innerHTML = report.breakingNews.length
+        ? report.breakingNews.map(b => renderBreakingNewsCard(b)).join('')
+        : '<p class="breaking-news-empty">Không có tin nóng trước 07:00 (GMT+7).</p>';
     }
 
     // 7. VTVIndex News
