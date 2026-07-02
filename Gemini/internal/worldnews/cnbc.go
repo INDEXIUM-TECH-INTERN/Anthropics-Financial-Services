@@ -133,69 +133,17 @@ func (s *Service) fetchCNBCKeyNumber(symbol, label, displaySymbol string, calend
 	}, nil
 }
 
-// cnbcUseLiveQuote returns true only when both the viewer and CNBC quote are before
-// 07:00 GMT+7 on the report day — otherwise use settled session close.
-func cnbcUseLiveQuote(lastTime string, reportDay, cutoff time.Time) bool {
-	now := time.Now().In(vnTimezone)
-	if !now.Before(cutoff) {
-		return false
-	}
-	lastTS, err := parseCNBCLastTime(lastTime)
-	if err != nil {
-		return false
-	}
-	vnLast := lastTS.In(vnTimezone)
-	sameDay := vnLast.Year() == reportDay.Year() &&
-		vnLast.Month() == reportDay.Month() &&
-		vnLast.Day() == reportDay.Day()
-	return sameDay && vnLast.Before(cutoff)
-}
-
-// resolveCNBCKeyNumber mirrors the Yahoo digest cutoff: before 07:00 GMT+7 use the
-// live CNBC quote; after cutoff use the last settled session close.
-func resolveCNBCKeyNumber(q *cnbcFormattedQuote, calendarDay time.Time) (cnbcResolvedQuote, error) {
+// resolveCNBCKeyNumber returns the live CNBC quote exactly as shown on cnbc.com.
+func resolveCNBCKeyNumber(q *cnbcFormattedQuote, _ time.Time) (cnbcResolvedQuote, error) {
 	last, err := parseCNBCPrice(q.Last)
 	if err != nil {
 		return cnbcResolvedQuote{}, err
 	}
 
-	day := calendarDay.In(vnTimezone)
-	_, cutoff := morningDigestWindow(day)
-	quoteDay := digestMarketQuoteDay(day)
-
 	prev, _ := parseCNBCPriceOptional(q.PreviousDayClosing)
-	settle, _ := parseCNBCPriceOptional(q.SettlePrice)
 	open, _ := parseCNBCPriceOptional(q.Open)
 	low, _ := parseCNBCPriceOptional(q.Low)
 	high, _ := parseCNBCPriceOptional(q.High)
-
-	useLive := cnbcUseLiveQuote(q.LastTime, day, cutoff)
-	if !useLive {
-		price := settle
-		if price == 0 {
-			price = prev
-		}
-		if price == 0 {
-			price = last
-		}
-		refPrev := prev
-		if refPrev == 0 {
-			refPrev = price
-		}
-		change := price - refPrev
-		var changePct float64
-		if refPrev != 0 {
-			changePct = (change / refPrev) * 100
-		}
-		closeTime := time.Date(quoteDay.Year(), quoteDay.Month(), quoteDay.Day(), 16, 0, 0, 0, usEastern)
-		return cnbcResolvedQuote{
-			Price:     price,
-			Change:    change,
-			ChangePct: changePct,
-			Sparkline: cnbcDailySparkline(refPrev, price),
-			PriceTime: formatDigestPriceTimeLabel(closeTime),
-		}, nil
-	}
 
 	change, _ := parseCNBCPriceOptional(q.Change)
 	if change == 0 && prev != 0 {
@@ -210,28 +158,8 @@ func resolveCNBCKeyNumber(q *cnbcFormattedQuote, calendarDay time.Time) (cnbcRes
 		Change:    change,
 		ChangePct: changePct,
 		Sparkline: cnbcSessionSparkline(prev, open, low, high, last),
-		PriceTime: formatCNBCPriceTimeLive(q.LastTime),
+		PriceTime: formatCNBCPriceTimeDisplay(q.LastTime),
 	}, nil
-}
-
-// cnbcDailySparkline builds an 8-point sparkline from prior close to settlement.
-func cnbcDailySparkline(prev, settle float64) []float64 {
-	if prev == 0 && settle == 0 {
-		return nil
-	}
-	if prev == 0 {
-		prev = settle
-	}
-	if settle == 0 {
-		settle = prev
-	}
-	step := (settle - prev) / 7
-	points := make([]float64, 8)
-	for i := range points {
-		points[i] = prev + step*float64(i)
-	}
-	points[7] = settle
-	return points
 }
 
 // cnbcSessionSparkline builds an 8-point sparkline from CNBC OHLC + previous close.
@@ -316,10 +244,26 @@ func parseCNBCLastTime(lastTime string) (time.Time, error) {
 	return time.Time{}, lastErr
 }
 
-func formatCNBCPriceTimeLive(lastTime string) string {
+func formatCNBCPriceTimeDisplay(lastTime string) string {
 	t, err := parseCNBCLastTime(lastTime)
 	if err != nil {
 		return ""
 	}
-	return formatChartVNLabel(t.In(vnTimezone)) + " GMT+7"
+	return t.Format("02/01 15:04") + " " + cnbcTimeZoneLabel(t)
+}
+
+func cnbcTimeZoneLabel(t time.Time) string {
+	_, offset := t.Zone()
+	switch offset {
+	case 3600:
+		return "BST"
+	case 0:
+		return "GMT"
+	case -4 * 3600:
+		return "EDT"
+	case -5 * 3600:
+		return "EST"
+	default:
+		return t.Format("MST")
+	}
 }
