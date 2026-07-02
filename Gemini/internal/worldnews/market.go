@@ -128,7 +128,8 @@ func (s *Service) fetchYahooIntradayAtCutoff(symbol string, cutoff time.Time) (*
 	var lastClose float64
 	found := false
 	for i, c := range closes {
-		if c == 0 || i >= len(timestamps) || timestamps[i] > cutoffUnix {
+		// Strictly before 07:00 GMT+7 — matches CNBC 19:59 EDT (06:59 GMT+7) reference bar.
+		if c == 0 || i >= len(timestamps) || timestamps[i] >= cutoffUnix {
 			continue
 		}
 		lastTS = timestamps[i]
