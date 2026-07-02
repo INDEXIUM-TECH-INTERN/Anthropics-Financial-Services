@@ -136,6 +136,25 @@ func TestApplyCNBCCutoffPriceGold(t *testing.T) {
 	}
 }
 
+func TestLiveGoldCutoffSnap(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping live gold cutoff test in short mode")
+	}
+	s := NewService()
+	calendarDay := time.Date(2026, 7, 2, 0, 0, 0, 0, vnTimezone)
+	kn, err := s.fetchCNBCKeyNumber(cnbcGoldSymbol, "Vàng thế giới", "Gold COMEX", calendarDay)
+	if err != nil {
+		t.Fatalf("fetch failed: %v", err)
+	}
+	if kn.PriceTime != "02/07 06:59 GMT+7" {
+		t.Fatalf("expected 02/07 06:59 GMT+7, got %q", kn.PriceTime)
+	}
+	// Yahoo 1m at 06:59 GMT+7 should be ~4047, not live CNBC ~4074.
+	if kn.Value != "$4047.40" && kn.Value != "$4047.39" && kn.Value != "$4047.41" {
+		t.Fatalf("expected ~$4047.40 cutoff price, got %q", kn.Value)
+	}
+}
+
 func TestCNBCQuotePageURL(t *testing.T) {
 	got := cnbcQuotePageURL(cnbcBrentSymbol)
 	want := "https://www.cnbc.com/quotes/@LCO.1"
