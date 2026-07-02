@@ -52,8 +52,11 @@ func TestBuildReportDifferentDates(t *testing.T) {
 	if r17.Date != "2026-06-17" || r23.Date != "2026-06-23" {
 		t.Fatalf("unexpected report dates: %s vs %s", r17.Date, r23.Date)
 	}
-	if r17.KeyNumbers[0].Value == r23.KeyNumbers[0].Value {
-		t.Fatalf("expected different S&P values, both %s", r17.KeyNumbers[0].Value)
+	if r17.DigestWindow == "" || r23.DigestWindow == "" {
+		t.Fatal("expected digest window on both reports")
+	}
+	if r17.DigestWindow == r23.DigestWindow {
+		t.Fatalf("expected different digest windows for different dates, both %q", r17.DigestWindow)
 	}
 }
 
